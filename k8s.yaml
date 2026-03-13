@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitmydaytime
+  namespace: feb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitmydaytime
+  template:
+    metadata:
+      labels:
+        app: gitmydaytime
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: gitmydaytime
+          image: hub.umceko.com/byfeb/gitmydaytime:latest
+          ports:
+            - containerPort: 3001
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3001"
+            - name: GMD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gitmydaytime-secret
+                  key: password
+          volumeMounts:
+            - name: storage
+              mountPath: /app/storage
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: gitmydaytime-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitmydaytime-pvc
+  namespace: feb
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitmydaytime-secret
+  namespace: feb
+type: Opaque
+stringData:
+  password: "2332"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitmydaytime-service
+  namespace: feb
+spec:
+  selector:
+    app: gitmydaytime
+  ports:
+    - port: 80
+      targetPort: 3001
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitmydaytime-ingress
+  namespace: feb
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - gmd.byfeb.com
+      secretName: gitmydaytime-tls
+  rules:
+    - host: gmd.byfeb.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gitmydaytime-service
+                port:
+                  number: 80

@@ -1,0 +1,96 @@
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut } from "lucide-react";
+import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/cn";
+import { AnimatePresence, motion } from "framer-motion";
+
+const navItems = [
+  { to: "/", icon: Clock, label: "Today" },
+  { to: "/week", icon: CalendarDays, label: "Week" },
+  { to: "/calendar", icon: Calendar, label: "Calendar" },
+  { to: "/stats", icon: BarChart3, label: "Stats" },
+];
+
+export default function Layout() {
+  const { theme, toggle } = useTheme();
+  const { logout } = useAuth();
+  const location = useLocation();
+
+  return (
+    <div className="min-h-screen flex flex-col bg-bg-secondary">
+      <header className="border-b border-border sticky top-0 z-50 bg-bg/90 backdrop-blur-md">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <NavLink
+            to="/"
+            className="flex items-center gap-2.5 font-semibold text-text tracking-tight"
+            aria-label="GitMyDayTime — go to today"
+          >
+            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+              <Clock size={15} className="text-bg" />
+            </div>
+            <span className="text-base hidden sm:inline">GitMyDayTime</span>
+          </NavLink>
+
+          <nav aria-label="Main navigation" className="flex items-center gap-1">
+            {navItems.map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === "/"}
+                aria-label={label}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors",
+                    isActive
+                      ? "bg-accent text-bg font-medium"
+                      : "text-text-secondary hover:text-text hover:bg-accent-soft"
+                  )
+                }
+              >
+                <Icon size={16} />
+                <span className="hidden sm:inline">{label}</span>
+              </NavLink>
+            ))}
+
+            <div className="w-px h-5 bg-border mx-1.5" role="separator" />
+
+            <button
+              onClick={toggle}
+              aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+              className="btn-icon p-2 rounded-lg"
+            >
+              {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+
+            <button
+              onClick={logout}
+              aria-label="Sign out"
+              className="btn-icon p-2 rounded-lg"
+            >
+              <LogOut size={16} />
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      <main className="flex-1" id="main-content">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            className={cn(
+              "mx-auto px-4 sm:px-6 py-6",
+              location.pathname === "/week" ? "max-w-6xl" : "max-w-3xl"
+            )}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+}

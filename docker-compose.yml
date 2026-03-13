@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./storage:/app/storage
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - GMD_PASSWORD=2332
