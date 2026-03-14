@@ -1,25 +1,18 @@
 import type { DayLog, TaskEntry, PlanItem, CreateTaskInput, CreatePlanInput } from "@gmd/shared";
 
 const BASE = "/api";
-const TOKEN_KEY = "gmd-token";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = localStorage.getItem(TOKEN_KEY);
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
   const res = await fetch(`${BASE}${path}`, {
-    headers,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
     ...options,
   });
 
   if (res.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
-    window.location.reload();
+    window.location.href = "/login";
     throw new Error("Unauthorized");
   }
 
@@ -46,6 +39,12 @@ export const api = {
   deleteTask: (date: string, id: string) =>
     request<void>(`/days/${date}/tasks/${id}`, { method: "DELETE" }),
 
+  moveTask: (date: string, id: string, newDate: string) =>
+    request<TaskEntry>(`/days/${date}/tasks/${id}/move`, {
+      method: "PUT",
+      body: JSON.stringify({ newDate }),
+    }),
+
   addPlan: (date: string, data: CreatePlanInput) =>
     request<PlanItem>(`/days/${date}/plan`, {
       method: "POST",
@@ -60,6 +59,18 @@ export const api = {
 
   deletePlan: (date: string, id: string) =>
     request<void>(`/days/${date}/plan/${id}`, { method: "DELETE" }),
+
+  reorderPlan: (date: string, ids: string[]) =>
+    request<PlanItem[]>(`/days/${date}/plan/reorder`, {
+      method: "PUT",
+      body: JSON.stringify({ ids }),
+    }),
+
+  movePlan: (date: string, id: string, newDate: string) =>
+    request<PlanItem>(`/days/${date}/plan/${id}/move`, {
+      method: "PUT",
+      body: JSON.stringify({ newDate }),
+    }),
 
   getStats: (from?: string, to?: string) => {
     const params = new URLSearchParams();

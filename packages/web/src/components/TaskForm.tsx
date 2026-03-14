@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
-  onSubmit: (data: { description: string; category: Category; duration?: number; tags: string[] }) => void;
+  onSubmit: (data: { description: string; category: Category; duration?: number; tags: string[]; scheduledTime?: string }) => void;
   loading?: boolean;
   type: "task" | "plan";
 }
@@ -16,16 +16,26 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
   const [desc, setDesc] = useState("");
   const [cat, setCat] = useState<Category>("dev");
   const [dur, setDur] = useState("");
+  const [time, setTime] = useState("");
   const [justAdded, setJustAdded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const isPlan = type === "plan";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!desc.trim() || loading) return;
     const duration = dur ? parseDur(dur) : undefined;
-    onSubmit({ description: desc.trim(), category: cat, duration, tags: [] });
+    onSubmit({
+      description: desc.trim(),
+      category: isPlan ? cat : "other",
+      duration,
+      tags: [],
+      ...(isPlan && time ? { scheduledTime: time } : {}),
+    });
     setDesc("");
     setDur("");
+    setTime("");
     setJustAdded(true);
     inputRef.current?.focus();
   };
@@ -37,7 +47,6 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
     }
   }, [justAdded]);
 
-  const isPlan = type === "plan";
   const Icon = isPlan ? ListTodo : Zap;
 
   return (
@@ -74,38 +83,55 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
         </button>
       </div>
 
-      {/* Category pills — always visible */}
-      <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Category">
-        {categories.map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="radio"
-            aria-checked={cat === key}
-            onClick={() => setCat(key)}
-            className={cn(
-              "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all",
-              cat === key
-                ? "bg-accent text-bg shadow-sm"
-                : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary hover:text-text border border-transparent hover:border-border"
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* Category pills — only for plan items */}
+      {isPlan && (
+        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Category">
+          {categories.map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={cat === key}
+              onClick={() => setCat(key)}
+              className={cn(
+                "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all",
+                cat === key
+                  ? "bg-accent text-bg shadow-sm"
+                  : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary hover:text-text border border-transparent hover:border-border"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Duration — always visible, inline */}
-      <div className="flex items-center gap-2">
-        <Clock size={14} className="text-text-tertiary flex-shrink-0" />
-        <label htmlFor={`dur-${type}`} className="sr-only">Duration</label>
-        <input
-          id={`dur-${type}`}
-          className="input !w-36 !text-sm"
-          placeholder="Duration: 1h 30m"
-          value={dur}
-          onChange={(e) => setDur(e.target.value)}
-        />
+      {/* Time + Duration row */}
+      <div className="flex items-center gap-3">
+        {isPlan && (
+          <div className="flex items-center gap-2">
+            <Clock size={14} className="text-text-tertiary flex-shrink-0" />
+            <label htmlFor={`time-${type}`} className="sr-only">Scheduled time</label>
+            <input
+              id={`time-${type}`}
+              type="time"
+              className="input !w-28 !text-sm"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          {!isPlan && <Clock size={14} className="text-text-tertiary flex-shrink-0" />}
+          <label htmlFor={`dur-${type}`} className="sr-only">Duration</label>
+          <input
+            id={`dur-${type}`}
+            className="input !w-36 !text-sm"
+            placeholder={isPlan ? "Est. duration: 1h 30m" : "Duration: 1h 30m"}
+            value={dur}
+            onChange={(e) => setDur(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Success feedback */}

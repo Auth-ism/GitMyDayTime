@@ -1,3 +1,112 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitmydaytime-postgres
+  namespace: feb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitmydaytime-postgres
+  template:
+    metadata:
+      labels:
+        app: gitmydaytime-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: gmd
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gitmydaytime-secret
+                  key: db-password
+            - name: POSTGRES_DB
+              value: gitmydaytime
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim: { claimName: gitmydaytime-pgdata-pvc }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitmydaytime-pgdata-pvc
+  namespace: feb
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitmydaytime-postgres-service
+  namespace: feb
+spec:
+  selector:
+    app: gitmydaytime-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitmydaytime-redis
+  namespace: feb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitmydaytime-redis
+  template:
+    metadata:
+      labels:
+        app: gitmydaytime-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitmydaytime-redis-service
+  namespace: feb
+spec:
+  selector:
+    app: gitmydaytime-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,14 +134,18 @@ spec:
               value: production
             - name: PORT
               value: "3001"
-            - name: GMD_PASSWORD
+            - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: gitmydaytime-secret
-                  key: password
-          volumeMounts:
-            - name: storage
-              mountPath: /app/storage
+                  key: database-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gitmydaytime-secret
+                  key: jwt-secret
+            - name: REDIS_URL
+              value: "redis://gitmydaytime-redis-service:6379"
           resources:
             requests:
               memory: "64Mi"
@@ -40,22 +153,6 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "200m"
-      volumes:
-        - name: storage
-          persistentVolumeClaim:
-            claimName: gitmydaytime-pvc
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: gitmydaytime-pvc
-  namespace: feb
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
 ---
 apiVersion: v1
 kind: Secret
@@ -64,7 +161,9 @@ metadata:
   namespace: feb
 type: Opaque
 stringData:
-  password: "2332"
+  db-password: "gmd_prod_password"
+  database-url: "postgresql://gmd:110255252Ab*@gitmydaytime-postgres-service:5432/gitmydaytime"
+  jwt-secret: "BUtEhuCsbfp+redZ1sZ/lEUEFtGf1z0BxXV/llrkkgE="
 ---
 apiVersion: v1
 kind: Service

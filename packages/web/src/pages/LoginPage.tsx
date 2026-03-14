@@ -5,26 +5,51 @@ import { motion } from "framer-motion";
 import { useTheme } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
 
+type Mode = "login" | "register";
+
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const { theme, toggle } = useTheme();
+  const [mode, setMode] = useState<Mode>("login");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password || loading) return;
+    if (loading) return;
+
+    if (mode === "register" && password !== confirmPassword) {
+      setError("Passwords don't match");
+      return;
+    }
 
     setError("");
     setLoading(true);
 
-    const result = await login(password);
+    const result =
+      mode === "login"
+        ? await login(email, password)
+        : await register(email, username, password);
+
     if (!result.ok) {
-      setError(result.error || "Wrong password");
+      setError(result.error || "Something went wrong");
       setLoading(false);
     }
   };
+
+  const switchMode = () => {
+    setMode(mode === "login" ? "register" : "login");
+    setError("");
+  };
+
+  const isValid =
+    mode === "login"
+      ? email && password
+      : email && username && password && confirmPassword;
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4">
@@ -49,11 +74,68 @@ export default function LoginPage() {
             <Clock size={24} className="text-bg" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">GitMyDayTime</h1>
-          <p className="text-sm text-text-secondary mt-1">Sign in to continue</p>
+          <p className="text-sm text-text-secondary mt-1">
+            {mode === "login" ? "Sign in to continue" : "Create your account"}
+          </p>
         </div>
 
-        {/* Login form */}
+        {/* Mode toggle */}
+        <div className="flex rounded-lg bg-surface border border-border mb-6 p-1">
+          <button
+            type="button"
+            onClick={() => { setMode("login"); setError(""); }}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              mode === "login" ? "bg-bg text-text shadow-sm" : "text-text-secondary"
+            }`}
+          >
+            Sign in
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode("register"); setError(""); }}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              mode === "register" ? "bg-bg text-text shadow-sm" : "text-text-secondary"
+            }`}
+          >
+            Register
+          </button>
+        </div>
+
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-1.5">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              className="input !text-base !py-3"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(""); }}
+              autoFocus
+              autoComplete="email"
+            />
+          </div>
+
+          {mode === "register" && (
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-text-secondary mb-1.5">
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                className="input !text-base !py-3"
+                placeholder="Choose a username"
+                value={username}
+                onChange={(e) => { setUsername(e.target.value); setError(""); }}
+                autoComplete="username"
+              />
+            </div>
+          )}
+
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-text-secondary mb-1.5">
               Password
@@ -62,16 +144,29 @@ export default function LoginPage() {
               id="password"
               type="password"
               className="input !text-base !py-3"
-              placeholder="Enter your password"
+              placeholder={mode === "register" ? "Min 6 characters" : "Enter your password"}
               value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError("");
-              }}
-              autoFocus
-              autoComplete="current-password"
+              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
             />
           </div>
+
+          {mode === "register" && (
+            <div>
+              <label htmlFor="confirm-password" className="block text-sm font-medium text-text-secondary mb-1.5">
+                Confirm Password
+              </label>
+              <input
+                id="confirm-password"
+                type="password"
+                className="input !text-base !py-3"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
+                autoComplete="new-password"
+              />
+            </div>
+          )}
 
           {/* Error message */}
           {error && (
@@ -88,14 +183,16 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={!password || loading}
+            disabled={!isValid || loading}
             className="btn btn-primary w-full !py-3 text-base"
           >
             {loading ? (
-              <span className="animate-pulse">Signing in...</span>
+              <span className="animate-pulse">
+                {mode === "login" ? "Signing in..." : "Creating account..."}
+              </span>
             ) : (
               <>
-                Sign in
+                {mode === "login" ? "Sign in" : "Create account"}
                 <ArrowRight size={16} />
               </>
             )}

@@ -29,6 +29,8 @@ export const PlanItemSchema = z.object({
   estimatedDuration: z.number().optional(),
   completed: z.boolean().default(false),
   order: z.number(),
+  scheduledTime: z.string().optional(),
+  actualDuration: z.number().optional(),
 });
 export type PlanItem = z.infer<typeof PlanItemSchema>;
 
@@ -51,6 +53,7 @@ export const CreatePlanInput = z.object({
   description: z.string().min(1),
   category: Category.default("other"),
   estimatedDuration: z.number().optional(),
+  scheduledTime: z.string().optional(),
 });
 export type CreatePlanInput = z.infer<typeof CreatePlanInput>;
 
@@ -96,4 +99,24 @@ export function dateToPath(date: string): string {
 
 export function todayStr(): string {
   return new Date().toISOString().split("T")[0];
+}
+
+// Auth schemas
+export const RegisterInput = z.object({
+  email: z.string().email(),
+  username: z.string().min(2).max(32),
+  password: z.string().min(6),
+});
+export type RegisterInput = z.infer<typeof RegisterInput>;
+
+export const LoginInput = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+export type LoginInput = z.infer<typeof LoginInput>;
+
+export interface UserResponse {
+  id: string;
+  email: string;
+  username: string;
 }

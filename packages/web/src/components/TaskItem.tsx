@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Trash2, Clock } from "lucide-react";
-import { type TaskEntry, CATEGORY_LABELS, formatDuration } from "@gmd/shared";
+import { type TaskEntry, formatDuration } from "@gmd/shared";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 
@@ -53,9 +53,6 @@ export default function TaskItem({ task, onToggle, onDelete }: Props) {
           {task.description}
         </p>
         <div className="flex items-center gap-2.5 mt-1">
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-bg-secondary text-text-secondary">
-            {CATEGORY_LABELS[task.category]}
-          </span>
           {task.duration != null && task.duration > 0 && (
             <span className="flex items-center gap-1 text-xs text-text-secondary">
               <Clock size={11} />
@@ -79,7 +76,6 @@ export default function TaskItem({ task, onToggle, onDelete }: Props) {
         )}
       >
         <Trash2 size={14} />
-        {confirmDelete && <span className="sr-only">Click again to confirm</span>}
       </button>
     </motion.div>
   );

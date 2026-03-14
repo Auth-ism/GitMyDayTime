@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { ChevronLeft, ChevronRight, CalendarDays, Clock, Target, Check } from "lucide-react";
-import { CATEGORY_COLORS, CATEGORY_LABELS, formatDuration, type Category, type DayLog } from "@gmd/shared";
+import { CATEGORY_COLORS, formatDuration, type DayLog } from "@gmd/shared";
 import { motion } from "framer-motion";
 
 function getWeekDates(ref: Date): string[] {
@@ -30,7 +30,9 @@ function getWeekLabel(dates: string[]): string {
 
 export default function WeekView() {
   const [weekRef, setWeekRef] = useState(() => new Date());
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const todayStr = new Date().toISOString().split("T")[0];
 
   const dates = useMemo(() => getWeekDates(weekRef), [weekRef]);
@@ -49,6 +51,44 @@ export default function WeekView() {
   const goToday = () => setWeekRef(new Date());
 
   const isCurrentWeek = dates.includes(todayStr);
+
+  const handleDragStart = (e: React.DragEvent, fromDate: string, itemId: string, itemType: "task" | "plan") => {
+    e.dataTransfer.setData("text/plain", JSON.stringify({ fromDate, itemId, itemType }));
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, date: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverDate(date);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverDate(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, toDate: string) => {
+    e.preventDefault();
+    setDragOverDate(null);
+    try {
+      const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+      const { fromDate, itemId, itemType } = data as { fromDate: string; itemId: string; itemType: "task" | "plan" };
+
+      if (fromDate === toDate) return;
+
+      if (itemType === "plan") {
+        await api.movePlan(fromDate, itemId, toDate);
+      } else {
+        await api.moveTask(fromDate, itemId, toDate);
+      }
+
+      // Invalidate both source and target day queries
+      qc.invalidateQueries({ queryKey: ["daylog", fromDate] });
+      qc.invalidateQueries({ queryKey: ["daylog", toDate] });
+    } catch {
+      // ignore invalid drops
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -82,16 +122,22 @@ export default function WeekView() {
           const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
           const dayNum = d.getDate();
           const isFuture = date > todayStr;
+          const isDragOver = dragOverDate === date;
 
           return (
             <div
               key={date}
+              onDragOver={(e) => handleDragOver(e, date)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, date)}
               className={cn(
-                "flex flex-col rounded-xl border transition-colors min-h-[280px]",
+                "flex flex-col rounded-xl border transition-all min-h-[280px]",
                 isToday
                   ? "border-accent bg-accent-soft/30"
+                  : isDragOver
+                  ? "border-accent/50 bg-accent-soft/10 shadow-md"
                   : "border-border bg-bg-elevated",
-                isFuture && "opacity-60"
+                isFuture && !isDragOver && "opacity-60"
               )}
             >
               {/* Day header */}
@@ -120,7 +166,7 @@ export default function WeekView() {
                     ))}
                   </div>
                 )}
-                {dayLog && <DayCards dayLog={dayLog} onNavigate={() => navigate(`/day/${date}`)} />}
+                {dayLog && <DayCards dayLog={dayLog} date={date} onNavigate={() => navigate(`/day/${date}`)} onDragStart={handleDragStart} />}
               </div>
             </div>
           );
@@ -130,8 +176,24 @@ export default function WeekView() {
   );
 }
 
-function DayCards({ dayLog, onNavigate }: { dayLog: DayLog; onNavigate: () => void }) {
-  const plans = dayLog.plan.sort((a, b) => a.order - b.order);
+function DayCards({
+  dayLog,
+  date,
+  onNavigate,
+  onDragStart,
+}: {
+  dayLog: DayLog;
+  date: string;
+  onNavigate: () => void;
+  onDragStart: (e: React.DragEvent, fromDate: string, itemId: string, itemType: "task" | "plan") => void;
+}) {
+  const plans = [...dayLog.plan].sort((a, b) => {
+    // Sort by scheduled time first, then by order
+    if (a.scheduledTime && b.scheduledTime) return a.scheduledTime.localeCompare(b.scheduledTime);
+    if (a.scheduledTime) return -1;
+    if (b.scheduledTime) return 1;
+    return a.order - b.order;
+  });
   const tasks = dayLog.tasks;
   const isEmpty = plans.length === 0 && tasks.length === 0;
 
@@ -153,8 +215,10 @@ function DayCards({ dayLog, onNavigate }: { dayLog: DayLog; onNavigate: () => vo
           key={item.id}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
+          draggable
+          onDragStart={(e) => onDragStart(e as any, date, item.id, "plan")}
           className={cn(
-            "px-1.5 py-1 rounded-md text-[10px] leading-tight cursor-pointer hover:opacity-80 transition-opacity border-l-2",
+            "px-1.5 py-1 rounded-md text-[10px] leading-tight cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity border-l-2",
             item.completed ? "opacity-50" : ""
           )}
           style={{ borderLeftColor: CATEGORY_COLORS[item.category] }}
@@ -170,6 +234,19 @@ function DayCards({ dayLog, onNavigate }: { dayLog: DayLog; onNavigate: () => vo
               {item.description}
             </span>
           </div>
+          {(item.scheduledTime || (item.estimatedDuration != null && item.estimatedDuration > 0)) && (
+            <div className="flex items-center gap-1 mt-0.5 text-text-tertiary">
+              {item.scheduledTime && (
+                <>
+                  <Clock size={7} />
+                  <span>{item.scheduledTime}</span>
+                </>
+              )}
+              {item.estimatedDuration != null && item.estimatedDuration > 0 && (
+                <span className="ml-auto">~{formatDuration(item.estimatedDuration)}</span>
+              )}
+            </div>
+          )}
         </motion.div>
       ))}
       {tasks.map((task) => (
@@ -177,11 +254,13 @@ function DayCards({ dayLog, onNavigate }: { dayLog: DayLog; onNavigate: () => vo
           key={task.id}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
+          draggable
+          onDragStart={(e) => onDragStart(e as any, date, task.id, "task")}
           className={cn(
-            "px-1.5 py-1 rounded-md text-[10px] leading-tight cursor-pointer hover:opacity-80 transition-opacity border-l-2 bg-bg-secondary/50",
+            "px-1.5 py-1 rounded-md text-[10px] leading-tight cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity border-l-2 bg-bg-secondary/50",
             task.completed ? "opacity-50" : ""
           )}
-          style={{ borderLeftColor: CATEGORY_COLORS[task.category] }}
+          style={{ borderLeftColor: "#6b7280" }}
           onClick={onNavigate}
         >
           <div className="flex items-center gap-1">

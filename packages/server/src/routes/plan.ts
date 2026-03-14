@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { CreatePlanInput, PlanItemSchema } from "@gmd/shared";
-import { getDayLog, saveDayLog } from "../storage.js";
+import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem } from "../storage.js";
+import { pool } from "../db.js";
 
 const router = Router();
 
@@ -9,49 +10,49 @@ router.post("/:date/plan", async (req, res) => {
   const input = CreatePlanInput.safeParse(req.body);
   if (!input.success) return res.status(400).json({ error: input.error });
 
-  const log = await getDayLog(req.params.date);
+  const { rows } = await pool.query(
+    "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM plan_items WHERE user_id = $1 AND date = $2",
+    [req.userId!, req.params.date]
+  );
+  const nextOrder = rows[0].next_order;
+
   const item = PlanItemSchema.parse({
     id: nanoid(8),
     description: input.data.description,
     category: input.data.category,
     estimatedDuration: input.data.estimatedDuration,
+    scheduledTime: input.data.scheduledTime,
     completed: false,
-    order: log.plan.length,
+    order: nextOrder,
   });
-  log.plan.push(item);
-  await saveDayLog(log);
+
+  await addPlanItem(req.userId!, req.params.date, item);
   res.status(201).json(item);
 });
 
 router.put("/:date/plan/:id", async (req, res) => {
-  const log = await getDayLog(req.params.date);
-  const idx = log.plan.findIndex((p) => p.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ error: "Plan item not found" });
-
-  log.plan[idx] = { ...log.plan[idx], ...req.body, id: req.params.id };
-  await saveDayLog(log);
-  res.json(log.plan[idx]);
+  const updated = await updatePlanItem(req.userId!, req.params.id, req.body);
+  if (!updated) return res.status(404).json({ error: "Plan item not found" });
+  res.json(updated);
 });
 
 router.delete("/:date/plan/:id", async (req, res) => {
-  const log = await getDayLog(req.params.date);
-  log.plan = log.plan.filter((p) => p.id !== req.params.id);
-  await saveDayLog(log);
+  await deletePlanItem(req.userId!, req.params.id);
   res.status(204).end();
 });
 
 router.put("/:date/plan/reorder", async (req, res) => {
   const { ids } = req.body as { ids: string[] };
-  const log = await getDayLog(req.params.date);
-  const reordered = ids
-    .map((id, i) => {
-      const item = log.plan.find((p) => p.id === id);
-      return item ? { ...item, order: i } : null;
-    })
-    .filter(Boolean);
-  log.plan = reordered as typeof log.plan;
-  await saveDayLog(log);
-  res.json(log.plan);
+  const plan = await reorderPlanItems(req.userId!, req.params.date, ids);
+  res.json(plan);
+});
+
+router.put("/:date/plan/:id/move", async (req, res) => {
+  const { newDate } = req.body as { newDate: string };
+  if (!newDate) return res.status(400).json({ error: "newDate required" });
+  const moved = await movePlanItem(req.userId!, req.params.id, newDate);
+  if (!moved) return res.status(404).json({ error: "Plan item not found" });
+  res.json(moved);
 });
 
 export default router;

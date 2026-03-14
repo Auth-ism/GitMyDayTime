@@ -1,58 +1,48 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import type { UserResponse } from "@gmd/shared";
 
 interface AuthContext {
-  token: string | null;
+  user: UserResponse | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (password: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  register: (email: string, username: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContext>({
-  token: null,
+  user: null,
   isAuthenticated: false,
   isLoading: true,
   login: async () => ({ ok: false }),
+  register: async () => ({ ok: false }),
   logout: () => {},
 });
 
-const TOKEN_KEY = "gmd-token";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<UserResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check existing token on mount
+  // Check existing session on mount
   useEffect(() => {
-    const saved = localStorage.getItem(TOKEN_KEY);
-    if (!saved) {
-      setIsLoading(false);
-      return;
-    }
-
-    fetch("/api/auth/check", {
-      headers: { Authorization: `Bearer ${saved}` },
-    })
+    fetch("/api/auth/check", { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
-        if (data.authenticated) {
-          setToken(saved);
-        } else {
-          localStorage.removeItem(TOKEN_KEY);
+        if (data.authenticated && data.user) {
+          setUser(data.user);
         }
       })
-      .catch(() => {
-        localStorage.removeItem(TOKEN_KEY);
-      })
+      .catch(() => {})
       .finally(() => setIsLoading(false));
   }, []);
 
-  const login = useCallback(async (password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
       });
 
       if (!res.ok) {
@@ -60,9 +50,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: data.error || "Login failed" };
       }
 
-      const { token: newToken } = await res.json();
-      localStorage.setItem(TOKEN_KEY, newToken);
-      setToken(newToken);
+      const { user: userData } = await res.json();
+      setUser(userData);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Connection failed" };
+    }
+  }, []);
+
+  const register = useCallback(async (email: string, username: string, password: string) => {
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, username, password }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        return { ok: false, error: data.error || "Registration failed" };
+      }
+
+      const { user: userData } = await res.json();
+      setUser(userData);
       return { ok: true };
     } catch {
       return { ok: false, error: "Connection failed" };
@@ -70,18 +81,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    if (token) {
-      fetch("/api/auth/logout", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {});
-    }
-    localStorage.removeItem(TOKEN_KEY);
-    setToken(null);
-  }, [token]);
+    fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {});
+    setUser(null);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ token, isAuthenticated: !!token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

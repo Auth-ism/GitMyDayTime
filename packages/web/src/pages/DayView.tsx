@@ -175,7 +175,11 @@ export default function DayView() {
                 <PlanItem
                   key={item.id}
                   item={item}
-                  onToggle={() => updatePlan.mutate({ id: item.id, completed: !item.completed })}
+                  onToggle={(actualDuration) => updatePlan.mutate({
+                    id: item.id,
+                    completed: !item.completed,
+                    ...(actualDuration !== undefined ? { actualDuration } : {}),
+                  })}
                   onDelete={() => deletePlan.mutate(item.id)}
                 />
               ))}
