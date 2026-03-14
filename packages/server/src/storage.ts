@@ -1,5 +1,35 @@
 import { pool } from "./db.js";
-import type { DayLog, TaskEntry, PlanItem } from "@gmd/shared";
+import { Category, type DayLog, type TaskEntry, type PlanItem } from "@gmd/shared";
+
+// Helpers to normalize DB row types
+function serializeTimestamp(val: unknown): string {
+  return val instanceof Date ? val.toISOString() : String(val);
+}
+
+function formatTime(val: string | null | undefined): string | undefined {
+  return val ? val.slice(0, 5) : undefined;
+}
+
+function toPlanItem(r: any): PlanItem {
+  return { ...r, scheduledTime: formatTime(r.scheduledTime) } as PlanItem;
+}
+
+// Generic dynamic UPDATE builder
+function buildDynamicUpdate(
+  updates: Record<string, unknown>,
+  fieldMap: Record<string, string>
+): { fields: string[]; values: any[]; nextIdx: number } {
+  const fields: string[] = [];
+  const values: any[] = [];
+  let idx = 1;
+  for (const [key, dbCol] of Object.entries(fieldMap)) {
+    if ((updates as any)[key] !== undefined) {
+      fields.push(`${dbCol} = $${idx++}`);
+      values.push((updates as any)[key]);
+    }
+  }
+  return { fields, values, nextIdx: idx };
+}
 
 export async function getDayLog(userId: string, date: string): Promise<DayLog> {
   const [tasksResult, planResult] = await Promise.all([
@@ -22,12 +52,9 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog> {
     date,
     tasks: tasksResult.rows.map((r) => ({
       ...r,
-      timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : r.timestamp,
+      timestamp: serializeTimestamp(r.timestamp),
     })) as TaskEntry[],
-    plan: planResult.rows.map((r) => ({
-      ...r,
-      scheduledTime: r.scheduledTime ? r.scheduledTime.slice(0, 5) : undefined,
-    })) as PlanItem[],
+    plan: planResult.rows.map(toPlanItem),
   };
 }
 
@@ -50,18 +77,17 @@ export async function updateTask(
   taskId: string,
   updates: Partial<TaskEntry>
 ): Promise<TaskEntry | null> {
-  const fields: string[] = [];
-  const values: any[] = [];
-  let idx = 1;
-
-  if (updates.description !== undefined) { fields.push(`description = $${idx++}`); values.push(updates.description); }
-  if (updates.category !== undefined) { fields.push(`category = $${idx++}`); values.push(updates.category); }
-  if (updates.duration !== undefined) { fields.push(`duration = $${idx++}`); values.push(updates.duration); }
-  if (updates.tags !== undefined) { fields.push(`tags = $${idx++}`); values.push(updates.tags); }
-  if (updates.completed !== undefined) { fields.push(`completed = $${idx++}`); values.push(updates.completed); }
+  const { fields, values, nextIdx } = buildDynamicUpdate(updates, {
+    description: "description",
+    category: "category",
+    duration: "duration",
+    tags: "tags",
+    completed: "completed",
+  });
 
   if (fields.length === 0) return null;
 
+  let idx = nextIdx;
   values.push(taskId, userId);
   const { rows } = await pool.query(
     `UPDATE tasks SET ${fields.join(", ")}
@@ -71,8 +97,7 @@ export async function updateTask(
   );
 
   if (rows.length === 0) return null;
-  const r = rows[0];
-  return { ...r, timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : r.timestamp } as TaskEntry;
+  return { ...rows[0], timestamp: serializeTimestamp(rows[0].timestamp) } as TaskEntry;
 }
 
 export async function deleteTask(userId: string, taskId: string): Promise<boolean> {
@@ -101,20 +126,19 @@ export async function updatePlanItem(
   itemId: string,
   updates: Partial<PlanItem>
 ): Promise<PlanItem | null> {
-  const fields: string[] = [];
-  const values: any[] = [];
-  let idx = 1;
-
-  if (updates.description !== undefined) { fields.push(`description = $${idx++}`); values.push(updates.description); }
-  if (updates.category !== undefined) { fields.push(`category = $${idx++}`); values.push(updates.category); }
-  if (updates.estimatedDuration !== undefined) { fields.push(`estimated_duration = $${idx++}`); values.push(updates.estimatedDuration); }
-  if (updates.completed !== undefined) { fields.push(`completed = $${idx++}`); values.push(updates.completed); }
-  if (updates.order !== undefined) { fields.push(`sort_order = $${idx++}`); values.push(updates.order); }
-  if (updates.scheduledTime !== undefined) { fields.push(`scheduled_time = $${idx++}`); values.push(updates.scheduledTime || null); }
-  if (updates.actualDuration !== undefined) { fields.push(`actual_duration = $${idx++}`); values.push(updates.actualDuration); }
+  const { fields, values, nextIdx } = buildDynamicUpdate(updates, {
+    description: "description",
+    category: "category",
+    estimatedDuration: "estimated_duration",
+    completed: "completed",
+    order: "sort_order",
+    scheduledTime: "scheduled_time",
+    actualDuration: "actual_duration",
+  });
 
   if (fields.length === 0) return null;
 
+  let idx = nextIdx;
   values.push(itemId, userId);
   const { rows } = await pool.query(
     `UPDATE plan_items SET ${fields.join(", ")}
@@ -124,9 +148,7 @@ export async function updatePlanItem(
     values
   );
 
-  if (rows.length === 0) return null;
-  const r = rows[0];
-  return { ...r, scheduledTime: r.scheduledTime ? r.scheduledTime.slice(0, 5) : undefined } as PlanItem;
+  return rows.length > 0 ? toPlanItem(rows[0]) : null;
 }
 
 export async function deletePlanItem(userId: string, itemId: string): Promise<boolean> {
@@ -166,10 +188,7 @@ export async function reorderPlanItems(
      FROM plan_items WHERE user_id = $1 AND date = $2 ORDER BY sort_order`,
     [userId, date]
   );
-  return rows.map((r) => ({
-    ...r,
-    scheduledTime: r.scheduledTime ? r.scheduledTime.slice(0, 5) : undefined,
-  })) as PlanItem[];
+  return rows.map(toPlanItem);
 }
 
 export async function movePlanItem(
@@ -177,24 +196,20 @@ export async function movePlanItem(
   itemId: string,
   newDate: string
 ): Promise<PlanItem | null> {
-  // Get next sort_order for target date
   const { rows: orderRows } = await pool.query(
     "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM plan_items WHERE user_id = $1 AND date = $2",
     [userId, newDate]
   );
-  const nextOrder = orderRows[0].next_order;
 
   const { rows } = await pool.query(
     `UPDATE plan_items SET date = $1, sort_order = $2
      WHERE id = $3 AND user_id = $4
      RETURNING id, description, category, estimated_duration AS "estimatedDuration", completed, sort_order AS "order",
                scheduled_time AS "scheduledTime", actual_duration AS "actualDuration"`,
-    [newDate, nextOrder, itemId, userId]
+    [newDate, orderRows[0].next_order, itemId, userId]
   );
 
-  if (rows.length === 0) return null;
-  const r = rows[0];
-  return { ...r, scheduledTime: r.scheduledTime ? r.scheduledTime.slice(0, 5) : undefined } as PlanItem;
+  return rows.length > 0 ? toPlanItem(rows[0]) : null;
 }
 
 export async function moveTask(
@@ -210,8 +225,7 @@ export async function moveTask(
   );
 
   if (rows.length === 0) return null;
-  const r = rows[0];
-  return { ...r, timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : r.timestamp } as TaskEntry;
+  return { ...rows[0], timestamp: serializeTimestamp(rows[0].timestamp) } as TaskEntry;
 }
 
 export async function getStats(
@@ -228,48 +242,41 @@ export async function getStats(
 }> {
   const [totalsResult, byCategoryResult, dailyResult, streakResult] = await Promise.all([
     pool.query(
-      `SELECT COUNT(*)::int AS total_tasks, COALESCE(SUM(duration), 0)::int AS total_minutes
-       FROM tasks WHERE user_id = $1 AND date BETWEEN $2 AND $3`,
+      `SELECT
+         (SELECT COUNT(*)::int FROM plan_items WHERE user_id = $1 AND date BETWEEN $2 AND $3 AND completed = true)
+         AS total_tasks,
+         COALESCE((SELECT SUM(actual_duration) FROM plan_items WHERE user_id = $1 AND date BETWEEN $2 AND $3 AND completed = true), 0)::int
+         AS total_minutes`,
       [userId, from, to]
     ),
-    // Count both tasks and plan items by category
     pool.query(
-      `SELECT category, SUM(cnt)::int AS count, SUM(mins)::int AS minutes FROM (
-         SELECT category, COUNT(*) AS cnt, COALESCE(SUM(duration), 0) AS mins
-         FROM tasks WHERE user_id = $1 AND date BETWEEN $2 AND $3 GROUP BY category
-         UNION ALL
-         SELECT category, COUNT(*) AS cnt, COALESCE(SUM(actual_duration), 0) AS mins
-         FROM plan_items WHERE user_id = $1 AND date BETWEEN $2 AND $3 GROUP BY category
-       ) combined GROUP BY category`,
+      `SELECT category, COUNT(*)::int AS count, COALESCE(SUM(actual_duration), 0)::int AS minutes
+       FROM plan_items WHERE user_id = $1 AND date BETWEEN $2 AND $3
+       GROUP BY category`,
       [userId, from, to]
     ),
     pool.query(
       `SELECT
          d.date::date::text AS date,
-         COALESCE(t.task_count, 0)::int AS tasks,
+         COALESCE(p.completed_count, 0)::int AS tasks,
          COALESCE(p.plan_count, 0)::int AS planned,
          COALESCE(p.completed_count, 0)::int AS "completedPlan",
-         COALESCE(t.total_minutes, 0)::int AS minutes
+         COALESCE(p.total_minutes, 0)::int AS minutes
        FROM generate_series($2::date, $3::date, '1 day') AS d(date)
        LEFT JOIN (
-         SELECT date, COUNT(*) AS task_count, SUM(duration) AS total_minutes
-         FROM tasks WHERE user_id = $1
-         GROUP BY date
-       ) t ON t.date = d.date::date
-       LEFT JOIN (
-         SELECT date, COUNT(*) AS plan_count, COUNT(*) FILTER (WHERE completed) AS completed_count
+         SELECT date,
+                COUNT(*) AS plan_count,
+                COUNT(*) FILTER (WHERE completed) AS completed_count,
+                COALESCE(SUM(actual_duration) FILTER (WHERE completed), 0) AS total_minutes
          FROM plan_items WHERE user_id = $1
          GROUP BY date
        ) p ON p.date = d.date::date
-       WHERE COALESCE(t.task_count, 0) > 0 OR COALESCE(p.plan_count, 0) > 0
+       WHERE COALESCE(p.plan_count, 0) > 0
        ORDER BY d.date`,
       [userId, from, to]
     ),
-    // Streak: consecutive days with any activity (tasks or completed plans)
     pool.query(
       `WITH active_dates AS (
-         SELECT DISTINCT date FROM tasks WHERE user_id = $1
-         UNION
          SELECT DISTINCT date FROM plan_items WHERE user_id = $1 AND completed = true
        ),
        numbered AS (
@@ -289,7 +296,7 @@ export async function getStats(
   ]);
 
   const byCategory: Record<string, { count: number; minutes: number }> = {};
-  for (const cat of ["dev", "meeting", "review", "ops", "learning", "personal", "other"]) {
+  for (const cat of Category.options) {
     byCategory[cat] = { count: 0, minutes: 0 };
   }
   for (const row of byCategoryResult.rows) {

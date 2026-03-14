@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Clock, Zap, ListTodo } from "lucide-react";
-import { CATEGORY_LABELS, type Category } from "@gmd/shared";
+import { Plus, Clock, Timer, MessageSquare, ListTodo } from "lucide-react";
+import { CATEGORY_LABELS, parseDuration, type Category } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -12,10 +12,19 @@ interface Props {
 
 const categories = Object.entries(CATEGORY_LABELS) as [Category, string][];
 
+const QUICK_DURATIONS = [
+  { label: "15m", value: 15 },
+  { label: "30m", value: 30 },
+  { label: "1h", value: 60 },
+  { label: "1.5h", value: 90 },
+  { label: "2h", value: 120 },
+];
+
 export default function TaskForm({ onSubmit, loading, type }: Props) {
   const [desc, setDesc] = useState("");
   const [cat, setCat] = useState<Category>("dev");
   const [dur, setDur] = useState("");
+  const [durMinutes, setDurMinutes] = useState<number | null>(null);
   const [time, setTime] = useState("");
   const [justAdded, setJustAdded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -25,7 +34,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!desc.trim() || loading) return;
-    const duration = dur ? parseDur(dur) : undefined;
+    const duration = isPlan ? (durMinutes ?? (dur ? parseDuration(dur) : undefined)) : undefined;
     onSubmit({
       description: desc.trim(),
       category: isPlan ? cat : "other",
@@ -35,9 +44,20 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
     });
     setDesc("");
     setDur("");
+    setDurMinutes(null);
     setTime("");
     setJustAdded(true);
     inputRef.current?.focus();
+  };
+
+  const selectQuickDuration = (mins: number) => {
+    if (durMinutes === mins) {
+      setDurMinutes(null);
+      setDur("");
+    } else {
+      setDurMinutes(mins);
+      setDur("");
+    }
   };
 
   useEffect(() => {
@@ -47,27 +67,28 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
     }
   }, [justAdded]);
 
-  const Icon = isPlan ? ListTodo : Zap;
+  const Icon = isPlan ? ListTodo : MessageSquare;
 
   return (
-    <form onSubmit={handleSubmit} className="card space-y-3" aria-label={isPlan ? "Add a plan item" : "Log an activity"}>
+    <form onSubmit={handleSubmit} className="card space-y-3" aria-label={isPlan ? "Add a plan item" : "Add a note"}>
       <div className="flex items-center gap-2 mb-1">
         <Icon size={15} className="text-text-tertiary" />
         <span className="text-xs font-medium text-text-tertiary uppercase tracking-wider">
-          {isPlan ? "Plan" : "Activity Log"}
+          {isPlan ? "Plan" : "Quick Notes"}
         </span>
       </div>
 
+      {/* Description + Add button */}
       <div className="flex gap-2">
-        <div className="flex-1 relative">
+        <div className="flex-1">
           <label htmlFor={`input-${type}`} className="sr-only">
-            {isPlan ? "What will you do?" : "What did you do?"}
+            {isPlan ? "What will you do?" : "Add a note..."}
           </label>
           <input
             ref={inputRef}
             id={`input-${type}`}
             className="input"
-            placeholder={isPlan ? "What will you do?" : "What did you do?"}
+            placeholder={isPlan ? "What will you do?" : "Add a note..."}
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
             autoComplete="off"
@@ -83,56 +104,76 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
         </button>
       </div>
 
-      {/* Category pills — only for plan items */}
       {isPlan && (
-        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Category">
-          {categories.map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="radio"
-              aria-checked={cat === key}
-              onClick={() => setCat(key)}
-              className={cn(
-                "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all",
-                cat === key
-                  ? "bg-accent text-bg shadow-sm"
-                  : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary hover:text-text border border-transparent hover:border-border"
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Time + Duration row */}
-      <div className="flex items-center gap-3">
-        {isPlan && (
-          <div className="flex items-center gap-2">
-            <Clock size={14} className="text-text-tertiary flex-shrink-0" />
-            <label htmlFor={`time-${type}`} className="sr-only">Scheduled time</label>
-            <input
-              id={`time-${type}`}
-              type="time"
-              className="input !w-28 !text-sm"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
+        <>
+          {/* Category pills */}
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Category">
+            {categories.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={cat === key}
+                onClick={() => setCat(key)}
+                className={cn(
+                  "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all",
+                  cat === key
+                    ? "bg-accent text-bg shadow-sm"
+                    : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary hover:text-text border border-transparent hover:border-border"
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-        )}
-        <div className="flex items-center gap-2">
-          {!isPlan && <Clock size={14} className="text-text-tertiary flex-shrink-0" />}
-          <label htmlFor={`dur-${type}`} className="sr-only">Duration</label>
-          <input
-            id={`dur-${type}`}
-            className="input !w-36 !text-sm"
-            placeholder={isPlan ? "Est. duration: 1h 30m" : "Duration: 1h 30m"}
-            value={dur}
-            onChange={(e) => setDur(e.target.value)}
-          />
-        </div>
-      </div>
+
+          {/* When & How long — inline row */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Start time */}
+            <div className="flex items-center gap-2">
+              <Clock size={14} className="text-text-tertiary flex-shrink-0" />
+              <span className="text-xs text-text-tertiary">Start</span>
+              <label htmlFor={`time-${type}`} className="sr-only">Scheduled time</label>
+              <input
+                id={`time-${type}`}
+                type="time"
+                className="input !w-[7.5rem] !text-sm !py-1.5"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+              />
+            </div>
+
+            {/* Duration — quick chips + manual */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Timer size={14} className="text-text-tertiary flex-shrink-0" />
+              <span className="text-xs text-text-tertiary">Duration</span>
+              {QUICK_DURATIONS.map(({ label, value }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => selectQuickDuration(value)}
+                  className={cn(
+                    "px-2 py-1 rounded-md text-xs font-medium transition-all",
+                    durMinutes === value
+                      ? "bg-accent text-bg"
+                      : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary border border-transparent hover:border-border"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+              <label htmlFor={`dur-${type}`} className="sr-only">Custom duration</label>
+              <input
+                id={`dur-${type}`}
+                className="input !w-20 !text-xs !py-1.5"
+                placeholder="Custom"
+                value={dur}
+                onChange={(e) => { setDur(e.target.value); setDurMinutes(null); }}
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Success feedback */}
       <AnimatePresence>
@@ -151,10 +192,4 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
       </AnimatePresence>
     </form>
   );
-}
-
-function parseDur(s: string): number {
-  const m = s.match(/^(?:(\d+)h)?\s*(?:(\d+)m)?$/);
-  if (!m) return parseInt(s) || 0;
-  return (parseInt(m[1] || "0") * 60) + parseInt(m[2] || "0");
 }

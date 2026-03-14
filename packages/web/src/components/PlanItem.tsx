@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Trash2, Clock, Timer } from "lucide-react";
-import { type PlanItem as PlanItemType, CATEGORY_LABELS, formatDuration } from "@gmd/shared";
+import { type PlanItem as PlanItemType, CATEGORY_LABELS, formatDuration, parseDuration } from "@gmd/shared";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
 
@@ -36,7 +36,7 @@ export default function PlanItem({ item, onToggle, onUpdate, onDelete }: Props) 
   };
 
   const handleComplete = () => {
-    const duration = actualDur ? parseDur(actualDur) : undefined;
+    const duration = actualDur ? parseDuration(actualDur) : undefined;
     onToggle(duration);
     setShowDuration(false);
     setActualDur("");
@@ -155,8 +155,3 @@ export default function PlanItem({ item, onToggle, onUpdate, onDelete }: Props) 
   );
 }
 
-function parseDur(s: string): number {
-  const m = s.match(/^(?:(\d+)h)?\s*(?:(\d+)m)?$/);
-  if (!m) return parseInt(s) || 0;
-  return (parseInt(m[1] || "0") * 60) + parseInt(m[2] || "0");
-}

@@ -61,9 +61,9 @@ export default function StatsPage() {
       </h1>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" role="list" aria-label="Summary statistics">
+      <div className="grid grid-cols-2 gap-3" role="list" aria-label="Summary statistics">
         {[
-          { icon: CheckCircle, label: "Tasks Done", value: String(stats.totalTasks), color: "text-success" },
+          { icon: CheckCircle, label: "Completed", value: String(stats.totalTasks), color: "text-success" },
           { icon: Clock, label: "Time Tracked", value: stats.totalMinutes > 0 ? formatDuration(stats.totalMinutes) : "0m", color: "text-text-secondary" },
           { icon: Flame, label: "Streak", value: `${stats.streak}d`, color: "text-[#f59e0b]" },
           { icon: TrendingUp, label: "Days Active", value: String(stats.daysTracked), color: "text-text-secondary" },
@@ -95,7 +95,7 @@ export default function StatsPage() {
               <Area
                 type="monotone"
                 dataKey="tasks"
-                name="Tasks"
+                name="Completed"
                 stroke="var(--color-accent)"
                 fill="var(--color-accent)"
                 fillOpacity={0.08}
@@ -108,7 +108,7 @@ export default function StatsPage() {
 
       {/* Category breakdown */}
       {categoryData.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="card" aria-label="Tasks by category">
             <h3 className="text-sm font-medium text-text-secondary mb-4">By Category</h3>
             <ResponsiveContainer width="100%" height={200}>

@@ -9,7 +9,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
-import { authMiddleware, authRouter, getAuthLimiter, getGlobalLimiter } from "./auth.js";
+import { authMiddleware, authRouter, getAuthLimiter, getGlobalLimiter, IS_PROD } from "./auth.js";
 import { pool, runMigrations } from "./db.js";
 import { connectRedis, redis } from "./redis.js";
 import taskRoutes from "./routes/tasks.js";
@@ -18,7 +18,6 @@ import statsRoutes from "./routes/stats.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const IS_PROD = process.env.NODE_ENV === "production";
 
 // Trust proxy — nginx ingress forwards X-Forwarded-For
 app.set("trust proxy", IS_PROD ? 1 : false);

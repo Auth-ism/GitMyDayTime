@@ -5,13 +5,12 @@ import TaskForm from "@/components/TaskForm";
 import TaskItem from "@/components/TaskItem";
 import PlanItem from "@/components/PlanItem";
 import { AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, CalendarDays, Target, ClipboardList, Filter } from "lucide-react";
-import { formatDuration, CATEGORY_LABELS, type Category } from "@gmd/shared";
+import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Filter } from "lucide-react";
+import { CATEGORY_LABELS, todayStr, type Category } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 
 function getDateStr(dateParam?: string): string {
-  if (dateParam) return dateParam;
-  return new Date().toISOString().split("T")[0];
+  return dateParam || todayStr();
 }
 
 const categories = Object.entries(CATEGORY_LABELS) as [Category, string][];
@@ -24,8 +23,8 @@ export default function DayView() {
   const [filterCat, setFilterCat] = useState<Category | "all">("all");
 
   const dayLog = query.data;
-  const todayStr = new Date().toISOString().split("T")[0];
-  const isToday = date === todayStr;
+  const today = todayStr();
+  const isToday = date === today;
 
   const filteredTasks = dayLog?.tasks.filter((t) => filterCat === "all" || t.category === filterCat) || [];
   const filteredPlan = dayLog?.plan
@@ -44,7 +43,6 @@ export default function DayView() {
     navigate(`/day/${d.toISOString().split("T")[0]}`);
   };
 
-  const totalMinutes = dayLog?.tasks.reduce((s, t) => s + (t.duration || 0), 0) || 0;
   const completedPlan = dayLog?.plan.filter((p) => p.completed).length || 0;
   const totalPlan = dayLog?.plan.length || 0;
   const taskCount = dayLog?.tasks.length || 0;
@@ -107,12 +105,10 @@ export default function DayView() {
           )}
           {taskCount > 0 && (
             <div className="flex-1 card !py-3 flex items-center gap-3">
-              <ClipboardList size={16} className="text-text-secondary flex-shrink-0" />
+              <MessageSquare size={16} className="text-text-secondary flex-shrink-0" />
               <div>
-                <p className="text-sm font-semibold">{taskCount} task{taskCount !== 1 ? "s" : ""}</p>
-                <p className="text-xs text-text-secondary">
-                  {totalMinutes > 0 ? formatDuration(totalMinutes) + " tracked" : "Logged"}
-                </p>
+                <p className="text-sm font-semibold">{taskCount} note{taskCount !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-text-secondary">Today</p>
               </div>
             </div>
           )}
@@ -214,9 +210,9 @@ export default function DayView() {
           </AnimatePresence>
           {dayLog && filteredTasks.length === 0 && filterCat === "all" && (
             <div className="text-center py-6 text-text-tertiary">
-              <ClipboardList size={24} className="mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No activities logged</p>
-              <p className="text-xs mt-0.5">Log what you've been working on</p>
+              <MessageSquare size={24} className="mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No notes yet</p>
+              <p className="text-xs mt-0.5">Jot down quick thoughts or observations</p>
             </div>
           )}
         </div>

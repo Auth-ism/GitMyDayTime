@@ -101,47 +101,50 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Form — key forces full remount so browser autofill resets between modes */}
+        <form key={mode} onSubmit={handleSubmit} className="space-y-4" autoComplete={mode === "register" ? "off" : "on"}>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-1.5">
+            <label htmlFor={`${mode}-email`} className="block text-sm font-medium text-text-secondary mb-1.5">
               Email
             </label>
             <input
-              id="email"
+              id={`${mode}-email`}
+              name="email"
               type="email"
               className="input !text-base !py-3"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setError(""); }}
               autoFocus
-              autoComplete="email"
+              autoComplete={mode === "login" ? "email" : "email"}
             />
           </div>
 
           {mode === "register" && (
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-text-secondary mb-1.5">
+              <label htmlFor="reg-username" className="block text-sm font-medium text-text-secondary mb-1.5">
                 Username
               </label>
               <input
-                id="username"
+                id="reg-username"
+                name="display-name"
                 type="text"
                 className="input !text-base !py-3"
                 placeholder="Choose a username"
                 value={username}
                 onChange={(e) => { setUsername(e.target.value); setError(""); }}
-                autoComplete="username"
+                autoComplete="off"
               />
             </div>
           )}
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-text-secondary mb-1.5">
+            <label htmlFor={`${mode}-password`} className="block text-sm font-medium text-text-secondary mb-1.5">
               Password
             </label>
             <input
-              id="password"
+              id={`${mode}-password`}
+              name="password"
               type="password"
               className="input !text-base !py-3"
               placeholder={mode === "register" ? "Min 6 characters" : "Enter your password"}
@@ -153,11 +156,12 @@ export default function LoginPage() {
 
           {mode === "register" && (
             <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium text-text-secondary mb-1.5">
+              <label htmlFor="reg-confirm-password" className="block text-sm font-medium text-text-secondary mb-1.5">
                 Confirm Password
               </label>
               <input
-                id="confirm-password"
+                id="reg-confirm-password"
+                name="confirm-password"
                 type="password"
                 className="input !text-base !py-3"
                 placeholder="Confirm your password"

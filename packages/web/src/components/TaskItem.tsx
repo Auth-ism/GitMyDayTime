@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Check, Trash2, Clock } from "lucide-react";
-import { type TaskEntry, formatDuration } from "@gmd/shared";
+import { Trash2, MessageSquare } from "lucide-react";
+import { type TaskEntry } from "@gmd/shared";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 
@@ -10,7 +10,7 @@ interface Props {
   onDelete: () => void;
 }
 
-export default function TaskItem({ task, onToggle, onDelete }: Props) {
+export default function TaskItem({ task, onDelete }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleDelete = () => {
@@ -28,51 +28,25 @@ export default function TaskItem({ task, onToggle, onDelete }: Props) {
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className={cn(
-        "group flex items-center gap-3 py-3 px-4 rounded-xl transition-colors",
-        "bg-bg-elevated border border-border hover:border-border-hover"
-      )}
+      className="group flex items-start gap-3 py-2.5 px-3.5 rounded-xl bg-bg-elevated border border-border hover:border-border-hover transition-colors"
     >
-      <button
-        onClick={onToggle}
-        role="checkbox"
-        aria-checked={task.completed}
-        aria-label={`Mark "${task.description}" as ${task.completed ? "incomplete" : "complete"}`}
-        className={cn(
-          "w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all",
-          task.completed
-            ? "bg-accent border-accent"
-            : "border-border-hover hover:border-accent"
-        )}
-      >
-        {task.completed && <Check size={12} className="text-bg" />}
-      </button>
+      <MessageSquare size={14} className="text-text-tertiary mt-0.5 flex-shrink-0" />
 
       <div className="flex-1 min-w-0">
-        <p className={cn("text-sm leading-snug", task.completed && "line-through text-text-tertiary")}>
-          {task.description}
-        </p>
-        <div className="flex items-center gap-2.5 mt-1">
-          {task.duration != null && task.duration > 0 && (
-            <span className="flex items-center gap-1 text-xs text-text-secondary">
-              <Clock size={11} />
-              {formatDuration(task.duration)}
-            </span>
-          )}
-          <span className="text-xs text-text-tertiary">
-            {new Date(task.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
-        </div>
+        <p className="text-sm leading-snug">{task.description}</p>
+        <span className="text-[11px] text-text-tertiary mt-0.5 block">
+          {new Date(task.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
       </div>
 
       <button
         onClick={handleDelete}
-        aria-label={confirmDelete ? `Confirm delete "${task.description}"` : `Delete "${task.description}"`}
+        aria-label={confirmDelete ? `Confirm delete` : `Delete note`}
         className={cn(
-          "p-1.5 rounded-lg transition-all flex-shrink-0",
+          "p-1.5 rounded-lg transition-all flex-shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
           confirmDelete
-            ? "bg-danger-soft text-danger"
-            : "text-text-tertiary hover:text-danger hover:bg-danger-soft focus-visible:text-danger"
+            ? "bg-danger-soft text-danger opacity-100"
+            : "text-text-tertiary hover:text-danger hover:bg-danger-soft"
         )}
       >
         <Trash2 size={14} />
