@@ -228,6 +228,86 @@ export async function moveTask(
   return { ...rows[0], timestamp: serializeTimestamp(rows[0].timestamp) } as TaskEntry;
 }
 
+export async function getIncompleteItems(userId: string, date: string): Promise<PlanItem[]> {
+  const { rows } = await pool.query(
+    `SELECT id, description, category, estimated_duration AS "estimatedDuration",
+            completed, sort_order AS "order",
+            scheduled_time AS "scheduledTime",
+            actual_duration AS "actualDuration"
+     FROM plan_items WHERE user_id = $1 AND date = $2 AND completed = false
+     ORDER BY sort_order`,
+    [userId, date]
+  );
+  return rows.map(toPlanItem);
+}
+
+export async function carryOverItems(userId: string, fromDate: string, toDate: string): Promise<number> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { rows: orderRows } = await client.query(
+      "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM plan_items WHERE user_id = $1 AND date = $2",
+      [userId, toDate]
+    );
+    const nextOrder = orderRows[0].next_order;
+
+    const { rowCount } = await client.query(
+      `UPDATE plan_items
+       SET date = $1, sort_order = sort_order - (
+         SELECT MIN(sort_order) FROM plan_items WHERE user_id = $3 AND date = $4 AND completed = false
+       ) + $2
+       WHERE user_id = $3 AND date = $4 AND completed = false`,
+      [toDate, nextOrder, userId, fromDate]
+    );
+
+    await client.query("COMMIT");
+    return rowCount ?? 0;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function searchItems(
+  userId: string,
+  query: string,
+  limit: number = 50
+): Promise<{
+  plans: (PlanItem & { date: string })[];
+  tasks: (TaskEntry & { date: string })[];
+}> {
+  const pattern = `%${query}%`;
+
+  const [planResult, taskResult] = await Promise.all([
+    pool.query(
+      `SELECT id, description, category, estimated_duration AS "estimatedDuration",
+              completed, sort_order AS "order", scheduled_time AS "scheduledTime",
+              actual_duration AS "actualDuration", date::text
+       FROM plan_items WHERE user_id = $1 AND description ILIKE $2
+       ORDER BY date DESC LIMIT $3`,
+      [userId, pattern, limit]
+    ),
+    pool.query(
+      `SELECT id, timestamp, description, category, duration, tags, completed, date::text
+       FROM tasks WHERE user_id = $1 AND description ILIKE $2
+       ORDER BY date DESC LIMIT $3`,
+      [userId, pattern, limit]
+    ),
+  ]);
+
+  return {
+    plans: planResult.rows.map((r) => ({ ...toPlanItem(r), date: r.date })),
+    tasks: taskResult.rows.map((r) => ({
+      ...r,
+      timestamp: serializeTimestamp(r.timestamp),
+      date: r.date,
+    })) as (TaskEntry & { date: string })[],
+  };
+}
+
 export async function getStats(
   userId: string,
   from: string,

@@ -72,6 +72,18 @@ export const api = {
       body: JSON.stringify({ newDate }),
     }),
 
+  getCarryOver: (date: string) =>
+    request<PlanItem[]>(`/days/${date}/carryover`),
+
+  doCarryOver: (date: string) =>
+    request<{ moved: number }>(`/days/${date}/carryover`, { method: "POST" }),
+
+  search: (q: string) =>
+    request<{
+      plans: (PlanItem & { date: string })[];
+      tasks: (TaskEntry & { date: string })[];
+    }>(`/search?q=${encodeURIComponent(q)}`),
+
   getStats: (from?: string, to?: string) => {
     const params = new URLSearchParams();
     if (from) params.set("from", from);

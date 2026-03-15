@@ -111,6 +111,17 @@ export default function WeekView() {
   // Cleanup ghost on unmount
   useEffect(() => () => cleanupTouchDrag(), [cleanupTouchDrag]);
 
+  // Prevent context menu during touch drag (mobile long-press popup)
+  useEffect(() => {
+    const prevent = (e: Event) => {
+      if (touchDragRef.current || longPressTimerRef.current) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener("contextmenu", prevent, { passive: false });
+    return () => document.removeEventListener("contextmenu", prevent);
+  }, []);
+
   const findDateFromPoint = useCallback((x: number, y: number): string | null => {
     const el = document.elementFromPoint(x, y);
     if (!el) return null;
@@ -124,6 +135,7 @@ export default function WeekView() {
     longPressTimerRef.current = setTimeout(() => {
       touchDragRef.current = { fromDate, itemId, itemType };
       const ghost = document.createElement("div");
+      ghost.setAttribute("data-drag-ghost", "");
       ghost.className = "fixed z-[999] px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-medium shadow-lg pointer-events-none";
       ghost.textContent = label;
       ghost.style.left = `${touch.clientX - 40}px`;
@@ -162,6 +174,8 @@ export default function WeekView() {
     const target = dragOverDateRef.current;
     if (info && target) moveItem(info, target);
     cleanupTouchDrag();
+    // Safety: remove any orphaned ghost elements
+    document.querySelectorAll("[data-drag-ghost]").forEach((el) => el.remove());
   }, [moveItem, cleanupTouchDrag]);
 
   return (

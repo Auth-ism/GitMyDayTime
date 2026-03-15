@@ -15,6 +15,7 @@ import { connectRedis, redis } from "./redis.js";
 import taskRoutes from "./routes/tasks.js";
 import planRoutes from "./routes/plan.js";
 import statsRoutes from "./routes/stats.js";
+import searchRoutes from "./routes/search.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -55,6 +56,7 @@ app.use(authMiddleware);
 app.use("/api/days", taskRoutes);
 app.use("/api/days", planRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/search", searchRoutes);
 
 // Serve frontend in production
 const webDist = path.resolve(__dirname, "../../web/dist");

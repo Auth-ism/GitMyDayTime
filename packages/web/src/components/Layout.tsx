@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut } from "lucide-react";
+import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
@@ -10,6 +10,7 @@ const navItems = [
   { to: "/week", icon: CalendarDays, label: "Week" },
   { to: "/calendar", icon: Calendar, label: "Calendar" },
   { to: "/stats", icon: BarChart3, label: "Stats" },
+  { to: "/search", icon: Search, label: "Search" },
 ];
 
 export default function Layout() {

@@ -5,6 +5,7 @@ import DayView from "@/pages/DayView";
 import WeekView from "@/pages/WeekView";
 import CalendarPage from "@/pages/CalendarPage";
 import StatsPage from "@/pages/StatsPage";
+import SearchPage from "@/pages/SearchPage";
 import LoginPage from "@/pages/LoginPage";
 import { Clock } from "lucide-react";
 
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/week" element={<WeekView />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/stats" element={<StatsPage />} />
+        <Route path="/search" element={<SearchPage />} />
       </Route>
     </Routes>
   );

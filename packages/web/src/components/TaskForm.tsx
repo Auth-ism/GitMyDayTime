@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Clock, Timer, MessageSquare, ListTodo } from "lucide-react";
+import { Plus, Clock, Timer, MessageSquare, ListTodo, Hash, X } from "lucide-react";
 import { CATEGORY_LABELS, parseDuration, type Category } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,6 +26,8 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
   const [dur, setDur] = useState("");
   const [durMinutes, setDurMinutes] = useState<number | null>(null);
   const [time, setTime] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const [justAdded, setJustAdded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -39,13 +41,15 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
       description: desc.trim(),
       category: isPlan ? cat : "other",
       duration,
-      tags: [],
+      tags: isPlan ? [] : tags,
       ...(isPlan && time ? { scheduledTime: time } : {}),
     });
     setDesc("");
     setDur("");
     setDurMinutes(null);
     setTime("");
+    setTags([]);
+    setTagInput("");
     setJustAdded(true);
     inputRef.current?.focus();
   };
@@ -103,6 +107,48 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
           <span className="hidden sm:inline">Add</span>
         </button>
       </div>
+
+      {/* Tags — only for quick notes */}
+      {!isPlan && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Hash size={14} className="text-text-tertiary flex-shrink-0" />
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-bg-secondary text-xs font-medium text-text-secondary border border-border"
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => setTags((t) => t.filter((x) => x !== tag))}
+                className="text-text-tertiary hover:text-danger"
+              >
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+          <input
+            type="text"
+            className="bg-transparent outline-none text-xs placeholder:text-text-tertiary w-20"
+            placeholder="Add tag..."
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
+                e.preventDefault();
+                const tag = tagInput.trim().toLowerCase().replace(/[^a-z0-9-_]/g, "");
+                if (tag && !tags.includes(tag)) {
+                  setTags((t) => [...t, tag]);
+                }
+                setTagInput("");
+              }
+              if (e.key === "Backspace" && !tagInput && tags.length > 0) {
+                setTags((t) => t.slice(0, -1));
+              }
+            }}
+          />
+        </div>
+      )}
 
       {isPlan && (
         <>

@@ -127,13 +127,13 @@ export default function LoginPage() {
               </label>
               <input
                 id="reg-username"
-                name="display-name"
+                name={`username-${Date.now()}`}
                 type="text"
                 className="input !text-base !py-3"
                 placeholder="Choose a username"
                 value={username}
                 onChange={(e) => { setUsername(e.target.value); setError(""); }}
-                autoComplete="off"
+                autoComplete="one-time-code"
               />
             </div>
           )}

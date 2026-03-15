@@ -1,7 +1,13 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { CreateTaskInput, TaskEntrySchema } from "@gmd/shared";
-import { getDayLog, addTask, updateTask, deleteTask, moveTask } from "../storage.js";
+import { getDayLog, addTask, updateTask, deleteTask, moveTask, getIncompleteItems, carryOverItems } from "../storage.js";
+
+function getPreviousDate(date: string): string {
+  const d = new Date(date + "T12:00:00");
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split("T")[0];
+}
 
 const router = Router();
 
@@ -45,6 +51,20 @@ router.put("/:date/tasks/:id/move", async (req, res) => {
   const moved = await moveTask(req.userId!, req.params.id, newDate);
   if (!moved) return res.status(404).json({ error: "Task not found" });
   res.json(moved);
+});
+
+// Carry-over: get incomplete items from previous day
+router.get("/:date/carryover", async (req, res) => {
+  const yesterday = getPreviousDate(req.params.date);
+  const items = await getIncompleteItems(req.userId!, yesterday);
+  res.json(items);
+});
+
+// Carry-over: move incomplete items from previous day to this day
+router.post("/:date/carryover", async (req, res) => {
+  const yesterday = getPreviousDate(req.params.date);
+  const count = await carryOverItems(req.userId!, yesterday, req.params.date);
+  res.json({ moved: count });
 });
 
 export default router;

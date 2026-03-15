@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Trash2, Clock, Timer } from "lucide-react";
+import { Check, Trash2, Clock, Timer, Play } from "lucide-react";
 import { type PlanItem as PlanItemType, CATEGORY_LABELS, formatDuration, parseDuration } from "@gmd/shared";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
@@ -7,11 +7,11 @@ import { cn } from "@/lib/cn";
 interface Props {
   item: PlanItemType;
   onToggle: (actualDuration?: number) => void;
-  onUpdate?: (data: Partial<PlanItemType>) => void;
   onDelete: () => void;
+  onStartPomodoro?: () => void;
 }
 
-export default function PlanItem({ item, onToggle, onUpdate, onDelete }: Props) {
+export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showDuration, setShowDuration] = useState(false);
   const [actualDur, setActualDur] = useState("");
@@ -103,6 +103,16 @@ export default function PlanItem({ item, onToggle, onUpdate, onDelete }: Props) 
             )}
           </div>
         </div>
+
+        {!item.completed && onStartPomodoro && (
+          <button
+            onClick={onStartPomodoro}
+            aria-label={`Start pomodoro for "${item.description}"`}
+            className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
+          >
+            <Play size={14} />
+          </button>
+        )}
 
         <button
           onClick={handleDelete}

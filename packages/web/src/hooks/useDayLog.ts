@@ -12,6 +12,10 @@ export function useDayLog(date: string) {
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: key });
+  const invalidateWithStats = () => {
+    qc.invalidateQueries({ queryKey: key });
+    qc.invalidateQueries({ queryKey: ["stats"] });
+  };
 
   const addTask = useMutation({
     mutationFn: (data: CreateTaskInput) => api.addTask(date, data),
@@ -88,7 +92,7 @@ export function useDayLog(date: string) {
       return { prev };
     },
     onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
-    onSettled: invalidate,
+    onSettled: invalidateWithStats,
   });
 
   const updatePlan = useMutation({
@@ -106,7 +110,7 @@ export function useDayLog(date: string) {
       return { prev };
     },
     onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
-    onSettled: invalidate,
+    onSettled: invalidateWithStats,
   });
 
   const deletePlan = useMutation({
@@ -120,7 +124,7 @@ export function useDayLog(date: string) {
       return { prev };
     },
     onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
-    onSettled: invalidate,
+    onSettled: invalidateWithStats,
   });
 
   return { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan };

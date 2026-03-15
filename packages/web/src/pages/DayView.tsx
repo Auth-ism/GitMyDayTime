@@ -4,6 +4,9 @@ import { useDayLog } from "@/hooks/useDayLog";
 import TaskForm from "@/components/TaskForm";
 import TaskItem from "@/components/TaskItem";
 import PlanItem from "@/components/PlanItem";
+import CarryOverBanner from "@/components/CarryOverBanner";
+import StandupExport from "@/components/StandupExport";
+import PomodoroTimer from "@/components/PomodoroTimer";
 import { AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Filter } from "lucide-react";
 import { CATEGORY_LABELS, todayStr, type Category } from "@gmd/shared";
@@ -21,6 +24,7 @@ export default function DayView() {
   const navigate = useNavigate();
   const { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan } = useDayLog(date);
   const [filterCat, setFilterCat] = useState<Category | "all">("all");
+  const [pomodoroTask, setPomodoroTask] = useState<{ id: string; name: string } | null>(null);
 
   const dayLog = query.data;
   const today = todayStr();
@@ -70,7 +74,8 @@ export default function DayView() {
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <StandupExport date={date} />
           {!isToday && (
             <button
               onClick={() => navigate("/")}
@@ -83,6 +88,26 @@ export default function DayView() {
           )}
         </div>
       </div>
+
+      {/* Carry over banner */}
+      <CarryOverBanner date={date} />
+
+      {/* Pomodoro timer */}
+      <AnimatePresence>
+        {pomodoroTask && (
+          <PomodoroTimer
+            taskName={pomodoroTask.name}
+            onComplete={(minutes) => {
+              updatePlan.mutate({
+                id: pomodoroTask.id,
+                completed: true,
+                actualDuration: minutes,
+              });
+            }}
+            onClose={() => setPomodoroTask(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Summary strip */}
       {(taskCount > 0 || totalPlan > 0) && (
@@ -177,6 +202,7 @@ export default function DayView() {
                     ...(actualDuration !== undefined ? { actualDuration } : {}),
                   })}
                   onDelete={() => deletePlan.mutate(item.id)}
+                  onStartPomodoro={() => setPomodoroTask({ id: item.id, name: item.description })}
                 />
               ))}
           </AnimatePresence>
@@ -203,7 +229,6 @@ export default function DayView() {
               <TaskItem
                 key={task.id}
                 task={task}
-                onToggle={() => updateTask.mutate({ id: task.id, completed: !task.completed })}
                 onDelete={() => deleteTask.mutate(task.id)}
               />
             ))}
