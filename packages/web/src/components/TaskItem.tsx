@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Trash2, MessageSquare, Hash } from "lucide-react";
 import { type TaskEntry } from "@gmd/shared";
+import { useI18n } from "@/lib/i18n";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function TaskItem({ task, onDelete }: Props) {
+  const { t, locale } = useI18n();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleDelete = () => {
@@ -35,7 +37,7 @@ export default function TaskItem({ task, onDelete }: Props) {
         <p className="text-sm leading-snug">{task.description}</p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-[11px] text-text-tertiary">
-            {new Date(task.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {new Date(task.timestamp).toLocaleTimeString(locale === "tr" ? "tr-TR" : [], { hour: "2-digit", minute: "2-digit" })}
           </span>
           {task.tags.length > 0 && task.tags.map((tag) => (
             <span key={tag} className="inline-flex items-center gap-0.5 text-[10px] text-text-tertiary font-medium">
@@ -47,7 +49,7 @@ export default function TaskItem({ task, onDelete }: Props) {
 
       <button
         onClick={handleDelete}
-        aria-label={confirmDelete ? `Confirm delete` : `Delete note`}
+        aria-label={confirmDelete ? t("task.confirmDelete") : t("task.deleteNote")}
         className={cn(
           "p-1.5 rounded-lg transition-all flex-shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
           confirmDelete

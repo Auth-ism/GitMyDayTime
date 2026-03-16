@@ -1,5 +1,5 @@
 import { pool } from "./db.js";
-import { Category, type DayLog, type TaskEntry, type PlanItem } from "@gmd/shared";
+import { Category, type DayLog, type TaskEntry, type PlanItem, type RecurringTask, type CreateRecurringTaskInput, type UserProfile, type UpdateProfileInput } from "@gmd/shared";
 
 // Helpers to normalize DB row types
 function serializeTimestamp(val: unknown): string {
@@ -12,6 +12,81 @@ function formatTime(val: string | null | undefined): string | undefined {
 
 function toPlanItem(r: any): PlanItem {
   return { ...r, scheduledTime: formatTime(r.scheduledTime) } as PlanItem;
+}
+
+// ── User Profile ─────────────────────────────────────────────────
+
+function toUserProfile(r: any): UserProfile {
+  return {
+    id: r.id,
+    email: r.email,
+    username: r.username,
+    displayName: r.display_name ?? null,
+    bio: r.bio ?? null,
+    avatarUrl: r.avatar_url ?? null,
+    timezone: r.timezone,
+    locale: r.locale,
+    theme: r.theme,
+    pomodoroDuration: r.pomodoro_duration,
+    breakDuration: r.break_duration,
+    dailyGoal: r.daily_goal ?? null,
+    workStartTime: r.work_start_time ? r.work_start_time.slice(0, 5) : null,
+    workEndTime: r.work_end_time ? r.work_end_time.slice(0, 5) : null,
+    defaultCategory: r.default_category,
+    isPublic: r.is_public,
+    notificationEnabled: r.notification_enabled,
+    createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+  };
+}
+
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const { rows } = await pool.query(
+    `SELECT id, email, username, display_name, bio, avatar_url, timezone, locale, theme,
+            pomodoro_duration, break_duration, daily_goal, work_start_time, work_end_time,
+            default_category, is_public, notification_enabled, created_at
+     FROM users WHERE id = $1`,
+    [userId]
+  );
+  return rows.length > 0 ? toUserProfile(rows[0]) : null;
+}
+
+export async function updateUserProfile(
+  userId: string,
+  updates: UpdateProfileInput
+): Promise<UserProfile | null> {
+  const { fields, values, nextIdx } = buildDynamicUpdate(updates, {
+    displayName: "display_name",
+    bio: "bio",
+    avatarUrl: "avatar_url",
+    timezone: "timezone",
+    locale: "locale",
+    theme: "theme",
+    pomodoroDuration: "pomodoro_duration",
+    breakDuration: "break_duration",
+    dailyGoal: "daily_goal",
+    workStartTime: "work_start_time",
+    workEndTime: "work_end_time",
+    defaultCategory: "default_category",
+    isPublic: "is_public",
+    notificationEnabled: "notification_enabled",
+    email: "email",
+    username: "username",
+  });
+
+  if (fields.length === 0) return getUserProfile(userId);
+
+  fields.push("updated_at = NOW()");
+  values.push(userId);
+  const { rows } = await pool.query(
+    `UPDATE users SET ${fields.join(", ")}
+     WHERE id = $${nextIdx}
+     RETURNING id, email, username, display_name, bio, avatar_url, timezone, locale, theme,
+               pomodoro_duration, break_duration, daily_goal, work_start_time, work_end_time,
+               default_category, is_public, notification_enabled, created_at`,
+    values
+  );
+
+  return rows.length > 0 ? toUserProfile(rows[0]) : null;
 }
 
 // Generic dynamic UPDATE builder
@@ -39,7 +114,7 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog> {
       [userId, date]
     ),
     pool.query(
-      `SELECT id, description, category, estimated_duration AS "estimatedDuration",
+      `SELECT id, description, category, estimated_duration AS "duration",
               completed, sort_order AS "order",
               scheduled_time AS "scheduledTime",
               actual_duration AS "actualDuration"
@@ -116,7 +191,7 @@ export async function addPlanItem(
   await pool.query(
     `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-    [item.id, userId, date, item.description, item.category, item.estimatedDuration ?? null, item.completed, item.order, item.scheduledTime ?? null]
+    [item.id, userId, date, item.description, item.category, item.duration ?? null, item.completed, item.order, item.scheduledTime ?? null]
   );
   return item;
 }
@@ -129,7 +204,7 @@ export async function updatePlanItem(
   const { fields, values, nextIdx } = buildDynamicUpdate(updates, {
     description: "description",
     category: "category",
-    estimatedDuration: "estimated_duration",
+    duration: "estimated_duration",
     completed: "completed",
     order: "sort_order",
     scheduledTime: "scheduled_time",
@@ -143,7 +218,7 @@ export async function updatePlanItem(
   const { rows } = await pool.query(
     `UPDATE plan_items SET ${fields.join(", ")}
      WHERE id = $${idx++} AND user_id = $${idx}
-     RETURNING id, description, category, estimated_duration AS "estimatedDuration", completed, sort_order AS "order",
+     RETURNING id, description, category, estimated_duration AS "duration", completed, sort_order AS "order",
                scheduled_time AS "scheduledTime", actual_duration AS "actualDuration"`,
     values
   );
@@ -182,7 +257,7 @@ export async function reorderPlanItems(
   }
 
   const { rows } = await pool.query(
-    `SELECT id, description, category, estimated_duration AS "estimatedDuration",
+    `SELECT id, description, category, estimated_duration AS "duration",
             completed, sort_order AS "order", scheduled_time AS "scheduledTime",
             actual_duration AS "actualDuration"
      FROM plan_items WHERE user_id = $1 AND date = $2 ORDER BY sort_order`,
@@ -204,7 +279,7 @@ export async function movePlanItem(
   const { rows } = await pool.query(
     `UPDATE plan_items SET date = $1, sort_order = $2
      WHERE id = $3 AND user_id = $4
-     RETURNING id, description, category, estimated_duration AS "estimatedDuration", completed, sort_order AS "order",
+     RETURNING id, description, category, estimated_duration AS "duration", completed, sort_order AS "order",
                scheduled_time AS "scheduledTime", actual_duration AS "actualDuration"`,
     [newDate, orderRows[0].next_order, itemId, userId]
   );
@@ -230,7 +305,7 @@ export async function moveTask(
 
 export async function getIncompleteItems(userId: string, date: string): Promise<PlanItem[]> {
   const { rows } = await pool.query(
-    `SELECT id, description, category, estimated_duration AS "estimatedDuration",
+    `SELECT id, description, category, estimated_duration AS "duration",
             completed, sort_order AS "order",
             scheduled_time AS "scheduledTime",
             actual_duration AS "actualDuration"
@@ -283,7 +358,7 @@ export async function searchItems(
 
   const [planResult, taskResult] = await Promise.all([
     pool.query(
-      `SELECT id, description, category, estimated_duration AS "estimatedDuration",
+      `SELECT id, description, category, estimated_duration AS "duration",
               completed, sort_order AS "order", scheduled_time AS "scheduledTime",
               actual_duration AS "actualDuration", date::text
        FROM plan_items WHERE user_id = $1 AND description ILIKE $2
@@ -391,4 +466,156 @@ export async function getStats(
     streak: streakResult.rows[0].streak,
     daysTracked: dailyResult.rows.length,
   };
+}
+
+// ── Recurring Tasks ──────────────────────────────────────────────
+
+function toRecurringTask(r: any): RecurringTask {
+  return {
+    id: r.id,
+    description: r.description,
+    category: r.category,
+    duration: r.estimated_duration ?? undefined,
+    scheduledTime: formatTime(r.scheduled_time),
+    recurrence: r.recurrence,
+    weekDay: r.week_day ?? undefined,
+    customDays: r.custom_days ?? [],
+    active: r.active,
+    createdAt: r.created_at ? serializeTimestamp(r.created_at) : undefined,
+  };
+}
+
+export async function getRecurringTasks(userId: string): Promise<RecurringTask[]> {
+  const { rows } = await pool.query(
+    `SELECT * FROM recurring_tasks WHERE user_id = $1 ORDER BY created_at`,
+    [userId]
+  );
+  return rows.map(toRecurringTask);
+}
+
+export async function createRecurringTask(
+  userId: string,
+  id: string,
+  input: CreateRecurringTaskInput
+): Promise<RecurringTask> {
+  const { rows } = await pool.query(
+    `INSERT INTO recurring_tasks (id, user_id, description, category, estimated_duration, scheduled_time, recurrence, week_day, custom_days)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING *`,
+    [id, userId, input.description, input.category, input.duration ?? null, input.scheduledTime ?? null, input.recurrence, input.weekDay ?? null, input.customDays ?? []]
+  );
+  return toRecurringTask(rows[0]);
+}
+
+export async function updateRecurringTask(
+  userId: string,
+  taskId: string,
+  updates: Partial<CreateRecurringTaskInput> & { active?: boolean }
+): Promise<RecurringTask | null> {
+  const { fields, values, nextIdx } = buildDynamicUpdate(updates, {
+    description: "description",
+    category: "category",
+    duration: "estimated_duration",
+    scheduledTime: "scheduled_time",
+    recurrence: "recurrence",
+    weekDay: "week_day",
+    customDays: "custom_days",
+    active: "active",
+  });
+
+  if (fields.length === 0) return null;
+
+  let idx = nextIdx;
+  values.push(taskId, userId);
+  const { rows } = await pool.query(
+    `UPDATE recurring_tasks SET ${fields.join(", ")}
+     WHERE id = $${idx++} AND user_id = $${idx}
+     RETURNING *`,
+    values
+  );
+
+  return rows.length > 0 ? toRecurringTask(rows[0]) : null;
+}
+
+export async function deleteRecurringTask(userId: string, taskId: string): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    "DELETE FROM recurring_tasks WHERE id = $1 AND user_id = $2",
+    [taskId, userId]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+export async function injectRecurringTasks(userId: string, date: string): Promise<PlanItem[]> {
+  const dayOfWeek = new Date(date + "T12:00:00").getDay(); // 0=Sun, 6=Sat
+  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+
+  // Get active recurring tasks that match this day and haven't been injected yet
+  const { rows: tasks } = await pool.query(
+    `SELECT rt.* FROM recurring_tasks rt
+     WHERE rt.user_id = $1 AND rt.active = true
+       AND NOT EXISTS (
+         SELECT 1 FROM recurring_task_instances rti
+         WHERE rti.recurring_task_id = rt.id AND rti.date = $2
+       )`,
+    [userId, date]
+  );
+
+  const matching = tasks.filter((t: any) => {
+    switch (t.recurrence) {
+      case "daily": return true;
+      case "weekdays": return isWeekday;
+      case "weekly": return t.week_day === dayOfWeek;
+      case "custom": return (t.custom_days || []).includes(dayOfWeek);
+      default: return false;
+    }
+  });
+
+  if (matching.length === 0) return [];
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Get next sort order
+    const { rows: orderRows } = await client.query(
+      "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM plan_items WHERE user_id = $1 AND date = $2",
+      [userId, date]
+    );
+    let nextOrder = orderRows[0].next_order;
+
+    const created: PlanItem[] = [];
+    for (const task of matching) {
+      const planId = `rec-${task.id}-${date}`;
+
+      await client.query(
+        `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time)
+         VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8)`,
+        [planId, userId, date, task.description, task.category, task.estimated_duration, nextOrder, task.scheduled_time]
+      );
+
+      await client.query(
+        `INSERT INTO recurring_task_instances (recurring_task_id, date) VALUES ($1, $2)`,
+        [task.id, date]
+      );
+
+      created.push({
+        id: planId,
+        description: task.description,
+        category: task.category,
+        duration: task.estimated_duration ?? undefined,
+        completed: false,
+        order: nextOrder,
+        scheduledTime: formatTime(task.scheduled_time),
+      });
+      nextOrder++;
+    }
+
+    await client.query("COMMIT");
+    return created;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }

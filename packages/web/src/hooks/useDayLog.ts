@@ -1,15 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { api } from "@/lib/api";
 import type { CreateTaskInput, CreatePlanInput, TaskEntry, PlanItem, DayLog } from "@gmd/shared";
 
 export function useDayLog(date: string) {
   const qc = useQueryClient();
   const key = ["daylog", date];
+  const injectedRef = useRef<Set<string>>(new Set());
 
   const query = useQuery({
     queryKey: key,
     queryFn: () => api.getDayLog(date),
   });
+
+  // Auto-inject recurring tasks when day data loads
+  useEffect(() => {
+    if (query.data && !injectedRef.current.has(date)) {
+      injectedRef.current.add(date);
+      api.injectRecurring(date).then((res) => {
+        if (res.injected > 0) {
+          qc.invalidateQueries({ queryKey: key });
+        }
+      }).catch(() => {});
+    }
+  }, [query.data, date]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: key });
   const invalidateWithStats = () => {
@@ -82,7 +96,7 @@ export function useDayLog(date: string) {
           id: crypto.randomUUID(),
           description: data.description,
           category: data.category ?? "other",
-          estimatedDuration: data.estimatedDuration,
+          duration: data.duration,
           completed: false,
           order: prev.plan.length,
           scheduledTime: data.scheduledTime,

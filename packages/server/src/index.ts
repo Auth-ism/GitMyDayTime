@@ -16,6 +16,8 @@ import taskRoutes from "./routes/tasks.js";
 import planRoutes from "./routes/plan.js";
 import statsRoutes from "./routes/stats.js";
 import searchRoutes from "./routes/search.js";
+import recurringRoutes from "./routes/recurring.js";
+import profileRoutes from "./routes/profile.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -57,6 +59,8 @@ app.use("/api/days", taskRoutes);
 app.use("/api/days", planRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/recurring", recurringRoutes);
+app.use("/api/profile", profileRoutes);
 
 // Serve frontend in production
 const webDist = path.resolve(__dirname, "../../web/dist");

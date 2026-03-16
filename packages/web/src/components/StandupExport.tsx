@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { todayStr } from "@gmd/shared";
+import { useI18n } from "@/lib/i18n";
 import { Copy, Check, ClipboardList, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -10,6 +10,7 @@ interface Props {
 }
 
 export default function StandupExport({ date }: Props) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -37,30 +38,30 @@ export default function StandupExport({ date }: Props) {
     const completedYesterday = yesterdayLog?.plan.filter((p) => p.completed) || [];
     const incompletedYesterday = yesterdayLog?.plan.filter((p) => !p.completed) || [];
 
-    lines.push("**Yesterday:**");
+    lines.push(`**${t("standup.yesterday")}**`);
     if (completedYesterday.length > 0) {
       completedYesterday.forEach((p) => lines.push(`  - ${p.description}`));
     } else {
-      lines.push("  - (nothing completed)");
+      lines.push(`  - ${t("standup.nothingCompleted")}`);
     }
 
     const todayPlans = todayLog?.plan || [];
     lines.push("");
-    lines.push("**Today:**");
+    lines.push(`**${t("standup.today")}**`);
     if (todayPlans.length > 0) {
       todayPlans.forEach((p) => lines.push(`  - ${p.description}`));
     } else {
-      lines.push("  - (no plans yet)");
+      lines.push(`  - ${t("standup.noPlans")}`);
     }
 
     if (incompletedYesterday.length > 0) {
       lines.push("");
-      lines.push("**Blockers/Carryover:**");
+      lines.push(`**${t("standup.blockers")}**`);
       incompletedYesterday.forEach((p) => lines.push(`  - ${p.description}`));
     }
 
     return lines.join("\n");
-  }, [yesterdayLog, todayLog]);
+  }, [yesterdayLog, todayLog, t]);
 
   const handleCopy = async () => {
     const plain = standupText.replace(/\*\*/g, "");
@@ -74,10 +75,10 @@ export default function StandupExport({ date }: Props) {
       <button
         onClick={() => setOpen(true)}
         className="btn btn-ghost text-xs"
-        aria-label="Generate standup"
+        aria-label={t("standup.btn")}
       >
         <ClipboardList size={14} />
-        <span className="hidden sm:inline">Standup</span>
+        <span className="hidden sm:inline">{t("standup.btn")}</span>
       </button>
 
       <AnimatePresence>
@@ -98,7 +99,7 @@ export default function StandupExport({ date }: Props) {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold flex items-center gap-2">
                   <ClipboardList size={16} />
-                  Daily Standup
+                  {t("standup.title")}
                 </h2>
                 <button onClick={() => setOpen(false)} className="btn-icon p-1">
                   <X size={16} />
@@ -115,11 +116,11 @@ export default function StandupExport({ date }: Props) {
               >
                 {copied ? (
                   <>
-                    <Check size={14} /> Copied!
+                    <Check size={14} /> {t("standup.copied")}
                   </>
                 ) : (
                   <>
-                    <Copy size={14} /> Copy to clipboard
+                    <Copy size={14} /> {t("standup.copy")}
                   </>
                 )}
               </button>

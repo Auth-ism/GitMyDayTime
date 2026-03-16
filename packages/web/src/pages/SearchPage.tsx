@@ -2,12 +2,15 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
+import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { Search, Target, MessageSquare, Check, Clock } from "lucide-react";
-import { CATEGORY_LABELS, CATEGORY_COLORS, formatDuration, type Category } from "@gmd/shared";
+import { CATEGORY_COLORS, formatDuration, type Category } from "@gmd/shared";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function SearchPage() {
+  const { t } = useI18n();
+  const getCatLabel = useCategoryLabel();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -18,8 +21,8 @@ export default function SearchPage() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(timer);
   }, [query]);
 
   const { data, isLoading } = useQuery({
@@ -39,7 +42,7 @@ export default function SearchPage() {
             ref={inputRef}
             type="text"
             className="flex-1 bg-transparent outline-none text-base placeholder:text-text-tertiary"
-            placeholder="Search tasks, plans, notes..."
+            placeholder={t("search.placeholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -51,11 +54,10 @@ export default function SearchPage() {
 
       {debouncedQuery.length >= 2 && data && (
         <p className="text-xs text-text-tertiary">
-          {totalResults} result{totalResults !== 1 ? "s" : ""} for "{debouncedQuery}"
+          {t("search.results", { count: totalResults, s: totalResults !== 1 ? "s" : "", query: debouncedQuery })}
         </p>
       )}
 
-      {/* Plan results */}
       <AnimatePresence mode="popLayout">
         {data?.plans.map((item) => (
           <motion.button
@@ -83,13 +85,13 @@ export default function SearchPage() {
                     className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"
                     style={{ backgroundColor: CATEGORY_COLORS[item.category] + "20", color: CATEGORY_COLORS[item.category] }}
                   >
-                    {CATEGORY_LABELS[item.category]}
+                    {getCatLabel(item.category)}
                   </span>
                   <span className="text-[10px] text-text-tertiary">{item.date}</span>
-                  {item.estimatedDuration && (
+                  {item.duration && (
                     <span className="flex items-center gap-0.5 text-[10px] text-text-tertiary">
                       <Clock size={9} />
-                      {formatDuration(item.estimatedDuration)}
+                      {formatDuration(item.duration)}
                     </span>
                   )}
                 </div>
@@ -121,16 +123,16 @@ export default function SearchPage() {
       {debouncedQuery.length >= 2 && !isLoading && totalResults === 0 && (
         <div className="text-center py-12 text-text-tertiary">
           <Search size={32} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No results found</p>
-          <p className="text-xs mt-1">Try a different search term</p>
+          <p className="text-sm">{t("search.noResults")}</p>
+          <p className="text-xs mt-1">{t("search.tryDifferent")}</p>
         </div>
       )}
 
       {debouncedQuery.length < 2 && (
         <div className="text-center py-12 text-text-tertiary">
           <Search size={32} className="mx-auto mb-3 opacity-20" />
-          <p className="text-sm">Search across all your days</p>
-          <p className="text-xs mt-1">Type at least 2 characters</p>
+          <p className="text-sm">{t("search.searchAll")}</p>
+          <p className="text-xs mt-1">{t("search.minChars")}</p>
         </div>
       )}
     </div>

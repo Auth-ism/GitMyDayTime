@@ -1,73 +1,118 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search } from "lucide-react";
+import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, Github, Mail, UserCircle } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
+import { useI18n, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { AnimatePresence, motion } from "framer-motion";
 
-const navItems = [
-  { to: "/", icon: Clock, label: "Today" },
-  { to: "/week", icon: CalendarDays, label: "Week" },
-  { to: "/calendar", icon: Calendar, label: "Calendar" },
-  { to: "/stats", icon: BarChart3, label: "Stats" },
-  { to: "/search", icon: Search, label: "Search" },
-];
+const navIcons = {
+  "/": Clock,
+  "/week": CalendarDays,
+  "/calendar": Calendar,
+  "/stats": BarChart3,
+  "/search": Search,
+  "/recurring": Repeat,
+} as const;
+
+const navKeys = ["/", "/week", "/calendar", "/stats", "/search", "/recurring"] as const;
+const navLabelKeys = {
+  "/": "nav.today",
+  "/week": "nav.week",
+  "/calendar": "nav.calendar",
+  "/stats": "nav.stats",
+  "/search": "nav.search",
+  "/recurring": "nav.recurring",
+} as const;
 
 export default function Layout() {
   const { theme, toggle } = useTheme();
-  const { logout } = useAuth();
+  const { logout, profile } = useAuth();
+  const { t, locale, setLocale } = useI18n();
   const location = useLocation();
+
+  const toggleLocale = () => setLocale(locale === "en" ? "tr" : "en" as Locale);
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-secondary">
       {/* Desktop header */}
       <header className="border-b border-border sticky top-0 z-50 bg-bg/90 backdrop-blur-md hidden sm:block">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <div className="px-4 sm:px-6 h-14 flex items-center">
           <NavLink
             to="/"
-            className="flex items-center gap-2.5 font-semibold text-text tracking-tight"
-            aria-label="GitMyDayTime — go to today"
+            className="flex items-center gap-2.5 font-semibold text-text tracking-tight mr-8"
+            aria-label="GitMyDayTime"
           >
             <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
               <Clock size={15} className="text-bg" />
             </div>
             <span className="text-base">GitMyDayTime</span>
+            <span className="text-[10px] text-text-tertiary font-normal -ml-1.5">v{__APP_VERSION__}</span>
           </NavLink>
 
-          <nav aria-label="Main navigation" className="flex items-center gap-1">
-            {navItems.map(({ to, icon: Icon, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === "/"}
-                aria-label={label}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors",
-                    isActive
-                      ? "bg-accent text-bg font-medium"
-                      : "text-text-secondary hover:text-text hover:bg-accent-soft"
-                  )
-                }
-              >
-                <Icon size={16} />
-                <span>{label}</span>
-              </NavLink>
-            ))}
+          <nav aria-label="Main navigation" className="flex items-center gap-1 ml-auto">
+            {navKeys.map((to) => {
+              const Icon = navIcons[to];
+              const label = t(navLabelKeys[to] as any);
+              return (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to === "/"}
+                  aria-label={label}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors",
+                      isActive
+                        ? "bg-accent text-bg font-medium"
+                        : "text-text-secondary hover:text-text hover:bg-accent-soft"
+                    )
+                  }
+                >
+                  <Icon size={16} />
+                  <span>{label}</span>
+                </NavLink>
+              );
+            })}
 
             <div className="w-px h-5 bg-border mx-1.5" role="separator" />
 
             <button
+              onClick={toggleLocale}
+              aria-label={locale === "en" ? "Turkce" : "English"}
+              className="btn-icon p-2 rounded-lg text-xs font-medium"
+            >
+              <Globe size={16} />
+            </button>
+
+            <button
               onClick={toggle}
-              aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+              aria-label={t("nav.switchTheme", { theme: theme === "light" ? "dark" : "light" })}
               className="btn-icon p-2 rounded-lg"
             >
               {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
             </button>
 
+            <NavLink
+              to="/profile"
+              aria-label={t("profile.nav" as any)}
+              className={({ isActive }) =>
+                cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition-colors",
+                  isActive
+                    ? "bg-accent text-bg"
+                    : "bg-accent-soft text-text-secondary hover:text-text"
+                )
+              }
+            >
+              {profile
+                ? (profile.displayName || profile.username).slice(0, 2).toUpperCase()
+                : <UserCircle size={16} />}
+            </NavLink>
+
             <button
               onClick={logout}
-              aria-label="Sign out"
+              aria-label={t("nav.signOut")}
               className="btn-icon p-2 rounded-lg"
             >
               <LogOut size={16} />
@@ -76,7 +121,7 @@ export default function Layout() {
         </div>
       </header>
 
-      {/* Mobile header — minimal */}
+      {/* Mobile header */}
       <header className="border-b border-border sticky top-0 z-50 bg-bg/90 backdrop-blur-md sm:hidden">
         <div className="px-4 h-12 flex items-center justify-between">
           <NavLink to="/" className="flex items-center gap-2 font-semibold text-text tracking-tight">
@@ -84,18 +129,42 @@ export default function Layout() {
               <Clock size={13} className="text-bg" />
             </div>
             <span className="text-sm">GitMyDayTime</span>
+            <span className="text-[9px] text-text-tertiary font-normal -ml-1">v{__APP_VERSION__}</span>
           </NavLink>
           <div className="flex items-center gap-0.5">
             <button
+              onClick={toggleLocale}
+              aria-label={locale === "en" ? "Turkce" : "English"}
+              className="btn-icon p-2 rounded-lg text-[10px] font-bold"
+            >
+              {locale === "en" ? "TR" : "EN"}
+            </button>
+            <button
               onClick={toggle}
-              aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+              aria-label={t("nav.switchTheme", { theme: theme === "light" ? "dark" : "light" })}
               className="btn-icon p-2 rounded-lg"
             >
               {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
             </button>
+            <NavLink
+              to="/profile"
+              aria-label={t("profile.nav" as any)}
+              className={({ isActive }) =>
+                cn(
+                  "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-semibold transition-colors",
+                  isActive
+                    ? "bg-accent text-bg"
+                    : "bg-accent-soft text-text-secondary hover:text-text"
+                )
+              }
+            >
+              {profile
+                ? (profile.displayName || profile.username).slice(0, 2).toUpperCase()
+                : <UserCircle size={14} />}
+            </NavLink>
             <button
               onClick={logout}
-              aria-label="Sign out"
+              aria-label={t("nav.signOut")}
               className="btn-icon p-2 rounded-lg"
             >
               <LogOut size={16} />
@@ -122,30 +191,59 @@ export default function Layout() {
         </AnimatePresence>
       </main>
 
+      {/* Footer — desktop only */}
+      <footer className="hidden sm:block border-t border-border bg-bg/80 backdrop-blur-sm">
+        <div className="max-w-3xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-tertiary">
+          <div className="flex items-center gap-1.5">
+            <span>{t("footer.madeBy" as any)}</span>
+            <a href="https://github.com/firatege" target="_blank" rel="noopener noreferrer" className="text-text-secondary hover:text-text transition-colors font-medium">
+              firatege
+            </a>
+            <span className="mx-1">·</span>
+            <span>{t("footer.license" as any)}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <a href="https://github.com/firatege/GitMyDayTime" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-text-tertiary hover:text-text transition-colors">
+              <Github size={14} />
+              <span>{t("footer.source" as any)}</span>
+            </a>
+            <a href="mailto:firategebayram@gmail.com" className="flex items-center gap-1 text-text-tertiary hover:text-text transition-colors">
+              <Mail size={14} />
+              <span>{t("footer.contact" as any)}</span>
+            </a>
+          </div>
+          <p>© {new Date().getFullYear()} GitMyDayTime. {t("footer.rights" as any)}</p>
+        </div>
+      </footer>
+
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Mobile navigation"
         className="fixed bottom-0 left-0 right-0 z-50 bg-bg/95 backdrop-blur-md border-t border-border sm:hidden safe-bottom"
       >
         <div className="flex items-center justify-around h-16 px-2">
-          {navItems.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className={({ isActive }) =>
-                cn(
-                  "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-[60px]",
-                  isActive
-                    ? "text-accent"
-                    : "text-text-tertiary"
-                )
-              }
-            >
-              <Icon size={20} />
-              <span className="text-[10px] font-medium">{label}</span>
-            </NavLink>
-          ))}
+          {navKeys.map((to) => {
+            const Icon = navIcons[to];
+            const label = t(navLabelKeys[to] as any);
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === "/"}
+                className={({ isActive }) =>
+                  cn(
+                    "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-[60px]",
+                    isActive
+                      ? "text-accent"
+                      : "text-text-tertiary"
+                  )
+                }
+              >
+                <Icon size={20} />
+                <span className="text-[10px] font-medium">{label}</span>
+              </NavLink>
+            );
+          })}
         </div>
       </nav>
     </div>

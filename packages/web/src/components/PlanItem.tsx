@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Trash2, Clock, Timer, Play } from "lucide-react";
-import { type PlanItem as PlanItemType, CATEGORY_LABELS, formatDuration, parseDuration } from "@gmd/shared";
+import { type PlanItem as PlanItemType, formatDuration, parseDuration } from "@gmd/shared";
+import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
 
@@ -12,6 +13,8 @@ interface Props {
 }
 
 export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: Props) {
+  const { t } = useI18n();
+  const getCatLabel = useCategoryLabel();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showDuration, setShowDuration] = useState(false);
   const [actualDur, setActualDur] = useState("");
@@ -27,10 +30,8 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
 
   const handleToggle = () => {
     if (!item.completed) {
-      // Show duration input before completing
       setShowDuration(true);
     } else {
-      // Uncomplete
       onToggle();
     }
   };
@@ -65,7 +66,7 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
           onClick={handleToggle}
           role="checkbox"
           aria-checked={item.completed}
-          aria-label={`Mark "${item.description}" as ${item.completed ? "incomplete" : "complete"}`}
+          aria-label={t("plan.markAs", { desc: item.description, status: item.completed ? t("plan.incomplete") : t("plan.complete") })}
           className={cn(
             "w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all",
             item.completed
@@ -82,7 +83,7 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
           </p>
           <div className="flex items-center gap-2.5 mt-0.5">
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-bg-secondary text-text-secondary">
-              {CATEGORY_LABELS[item.category]}
+              {getCatLabel(item.category)}
             </span>
             {item.scheduledTime && (
               <span className="flex items-center gap-1 text-xs text-text-secondary font-medium">
@@ -90,9 +91,9 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
                 {item.scheduledTime}
               </span>
             )}
-            {item.estimatedDuration != null && item.estimatedDuration > 0 && (
+            {item.duration != null && item.duration > 0 && (
               <span className="flex items-center gap-1 text-xs text-text-tertiary">
-                ~{formatDuration(item.estimatedDuration)}
+                ~{formatDuration(item.duration)}
               </span>
             )}
             {item.actualDuration != null && item.actualDuration > 0 && (
@@ -107,7 +108,7 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
         {!item.completed && onStartPomodoro && (
           <button
             onClick={onStartPomodoro}
-            aria-label={`Start pomodoro for "${item.description}"`}
+            aria-label={t("plan.startPomodoro", { desc: item.description })}
             className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
           >
             <Play size={14} />
@@ -116,7 +117,7 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
 
         <button
           onClick={handleDelete}
-          aria-label={confirmDelete ? `Confirm delete "${item.description}"` : `Delete "${item.description}"`}
+          aria-label={confirmDelete ? t("plan.confirmDelete", { desc: item.description }) : t("plan.delete", { desc: item.description })}
           className={cn(
             "p-1.5 rounded-lg transition-all flex-shrink-0",
             confirmDelete
@@ -152,10 +153,10 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
                 }}
               />
               <button onClick={handleComplete} className="btn btn-primary !py-1.5 !px-3 text-xs">
-                Done
+                {t("plan.done")}
               </button>
               <button onClick={handleSkipDuration} className="btn btn-ghost !py-1.5 !px-2 text-xs text-text-tertiary">
-                Skip
+                {t("plan.skip")}
               </button>
             </div>
           </motion.div>
@@ -164,4 +165,3 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
     </motion.div>
   );
 }
-

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDayLog } from "@/hooks/useDayLog";
+import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import TaskForm from "@/components/TaskForm";
 import TaskItem from "@/components/TaskItem";
 import PlanItem from "@/components/PlanItem";
@@ -16,12 +17,14 @@ function getDateStr(dateParam?: string): string {
   return dateParam || todayStr();
 }
 
-const categories = Object.entries(CATEGORY_LABELS) as [Category, string][];
+const categories = Object.keys(CATEGORY_LABELS) as Category[];
 
 export default function DayView() {
   const { date: dateParam } = useParams();
   const date = getDateStr(dateParam);
   const navigate = useNavigate();
+  const { t, locale } = useI18n();
+  const getCatLabel = useCategoryLabel();
   const { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan } = useDayLog(date);
   const [filterCat, setFilterCat] = useState<Category | "all">("all");
   const [pomodoroTask, setPomodoroTask] = useState<{ id: string; name: string } | null>(null);
@@ -52,40 +55,43 @@ export default function DayView() {
   const taskCount = dayLog?.tasks.length || 0;
 
   const displayDate = new Date(date + "T12:00:00");
+  const dateLoc = locale === "tr" ? "tr-TR" : "en-US";
 
   return (
     <div className="space-y-5">
       {/* Date header */}
       <div className="card flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button onClick={prevDay} className="btn btn-ghost p-2" aria-label="Previous day">
+          <button onClick={prevDay} className="btn btn-ghost p-2" aria-label={t("day.prevDay")}>
             <ChevronLeft size={18} />
           </button>
           <div className="text-center min-w-[140px]">
             <h1 className="text-lg font-semibold leading-tight">
-              {isToday ? "Today" : displayDate.toLocaleDateString("en-US", { weekday: "long" })}
+              {isToday ? t("day.today") : displayDate.toLocaleDateString(dateLoc, { weekday: "long" })}
             </h1>
             <p className="text-sm text-text-secondary">
-              {displayDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+              {displayDate.toLocaleDateString(dateLoc, { month: "long", day: "numeric", year: "numeric" })}
             </p>
           </div>
-          <button onClick={nextDay} className="btn btn-ghost p-2" aria-label="Next day">
+          <button onClick={nextDay} className="btn btn-ghost p-2" aria-label={t("day.nextDay")}>
             <ChevronRight size={18} />
           </button>
         </div>
 
         <div className="flex items-center gap-2">
           <StandupExport date={date} />
-          {!isToday && (
-            <button
-              onClick={() => navigate("/")}
-              className="btn btn-ghost text-xs"
-              aria-label="Go to today"
-            >
-              <CalendarDays size={14} />
-              Today
-            </button>
-          )}
+          <button
+            onClick={() => navigate("/")}
+            className={cn(
+              "btn btn-ghost text-xs transition-opacity",
+              isToday ? "opacity-0 pointer-events-none" : "opacity-100"
+            )}
+            aria-label={t("day.goToday")}
+            tabIndex={isToday ? -1 : 0}
+          >
+            <CalendarDays size={14} />
+            <span className="hidden sm:inline">{t("day.today")}</span>
+          </button>
         </div>
       </div>
 
@@ -111,15 +117,14 @@ export default function DayView() {
 
       {/* Summary strip */}
       {(taskCount > 0 || totalPlan > 0) && (
-        <div className="flex gap-3" role="status" aria-label="Day summary">
+        <div className="flex gap-3" role="status">
           {totalPlan > 0 && (
             <div className="flex-1 card !py-3 flex items-center gap-3">
               <Target size={16} className="text-success flex-shrink-0" />
               <div>
                 <p className="text-sm font-semibold">{completedPlan}/{totalPlan}</p>
-                <p className="text-xs text-text-secondary">Planned</p>
+                <p className="text-xs text-text-secondary">{t("day.planned")}</p>
               </div>
-              {/* Progress bar */}
               <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden" role="progressbar" aria-valuenow={completedPlan} aria-valuemax={totalPlan}>
                 <div
                   className="h-full bg-success rounded-full transition-all duration-300"
@@ -132,8 +137,8 @@ export default function DayView() {
             <div className="flex-1 card !py-3 flex items-center gap-3">
               <MessageSquare size={16} className="text-text-secondary flex-shrink-0" />
               <div>
-                <p className="text-sm font-semibold">{taskCount} note{taskCount !== 1 ? "s" : ""}</p>
-                <p className="text-xs text-text-secondary">Today</p>
+                <p className="text-sm font-semibold">{t("day.notes", { count: taskCount, s: taskCount !== 1 ? "s" : "" })}</p>
+                <p className="text-xs text-text-secondary">{t("day.today")}</p>
               </div>
             </div>
           )}
@@ -142,7 +147,7 @@ export default function DayView() {
 
       {/* Category filter */}
       {(taskCount > 0 || totalPlan > 0) && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1" role="radiogroup" aria-label="Filter by category">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1" role="radiogroup">
           <Filter size={14} className="text-text-tertiary flex-shrink-0" />
           <button
             type="button"
@@ -156,9 +161,9 @@ export default function DayView() {
                 : "bg-bg-elevated text-text-secondary hover:bg-bg-tertiary border border-border"
             )}
           >
-            All
+            {t("day.all")}
           </button>
-          {categories.map(([key, label]) => {
+          {categories.map((key) => {
             const count = (dayLog?.tasks.filter((t) => t.category === key).length || 0) +
               (dayLog?.plan.filter((p) => p.category === key).length || 0);
             if (count === 0) return null;
@@ -176,7 +181,7 @@ export default function DayView() {
                     : "bg-bg-elevated text-text-secondary hover:bg-bg-tertiary border border-border"
                 )}
               >
-                {label} <span className="opacity-60">{count}</span>
+                {getCatLabel(key)} <span className="opacity-60">{count}</span>
               </button>
             );
           })}
@@ -209,8 +214,8 @@ export default function DayView() {
           {dayLog && filteredPlan.length === 0 && filterCat === "all" && (
             <div className="text-center py-6 text-text-tertiary">
               <Target size={24} className="mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No plans yet</p>
-              <p className="text-xs mt-0.5">Add what you want to accomplish</p>
+              <p className="text-sm">{t("day.noPlans")}</p>
+              <p className="text-xs mt-0.5">{t("day.noPlansDesc")}</p>
             </div>
           )}
         </div>
@@ -236,8 +241,8 @@ export default function DayView() {
           {dayLog && filteredTasks.length === 0 && filterCat === "all" && (
             <div className="text-center py-6 text-text-tertiary">
               <MessageSquare size={24} className="mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No notes yet</p>
-              <p className="text-xs mt-0.5">Jot down quick thoughts or observations</p>
+              <p className="text-sm">{t("day.noNotes")}</p>
+              <p className="text-xs mt-0.5">{t("day.noNotesDesc")}</p>
             </div>
           )}
         </div>
@@ -245,7 +250,7 @@ export default function DayView() {
 
       {/* Loading state */}
       {query.isLoading && (
-        <div className="space-y-3" aria-busy="true" aria-label="Loading day data">
+        <div className="space-y-3" aria-busy="true" aria-label={t("day.loading")}>
           {[1, 2, 3].map((i) => (
             <div key={i} className="card animate-pulse">
               <div className="h-4 bg-bg-tertiary rounded w-3/4 mb-2" />

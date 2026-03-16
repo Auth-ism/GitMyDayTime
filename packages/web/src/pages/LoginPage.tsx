@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { Clock, ArrowRight, AlertCircle } from "lucide-react";
+import { useI18n, type Locale } from "@/lib/i18n";
+import { Clock, ArrowRight, AlertCircle, Globe, Github, Mail } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
@@ -10,6 +11,7 @@ type Mode = "login" | "register";
 export default function LoginPage() {
   const { login, register } = useAuth();
   const { theme, toggle } = useTheme();
+  const { t, locale, setLocale } = useI18n();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -18,12 +20,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const toggleLocale = () => setLocale(locale === "en" ? "tr" : "en" as Locale);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
 
     if (mode === "register" && password !== confirmPassword) {
-      setError("Passwords don't match");
+      setError(t("login.passwordsMismatch"));
       return;
     }
 
@@ -36,7 +40,7 @@ export default function LoginPage() {
         : await register(email, username, password);
 
     if (!result.ok) {
-      setError(result.error || "Something went wrong");
+      setError(result.error || t("login.error"));
       setLoading(false);
     }
   };
@@ -53,14 +57,23 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4">
-      {/* Theme toggle */}
-      <button
-        onClick={toggle}
-        aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-        className="fixed top-4 right-4 btn-icon p-2.5 rounded-xl"
-      >
-        {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-      </button>
+      {/* Top controls */}
+      <div className="fixed top-4 right-4 flex items-center gap-1">
+        <button
+          onClick={toggleLocale}
+          aria-label={locale === "en" ? "Turkce" : "English"}
+          className="btn-icon p-2.5 rounded-xl text-xs font-bold"
+        >
+          {locale === "en" ? "TR" : "EN"}
+        </button>
+        <button
+          onClick={toggle}
+          aria-label={t("nav.switchTheme", { theme: theme === "light" ? "dark" : "light" })}
+          className="btn-icon p-2.5 rounded-xl"
+        >
+          {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+        </button>
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -75,7 +88,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight">GitMyDayTime</h1>
           <p className="text-sm text-text-secondary mt-1">
-            {mode === "login" ? "Sign in to continue" : "Create your account"}
+            {mode === "login" ? t("login.signInDesc") : t("login.registerDesc")}
           </p>
         </div>
 
@@ -88,7 +101,7 @@ export default function LoginPage() {
               mode === "login" ? "bg-bg text-text shadow-sm" : "text-text-secondary"
             }`}
           >
-            Sign in
+            {t("login.signIn")}
           </button>
           <button
             type="button"
@@ -97,40 +110,39 @@ export default function LoginPage() {
               mode === "register" ? "bg-bg text-text shadow-sm" : "text-text-secondary"
             }`}
           >
-            Register
+            {t("login.register")}
           </button>
         </div>
 
-        {/* Form — key forces full remount so browser autofill resets between modes */}
         <form key={mode} onSubmit={handleSubmit} className="space-y-4" autoComplete={mode === "register" ? "off" : "on"}>
           <div>
             <label htmlFor={`${mode}-email`} className="block text-sm font-medium text-text-secondary mb-1.5">
-              Email
+              {t("login.email")}
             </label>
             <input
               id={`${mode}-email`}
               name="email"
               type="email"
               className="input !text-base !py-3"
-              placeholder="you@example.com"
+              placeholder={t("login.emailPlace")}
               value={email}
               onChange={(e) => { setEmail(e.target.value); setError(""); }}
               autoFocus
-              autoComplete={mode === "login" ? "email" : "email"}
+              autoComplete="email"
             />
           </div>
 
           {mode === "register" && (
             <div>
               <label htmlFor="reg-username" className="block text-sm font-medium text-text-secondary mb-1.5">
-                Username
+                {t("login.username")}
               </label>
               <input
                 id="reg-username"
                 name={`username-${Date.now()}`}
                 type="text"
                 className="input !text-base !py-3"
-                placeholder="Choose a username"
+                placeholder={t("login.usernamePlace")}
                 value={username}
                 onChange={(e) => { setUsername(e.target.value); setError(""); }}
                 autoComplete="one-time-code"
@@ -140,14 +152,14 @@ export default function LoginPage() {
 
           <div>
             <label htmlFor={`${mode}-password`} className="block text-sm font-medium text-text-secondary mb-1.5">
-              Password
+              {t("login.password")}
             </label>
             <input
               id={`${mode}-password`}
               name="password"
               type="password"
               className="input !text-base !py-3"
-              placeholder={mode === "register" ? "Min 6 characters" : "Enter your password"}
+              placeholder={mode === "register" ? t("login.passwordPlaceNew") : t("login.passwordPlace")}
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError(""); }}
               autoComplete={mode === "login" ? "current-password" : "new-password"}
@@ -157,14 +169,14 @@ export default function LoginPage() {
           {mode === "register" && (
             <div>
               <label htmlFor="reg-confirm-password" className="block text-sm font-medium text-text-secondary mb-1.5">
-                Confirm Password
+                {t("login.confirmPassword")}
               </label>
               <input
                 id="reg-confirm-password"
                 name="confirm-password"
                 type="password"
                 className="input !text-base !py-3"
-                placeholder="Confirm your password"
+                placeholder={t("login.confirmPasswordPlace")}
                 value={confirmPassword}
                 onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
                 autoComplete="new-password"
@@ -172,7 +184,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Error message */}
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -4 }}
@@ -192,17 +203,32 @@ export default function LoginPage() {
           >
             {loading ? (
               <span className="animate-pulse">
-                {mode === "login" ? "Signing in..." : "Creating account..."}
+                {mode === "login" ? t("login.signingIn") : t("login.creatingAccount")}
               </span>
             ) : (
               <>
-                {mode === "login" ? "Sign in" : "Create account"}
+                {mode === "login" ? t("login.signIn") : t("login.createAccount")}
                 <ArrowRight size={16} />
               </>
             )}
           </button>
         </form>
       </motion.div>
+
+      {/* Footer */}
+      <div className="fixed bottom-4 left-0 right-0 flex items-center justify-center gap-3 text-[11px] text-text-tertiary">
+        <span>{t("footer.madeBy" as any)} <a href="https://github.com/firatege" target="_blank" rel="noopener noreferrer" className="text-text-secondary hover:text-text transition-colors font-medium">firatege</a></span>
+        <span>·</span>
+        <a href="https://github.com/firatege/GitMyDayTime" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-text transition-colors">
+          <Github size={12} />
+          <span>{t("footer.source" as any)}</span>
+        </a>
+        <span>·</span>
+        <a href="mailto:firategebayram@gmail.com" className="flex items-center gap-1 hover:text-text transition-colors">
+          <Mail size={12} />
+          <span>{t("footer.contact" as any)}</span>
+        </a>
+      </div>
     </div>
   );
 }

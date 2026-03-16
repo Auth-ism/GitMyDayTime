@@ -1,14 +1,15 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-type Theme = "light" | "dark";
+export type Theme = "light" | "dark";
 
 const ThemeContext = createContext<{
   theme: Theme;
   toggle: () => void;
-}>({ theme: "light", toggle: () => {} });
+  setTheme: (t: Theme) => void;
+}>({ theme: "light", toggle: () => {}, setTheme: () => {} });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window === "undefined") return "light";
     const saved = localStorage.getItem("gmd-theme") as Theme;
     if (saved) return saved;
@@ -20,10 +21,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("gmd-theme", theme);
   }, [theme]);
 
-  const toggle = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+  const toggle = () => setThemeState((t) => (t === "light" ? "dark" : "light"));
+  const setTheme = (t: Theme) => setThemeState(t);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggle }}>
+    <ThemeContext.Provider value={{ theme, toggle, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

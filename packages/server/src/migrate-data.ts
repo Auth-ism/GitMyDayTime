@@ -67,7 +67,7 @@ async function main() {
         `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT (id) DO NOTHING`,
-        [item.id, userId, dayLog.date, item.description, item.category, item.estimatedDuration ?? null, item.completed, item.order]
+        [item.id, userId, dayLog.date, item.description, item.category, item.duration ?? null, item.completed, item.order]
       );
       planCount++;
     }

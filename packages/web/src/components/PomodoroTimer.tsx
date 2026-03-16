@@ -1,5 +1,7 @@
 import { useReducer, useEffect, useRef, useCallback } from "react";
 import { Play, Pause, Square, RotateCcw, Timer } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 
@@ -9,9 +11,6 @@ interface Props {
   onClose: () => void;
 }
 
-const WORK_DURATION = 25 * 60;
-const BREAK_DURATION = 5 * 60;
-
 type Phase = "work" | "break";
 
 interface TimerState {
@@ -19,6 +18,8 @@ interface TimerState {
   timeLeft: number;
   isRunning: boolean;
   totalWorked: number;
+  workDuration: number;
+  breakDuration: number;
 }
 
 type TimerAction =
@@ -38,7 +39,7 @@ function timerReducer(state: TimerState, action: TimerAction): TimerState {
           return {
             ...state,
             phase: "break",
-            timeLeft: BREAK_DURATION,
+            timeLeft: state.breakDuration,
             isRunning: false,
             totalWorked: state.totalWorked + state.timeLeft,
           };
@@ -46,7 +47,7 @@ function timerReducer(state: TimerState, action: TimerAction): TimerState {
         return {
           ...state,
           phase: "work",
-          timeLeft: WORK_DURATION,
+          timeLeft: state.workDuration,
           isRunning: false,
         };
       }
@@ -61,18 +62,26 @@ function timerReducer(state: TimerState, action: TimerAction): TimerState {
     case "stop":
       return { ...state, isRunning: false };
     case "reset":
-      return { phase: "work", timeLeft: WORK_DURATION, isRunning: false, totalWorked: 0 };
+      return { ...state, phase: "work", timeLeft: state.workDuration, isRunning: false, totalWorked: 0 };
     default:
       return state;
   }
 }
 
 export default function PomodoroTimer({ taskName, onComplete, onClose }: Props) {
+  const { t } = useI18n();
+  const { profile } = useAuth();
+
+  const workDuration = (profile?.pomodoroDuration ?? 25) * 60;
+  const breakDuration = (profile?.breakDuration ?? 5) * 60;
+
   const [state, dispatch] = useReducer(timerReducer, {
     phase: "work",
-    timeLeft: WORK_DURATION,
+    timeLeft: workDuration,
     isRunning: false,
     totalWorked: 0,
+    workDuration,
+    breakDuration,
   });
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -101,7 +110,7 @@ export default function PomodoroTimer({ taskName, onComplete, onClose }: Props) 
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  const duration = state.phase === "work" ? WORK_DURATION : BREAK_DURATION;
+  const duration = state.phase === "work" ? state.workDuration : state.breakDuration;
   const progress = 1 - state.timeLeft / duration;
 
   const handleStop = () => {
@@ -126,7 +135,7 @@ export default function PomodoroTimer({ taskName, onComplete, onClose }: Props) 
         <div className="flex items-center gap-2">
           <Timer size={14} className="text-text-tertiary" />
           <span className="text-xs font-medium text-text-tertiary uppercase tracking-wider">
-            Pomodoro
+            {t("pomo.title")}
           </span>
         </div>
         <span className={cn(
@@ -135,7 +144,7 @@ export default function PomodoroTimer({ taskName, onComplete, onClose }: Props) 
             ? "bg-accent text-bg"
             : "bg-success/10 text-success"
         )}>
-          {state.phase === "work" ? "Focus" : "Break"}
+          {state.phase === "work" ? t("pomo.focus") : t("pomo.break")}
         </span>
       </div>
 
@@ -146,18 +155,11 @@ export default function PomodoroTimer({ taskName, onComplete, onClose }: Props) 
       {/* Circular progress */}
       <div className="relative w-32 h-32 mx-auto">
         <svg className="w-32 h-32 -rotate-90" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45" fill="none" stroke="var(--color-border)" strokeWidth="4" />
           <circle
-            cx="50" cy="50" r="45"
-            fill="none"
-            stroke="var(--color-border)"
-            strokeWidth="4"
-          />
-          <circle
-            cx="50" cy="50" r="45"
-            fill="none"
+            cx="50" cy="50" r="45" fill="none"
             stroke={state.phase === "work" ? "var(--color-accent)" : "var(--color-success)"}
-            strokeWidth="4"
-            strokeLinecap="round"
+            strokeWidth="4" strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={circumference * (1 - progress)}
             className="transition-all duration-1000 ease-linear"
@@ -170,26 +172,33 @@ export default function PomodoroTimer({ taskName, onComplete, onClose }: Props) 
         </div>
       </div>
 
+      {/* Phase info */}
+      <p className="text-xs text-text-tertiary">
+        {state.phase === "work"
+          ? `${profile?.pomodoroDuration ?? 25} ${t("profile.minutes" as any)}`
+          : `${profile?.breakDuration ?? 5} ${t("profile.minutes" as any)}`}
+      </p>
+
       {/* Controls */}
       <div className="flex items-center justify-center gap-2">
         <button
           onClick={() => dispatch({ type: "toggle" })}
           className="btn btn-primary !rounded-full !w-10 !h-10 !p-0"
-          aria-label={state.isRunning ? "Pause" : "Start"}
+          aria-label={state.isRunning ? t("pomo.pause") : t("pomo.start")}
         >
           {state.isRunning ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
         </button>
         <button
           onClick={handleStop}
           className="btn btn-ghost !rounded-full !w-10 !h-10 !p-0"
-          aria-label="Stop and save"
+          aria-label={t("pomo.stopSave")}
         >
           <Square size={14} />
         </button>
         <button
           onClick={() => dispatch({ type: "reset" })}
           className="btn btn-ghost !rounded-full !w-10 !h-10 !p-0"
-          aria-label="Reset timer"
+          aria-label={t("pomo.reset")}
         >
           <RotateCcw size={14} />
         </button>
@@ -198,7 +207,7 @@ export default function PomodoroTimer({ taskName, onComplete, onClose }: Props) 
       {/* Elapsed */}
       {state.totalWorked > 0 && (
         <p className="text-xs text-text-tertiary">
-          Total focused: {Math.floor(state.totalWorked / 60)}m {state.totalWorked % 60}s
+          {t("pomo.totalFocused", { m: Math.floor(state.totalWorked / 60), s: state.totalWorked % 60 })}
         </p>
       )}
     </motion.div>

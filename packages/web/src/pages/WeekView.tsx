@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { ChevronLeft, ChevronRight, CalendarDays, Clock, Target, Check, MessageSquare } from "lucide-react";
 import { CATEGORY_COLORS, formatDuration, todayStr, type DayLog } from "@gmd/shared";
@@ -18,16 +19,6 @@ function getWeekDates(ref: Date): string[] {
   });
 }
 
-function getWeekLabel(dates: string[]): string {
-  const start = new Date(dates[0] + "T12:00:00");
-  const end = new Date(dates[6] + "T12:00:00");
-  const sameMonth = start.getMonth() === end.getMonth();
-  if (sameMonth) {
-    return `${start.toLocaleDateString("en-US", { month: "long", day: "numeric" })} – ${end.getDate()}, ${end.getFullYear()}`;
-  }
-  return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
-}
-
 interface DragInfo {
   fromDate: string;
   itemId: string;
@@ -35,13 +26,14 @@ interface DragInfo {
 }
 
 export default function WeekView() {
+  const { t, locale } = useI18n();
   const [weekRef, setWeekRef] = useState(() => new Date());
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const today = todayStr();
+  const dateLoc = locale === "tr" ? "tr-TR" : "en-US";
 
-  // Touch drag state — all refs to avoid stale closure issues
   const touchDragRef = useRef<DragInfo | null>(null);
   const touchGhostRef = useRef<HTMLDivElement | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -49,7 +41,16 @@ export default function WeekView() {
   const dragOverDateRef = useRef<string | null>(null);
 
   const dates = useMemo(() => getWeekDates(weekRef), [weekRef]);
-  const weekLabel = useMemo(() => getWeekLabel(dates), [dates]);
+
+  const weekLabel = useMemo(() => {
+    const start = new Date(dates[0] + "T12:00:00");
+    const end = new Date(dates[6] + "T12:00:00");
+    const sameMonth = start.getMonth() === end.getMonth();
+    if (sameMonth) {
+      return `${start.toLocaleDateString(dateLoc, { month: "long", day: "numeric" })} – ${end.getDate()}, ${end.getFullYear()}`;
+    }
+    return `${start.toLocaleDateString(dateLoc, { month: "short", day: "numeric" })} – ${end.toLocaleDateString(dateLoc, { month: "short", day: "numeric", year: "numeric" })}`;
+  }, [dates, dateLoc]);
 
   const dayQueries = useQueries({
     queries: dates.map((date) => ({
@@ -78,7 +79,6 @@ export default function WeekView() {
     } catch { /* ignore */ }
   }, [qc]);
 
-  // Desktop drag
   const handleDragStart = (e: React.DragEvent, fromDate: string, itemId: string, itemType: "task" | "plan") => {
     e.dataTransfer.setData("text/plain", JSON.stringify({ fromDate, itemId, itemType }));
     e.dataTransfer.effectAllowed = "move";
@@ -98,7 +98,6 @@ export default function WeekView() {
     } catch { /* ignore */ }
   };
 
-  // Touch drag
   const cleanupTouchDrag = useCallback(() => {
     if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
     if (touchGhostRef.current) { touchGhostRef.current.remove(); touchGhostRef.current = null; }
@@ -108,10 +107,8 @@ export default function WeekView() {
     setDragOverDate(null);
   }, []);
 
-  // Cleanup ghost on unmount
   useEffect(() => () => cleanupTouchDrag(), [cleanupTouchDrag]);
 
-  // Prevent context menu during touch drag (mobile long-press popup)
   useEffect(() => {
     const prevent = (e: Event) => {
       if (touchDragRef.current || longPressTimerRef.current) {
@@ -174,7 +171,6 @@ export default function WeekView() {
     const target = dragOverDateRef.current;
     if (info && target) moveItem(info, target);
     cleanupTouchDrag();
-    // Safety: remove any orphaned ghost elements
     document.querySelectorAll("[data-drag-ghost]").forEach((el) => el.remove());
   }, [moveItem, cleanupTouchDrag]);
 
@@ -184,17 +180,17 @@ export default function WeekView() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <CalendarDays size={20} className="text-text-secondary" />
-          <span className="hidden sm:inline">Week</span>
+          <span className="hidden sm:inline">{t("week.title")}</span>
         </h1>
         <div className="flex items-center gap-1">
           {!isCurrentWeek && (
-            <button onClick={goToday} className="btn btn-ghost text-xs mr-1">This week</button>
+            <button onClick={goToday} className="btn btn-ghost text-xs mr-1">{t("week.thisWeek")}</button>
           )}
-          <button onClick={prevWeek} className="btn btn-ghost p-2" aria-label="Previous week">
+          <button onClick={prevWeek} className="btn btn-ghost p-2" aria-label={t("week.prevWeek")}>
             <ChevronLeft size={18} />
           </button>
           <span className="text-xs sm:text-sm font-medium text-center min-w-[140px] sm:min-w-[200px]">{weekLabel}</span>
-          <button onClick={nextWeek} className="btn btn-ghost p-2" aria-label="Next week">
+          <button onClick={nextWeek} className="btn btn-ghost p-2" aria-label={t("week.nextWeek")}>
             <ChevronRight size={18} />
           </button>
         </div>
@@ -207,12 +203,11 @@ export default function WeekView() {
           const isLoading = dayQueries[i].isLoading;
           const isToday = date === today;
           const d = new Date(date + "T12:00:00");
-          const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+          const dayName = d.toLocaleDateString(dateLoc, { weekday: "short" });
           const dayNum = d.getDate();
           const isFuture = date > today;
           const isDragOver = dragOverDate === date;
 
-          // Sort plan items: scheduled first (by time), then unscheduled (by order)
           const sortedPlans = dayLog ? [...dayLog.plan].sort((a, b) => {
             if (a.scheduledTime && b.scheduledTime) return a.scheduledTime.localeCompare(b.scheduledTime);
             if (a.scheduledTime) return -1;
@@ -234,12 +229,11 @@ export default function WeekView() {
                 isToday
                   ? "border-accent bg-accent-soft/30 shadow-sm"
                   : isDragOver
-                  ? "border-accent/50 bg-accent-soft/10 shadow-md"
-                  : "border-border bg-bg-elevated",
+                    ? "border-accent/50 bg-accent-soft/10 shadow-md"
+                    : "border-border bg-bg-elevated",
                 isFuture && !isDragOver && "opacity-60"
               )}
             >
-              {/* Day header */}
               <button
                 onClick={() => navigate(`/day/${date}`)}
                 className={cn(
@@ -248,15 +242,11 @@ export default function WeekView() {
                 )}
               >
                 <p className="text-[10px] uppercase tracking-wider text-text-tertiary">{dayName}</p>
-                <p className={cn(
-                  "text-lg font-semibold leading-tight",
-                  isToday ? "text-accent" : "text-text"
-                )}>
+                <p className={cn("text-lg font-semibold leading-tight", isToday ? "text-accent" : "text-text")}>
                   {dayNum}
                 </p>
               </button>
 
-              {/* Items */}
               <div className="flex-1 p-1.5 space-y-1 overflow-y-auto">
                 {isLoading && (
                   <div className="space-y-1.5 p-1">
@@ -271,11 +261,10 @@ export default function WeekView() {
                     onClick={() => navigate(`/day/${date}`)}
                     className="w-full h-full flex items-center justify-center text-text-tertiary/30 hover:text-text-tertiary/60 transition-colors"
                   >
-                    <span className="text-[10px]">Empty</span>
+                    <span className="text-[10px]">{t("week.empty")}</span>
                   </button>
                 )}
 
-                {/* Plan items */}
                 {sortedPlans.map((item) => (
                   <motion.div
                     key={item.id}
@@ -295,13 +284,12 @@ export default function WeekView() {
                     )}
                     style={{ borderLeftColor: CATEGORY_COLORS[item.category] }}
                   >
-                    {/* Time badge */}
                     {item.scheduledTime && (
                       <div className="flex items-center gap-0.5 text-text-tertiary mb-0.5">
                         <Clock size={7} />
                         <span className="font-medium">{item.scheduledTime}</span>
-                        {item.estimatedDuration != null && item.estimatedDuration > 0 && (
-                          <span className="ml-auto opacity-70">~{formatDuration(item.estimatedDuration)}</span>
+                        {item.duration != null && item.duration > 0 && (
+                          <span className="ml-auto opacity-70">~{formatDuration(item.duration)}</span>
                         )}
                       </div>
                     )}
@@ -315,15 +303,14 @@ export default function WeekView() {
                         {item.description}
                       </span>
                     </div>
-                    {!item.scheduledTime && item.estimatedDuration != null && item.estimatedDuration > 0 && (
+                    {!item.scheduledTime && item.duration != null && item.duration > 0 && (
                       <div className="flex items-center gap-0.5 mt-0.5 text-text-tertiary">
-                        <span>~{formatDuration(item.estimatedDuration)}</span>
+                        <span>~{formatDuration(item.duration)}</span>
                       </div>
                     )}
                   </motion.div>
                 ))}
 
-                {/* Tasks (notes) — shown after plans with subtle separator */}
                 {tasks.length > 0 && sortedPlans.length > 0 && (
                   <div className="border-t border-border/50 my-1" />
                 )}

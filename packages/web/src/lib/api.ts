@@ -1,4 +1,4 @@
-import type { DayLog, TaskEntry, PlanItem, CreateTaskInput, CreatePlanInput } from "@gmd/shared";
+import type { DayLog, TaskEntry, PlanItem, CreateTaskInput, CreatePlanInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput } from "@gmd/shared";
 
 const BASE = "/api";
 
@@ -97,4 +97,42 @@ export const api = {
       daysTracked: number;
     }>(`/stats?${params}`);
   },
+
+  // Recurring tasks
+  getRecurringTasks: () => request<RecurringTask[]>("/recurring"),
+
+  createRecurringTask: (data: CreateRecurringTaskInput) =>
+    request<RecurringTask>("/recurring", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateRecurringTask: (id: string, data: Partial<CreateRecurringTaskInput> & { active?: boolean }) =>
+    request<RecurringTask>(`/recurring/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteRecurringTask: (id: string) =>
+    request<void>(`/recurring/${id}`, { method: "DELETE" }),
+
+  injectRecurring: (date: string) =>
+    request<{ injected: number; items: PlanItem[] }>(`/recurring/inject/${date}`, {
+      method: "POST",
+    }),
+
+  // Profile
+  getProfile: () => request<UserProfile>("/profile"),
+
+  updateProfile: (data: UpdateProfileInput) =>
+    request<UserProfile>("/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: boolean }>("/profile/password", {
+      method: "PUT",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
 };

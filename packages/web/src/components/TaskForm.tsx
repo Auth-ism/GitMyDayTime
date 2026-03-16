@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, Clock, Timer, MessageSquare, ListTodo, Hash, X } from "lucide-react";
-import { CATEGORY_LABELS, parseDuration, type Category } from "@gmd/shared";
+import { parseDuration, type Category } from "@gmd/shared";
+import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -10,7 +11,7 @@ interface Props {
   type: "task" | "plan";
 }
 
-const categories = Object.entries(CATEGORY_LABELS) as [Category, string][];
+const categoryKeys: Category[] = ["dev", "meeting", "review", "ops", "learning", "personal", "other"];
 
 const QUICK_DURATIONS = [
   { label: "15m", value: 15 },
@@ -21,6 +22,8 @@ const QUICK_DURATIONS = [
 ];
 
 export default function TaskForm({ onSubmit, loading, type }: Props) {
+  const { t } = useI18n();
+  const getCatLabel = useCategoryLabel();
   const [desc, setDesc] = useState("");
   const [cat, setCat] = useState<Category>("dev");
   const [dur, setDur] = useState("");
@@ -74,11 +77,11 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
   const Icon = isPlan ? ListTodo : MessageSquare;
 
   return (
-    <form onSubmit={handleSubmit} className="card space-y-3" aria-label={isPlan ? "Add a plan item" : "Add a note"}>
+    <form onSubmit={handleSubmit} className="card space-y-3" aria-label={isPlan ? t("form.addPlan") : t("form.addNote")}>
       <div className="flex items-center gap-2 mb-1">
         <Icon size={15} className="text-text-tertiary" />
         <span className="text-xs font-medium text-text-tertiary uppercase tracking-wider">
-          {isPlan ? "Plan" : "Quick Notes"}
+          {isPlan ? t("form.plan") : t("form.quickNotes")}
         </span>
       </div>
 
@@ -86,13 +89,13 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
       <div className="flex gap-2">
         <div className="flex-1">
           <label htmlFor={`input-${type}`} className="sr-only">
-            {isPlan ? "What will you do?" : "Add a note..."}
+            {isPlan ? t("form.whatWillYouDo") : t("form.addNotePlace")}
           </label>
           <input
             ref={inputRef}
             id={`input-${type}`}
             className="input"
-            placeholder={isPlan ? "What will you do?" : "Add a note..."}
+            placeholder={isPlan ? t("form.whatWillYouDo") : t("form.addNotePlace")}
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
             autoComplete="off"
@@ -104,7 +107,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
           className={cn("btn btn-primary", loading && "animate-pulse")}
         >
           <Plus size={16} />
-          <span className="hidden sm:inline">Add</span>
+          <span className="hidden sm:inline">{t("form.add")}</span>
         </button>
       </div>
 
@@ -130,7 +133,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
           <input
             type="text"
             className="bg-transparent outline-none text-xs placeholder:text-text-tertiary w-20"
-            placeholder="Add tag..."
+            placeholder={t("form.addTag")}
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={(e) => {
@@ -154,7 +157,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
         <>
           {/* Category pills */}
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Category">
-            {categories.map(([key, label]) => (
+            {categoryKeys.map((key) => (
               <button
                 key={key}
                 type="button"
@@ -168,18 +171,17 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                     : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary hover:text-text border border-transparent hover:border-border"
                 )}
               >
-                {label}
+                {getCatLabel(key)}
               </button>
             ))}
           </div>
 
-          {/* When & How long — inline row */}
+          {/* When & How long */}
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* Start time */}
             <div className="flex items-center gap-2">
               <Clock size={14} className="text-text-tertiary flex-shrink-0" />
-              <span className="text-xs text-text-tertiary">Start</span>
-              <label htmlFor={`time-${type}`} className="sr-only">Scheduled time</label>
+              <span className="text-xs text-text-tertiary">{t("form.start")}</span>
+              <label htmlFor={`time-${type}`} className="sr-only">{t("form.start")}</label>
               <input
                 id={`time-${type}`}
                 type="time"
@@ -189,10 +191,9 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
               />
             </div>
 
-            {/* Duration — quick chips + manual */}
             <div className="flex items-center gap-2 flex-wrap">
               <Timer size={14} className="text-text-tertiary flex-shrink-0" />
-              <span className="text-xs text-text-tertiary">Duration</span>
+              <span className="text-xs text-text-tertiary">{t("form.duration")}</span>
               {QUICK_DURATIONS.map(({ label, value }) => (
                 <button
                   key={value}
@@ -208,11 +209,11 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                   {label}
                 </button>
               ))}
-              <label htmlFor={`dur-${type}`} className="sr-only">Custom duration</label>
+              <label htmlFor={`dur-${type}`} className="sr-only">{t("form.custom")}</label>
               <input
                 id={`dur-${type}`}
                 className="input !w-20 !text-xs !py-1.5"
-                placeholder="Custom"
+                placeholder={t("form.custom")}
                 value={dur}
                 onChange={(e) => { setDur(e.target.value); setDurMinutes(null); }}
               />
@@ -232,7 +233,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
             role="status"
             aria-live="polite"
           >
-            Added successfully
+            {t("form.addedSuccess")}
           </motion.div>
         )}
       </AnimatePresence>

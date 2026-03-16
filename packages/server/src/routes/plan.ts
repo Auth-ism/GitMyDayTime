@@ -20,7 +20,7 @@ router.post("/:date/plan", async (req, res) => {
     id: nanoid(8),
     description: input.data.description,
     category: input.data.category,
-    estimatedDuration: input.data.estimatedDuration,
+    duration: input.data.duration,
     scheduledTime: input.data.scheduledTime,
     completed: false,
     order: nextOrder,
