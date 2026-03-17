@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Check, Trash2, Clock, Timer, Play } from "lucide-react";
-import { type PlanItem as PlanItemType, formatDuration, parseDuration } from "@gmd/shared";
+import { useState, useRef, useEffect } from "react";
+import { Check, Trash2, Clock, Timer, Play, Pencil, Plus, ListChecks, ChevronDown } from "lucide-react";
+import { type PlanItem as PlanItemType, type ChecklistItem, formatDuration, parseDuration } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
@@ -9,15 +9,32 @@ interface Props {
   item: PlanItemType;
   onToggle: (actualDuration?: number) => void;
   onDelete: () => void;
+  onUpdate?: (data: Partial<PlanItemType>) => void;
   onStartPomodoro?: () => void;
+  onAddChecklist?: (description: string) => void;
+  onUpdateChecklist?: (clId: string, data: Partial<ChecklistItem>) => void;
+  onDeleteChecklist?: (clId: string) => void;
 }
 
-export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: Props) {
+export default function PlanItem({
+  item, onToggle, onDelete, onUpdate, onStartPomodoro,
+  onAddChecklist, onUpdateChecklist, onDeleteChecklist,
+}: Props) {
   const { t } = useI18n();
   const getCatLabel = useCategoryLabel();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showDuration, setShowDuration] = useState(false);
   const [actualDur, setActualDur] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(item.description);
+  const [expanded, setExpanded] = useState(false);
+  const [newCheckItem, setNewCheckItem] = useState("");
+  const editRef = useRef<HTMLInputElement>(null);
+  const checkInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) editRef.current?.focus();
+  }, [editing]);
 
   const handleDelete = () => {
     if (confirmDelete) {
@@ -49,6 +66,32 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
     setActualDur("");
   };
 
+  const handleEditSave = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== item.description && onUpdate) {
+      onUpdate({ description: trimmed });
+    }
+    setEditing(false);
+  };
+
+  const handleEditCancel = () => {
+    setEditValue(item.description);
+    setEditing(false);
+  };
+
+  const handleAddCheck = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newCheckItem.trim();
+    if (trimmed && onAddChecklist) {
+      onAddChecklist(trimmed);
+      setNewCheckItem("");
+    }
+  };
+
+  const checklist = item.checklist || [];
+  const checkDone = checklist.filter((c) => c.completed).length;
+  const hasChecklist = checklist.length > 0 || onAddChecklist;
+
   return (
     <motion.div
       layout
@@ -78,9 +121,27 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
         </button>
 
         <div className="flex-1 min-w-0">
-          <p className={cn("text-sm leading-snug", item.completed && "line-through text-text-tertiary")}>
-            {item.description}
-          </p>
+          {editing ? (
+            <input
+              ref={editRef}
+              type="text"
+              className="input !py-1 !px-2 !text-sm"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleEditSave();
+                if (e.key === "Escape") handleEditCancel();
+              }}
+              onBlur={handleEditSave}
+            />
+          ) : (
+            <p
+              className={cn("text-sm leading-snug", item.completed && "line-through text-text-tertiary", onUpdate && "cursor-pointer")}
+              onClick={() => { if (onUpdate && !item.completed) { setEditing(true); } }}
+            >
+              {item.description}
+            </p>
+          )}
           <div className="flex items-center gap-2.5 mt-0.5">
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-bg-secondary text-text-secondary">
               {getCatLabel(item.category)}
@@ -102,8 +163,38 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
                 {formatDuration(item.actualDuration)}
               </span>
             )}
+            {checklist.length > 0 && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="flex items-center gap-1 text-xs text-text-secondary hover:text-accent transition-colors"
+              >
+                <ListChecks size={11} />
+                <span>{checkDone}/{checklist.length}</span>
+                <ChevronDown size={10} className={cn("transition-transform", expanded && "rotate-180")} />
+              </button>
+            )}
           </div>
         </div>
+
+        {!item.completed && onUpdate && !editing && (
+          <button
+            onClick={() => setEditing(true)}
+            aria-label="Edit"
+            className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          >
+            <Pencil size={14} />
+          </button>
+        )}
+
+        {!item.completed && onAddChecklist && checklist.length === 0 && (
+          <button
+            onClick={() => { setExpanded(true); setTimeout(() => checkInputRef.current?.focus(), 100); }}
+            aria-label="Add checklist"
+            className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          >
+            <Plus size={14} />
+          </button>
+        )}
 
         {!item.completed && onStartPomodoro && (
           <button
@@ -128,6 +219,56 @@ export default function PlanItem({ item, onToggle, onDelete, onStartPomodoro }: 
           <Trash2 size={14} />
         </button>
       </div>
+
+      {/* Checklist */}
+      <AnimatePresence>
+        {expanded && hasChecklist && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3.5 pb-2.5 pt-1 border-t border-border/50 space-y-1">
+              {checklist.map((cl) => (
+                <div key={cl.id} className="flex items-center gap-2 group/cl py-0.5">
+                  <button
+                    onClick={() => onUpdateChecklist?.(cl.id, { completed: !cl.completed })}
+                    className={cn(
+                      "w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-all",
+                      cl.completed ? "bg-success border-success" : "border-border-hover hover:border-accent"
+                    )}
+                  >
+                    {cl.completed && <Check size={8} className="text-white" />}
+                  </button>
+                  <span className={cn("text-xs flex-1", cl.completed && "line-through text-text-tertiary")}>
+                    {cl.description}
+                  </span>
+                  <button
+                    onClick={() => onDeleteChecklist?.(cl.id)}
+                    className="p-0.5 text-text-tertiary hover:text-danger opacity-0 group-hover/cl:opacity-100 transition-opacity"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </div>
+              ))}
+              {onAddChecklist && (
+                <form onSubmit={handleAddCheck} className="flex items-center gap-2 pt-0.5">
+                  <Plus size={12} className="text-text-tertiary flex-shrink-0" />
+                  <input
+                    ref={checkInputRef}
+                    type="text"
+                    className="flex-1 text-xs bg-transparent outline-none placeholder:text-text-tertiary py-0.5"
+                    placeholder={t("checklist.add" as any)}
+                    value={newCheckItem}
+                    onChange={(e) => setNewCheckItem(e.target.value)}
+                  />
+                </form>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Actual duration input when completing */}
       <AnimatePresence>

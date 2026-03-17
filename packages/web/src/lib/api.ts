@@ -1,4 +1,4 @@
-import type { DayLog, TaskEntry, PlanItem, CreateTaskInput, CreatePlanInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput } from "@gmd/shared";
+import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput } from "@gmd/shared";
 
 const BASE = "/api";
 
@@ -71,6 +71,22 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ newDate }),
     }),
+
+  // Checklist
+  addChecklist: (date: string, planId: string, data: CreateChecklistInput) =>
+    request<ChecklistItem>(`/days/${date}/plan/${planId}/checklist`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateChecklist: (date: string, planId: string, clId: string, data: Partial<ChecklistItem>) =>
+    request<ChecklistItem>(`/days/${date}/plan/${planId}/checklist/${clId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteChecklist: (date: string, planId: string, clId: string) =>
+    request<void>(`/days/${date}/plan/${planId}/checklist/${clId}`, { method: "DELETE" }),
 
   getCarryOver: (date: string) =>
     request<PlanItem[]>(`/days/${date}/carryover`),

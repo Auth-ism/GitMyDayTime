@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
-import { CreatePlanInput, PlanItemSchema } from "@gmd/shared";
-import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem } from "../storage.js";
+import { CreatePlanInput, CreateChecklistInput, PlanItemSchema } from "@gmd/shared";
+import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem } from "../storage.js";
 import { pool } from "../db.js";
 
 const router = Router();
@@ -53,6 +53,26 @@ router.put("/:date/plan/:id/move", async (req, res) => {
   const moved = await movePlanItem(req.userId!, req.params.id, newDate);
   if (!moved) return res.status(404).json({ error: "Plan item not found" });
   res.json(moved);
+});
+
+// ── Checklist ───────────────────────────────────────────────────
+
+router.post("/:date/plan/:planId/checklist", async (req, res) => {
+  const input = CreateChecklistInput.safeParse(req.body);
+  if (!input.success) return res.status(400).json({ error: input.error });
+  const item = await addChecklistItem(req.userId!, req.params.planId, nanoid(8), input.data.description);
+  res.status(201).json(item);
+});
+
+router.put("/:date/plan/:planId/checklist/:clId", async (req, res) => {
+  const updated = await updateChecklistItem(req.userId!, req.params.clId, req.body);
+  if (!updated) return res.status(404).json({ error: "Checklist item not found" });
+  res.json(updated);
+});
+
+router.delete("/:date/plan/:planId/checklist/:clId", async (req, res) => {
+  await deleteChecklistItem(req.userId!, req.params.clId);
+  res.status(204).end();
 });
 
 export default router;

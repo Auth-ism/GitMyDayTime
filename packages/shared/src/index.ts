@@ -22,6 +22,20 @@ export const TaskEntrySchema = z.object({
 });
 export type TaskEntry = z.infer<typeof TaskEntrySchema>;
 
+export const ChecklistItemSchema = z.object({
+  id: z.string(),
+  planId: z.string(),
+  description: z.string(),
+  completed: z.boolean().default(false),
+  order: z.number(),
+});
+export type ChecklistItem = z.infer<typeof ChecklistItemSchema>;
+
+export const CreateChecklistInput = z.object({
+  description: z.string().min(1),
+});
+export type CreateChecklistInput = z.infer<typeof CreateChecklistInput>;
+
 export const PlanItemSchema = z.object({
   id: z.string(),
   description: z.string(),
@@ -31,6 +45,7 @@ export const PlanItemSchema = z.object({
   order: z.number(),
   scheduledTime: z.string().optional(),
   actualDuration: z.number().optional(),
+  checklist: z.array(ChecklistItemSchema).default([]),
 });
 export type PlanItem = z.infer<typeof PlanItemSchema>;
 

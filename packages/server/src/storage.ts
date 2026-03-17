@@ -1,5 +1,5 @@
 import { pool } from "./db.js";
-import { Category, type DayLog, type TaskEntry, type PlanItem, type RecurringTask, type CreateRecurringTaskInput, type UserProfile, type UpdateProfileInput } from "@gmd/shared";
+import { Category, type DayLog, type TaskEntry, type PlanItem, type ChecklistItem, type RecurringTask, type CreateRecurringTaskInput, type UserProfile, type UpdateProfileInput } from "@gmd/shared";
 
 // Helpers to normalize DB row types
 function serializeTimestamp(val: unknown): string {
@@ -123,13 +123,31 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog> {
     ),
   ]);
 
+  const planItems = planResult.rows.map(toPlanItem);
+  const planIds = planItems.map((p) => p.id);
+
+  let checklistByPlan: Record<string, ChecklistItem[]> = {};
+  if (planIds.length > 0) {
+    const { rows: clRows } = await pool.query(
+      `SELECT id, plan_id AS "planId", description, completed, sort_order AS "order"
+       FROM plan_checklist WHERE plan_id = ANY($1) AND user_id = $2
+       ORDER BY sort_order`,
+      [planIds, userId]
+    );
+    for (const row of clRows) {
+      const r = row as ChecklistItem;
+      if (!checklistByPlan[r.planId]) checklistByPlan[r.planId] = [];
+      checklistByPlan[r.planId].push(r);
+    }
+  }
+
   return {
     date,
     tasks: tasksResult.rows.map((r) => ({
       ...r,
       timestamp: serializeTimestamp(r.timestamp),
     })) as TaskEntry[],
-    plan: planResult.rows.map(toPlanItem),
+    plan: planItems.map((p) => ({ ...p, checklist: checklistByPlan[p.id] || [] })),
   };
 }
 
@@ -606,6 +624,7 @@ export async function injectRecurringTasks(userId: string, date: string): Promis
         completed: false,
         order: nextOrder,
         scheduledTime: formatTime(task.scheduled_time),
+        checklist: [],
       });
       nextOrder++;
     }
@@ -618,4 +637,58 @@ export async function injectRecurringTasks(userId: string, date: string): Promis
   } finally {
     client.release();
   }
+}
+
+// ── Plan Checklist ──────────────────────────────────────────────
+
+export async function addChecklistItem(
+  userId: string,
+  planId: string,
+  id: string,
+  description: string
+): Promise<ChecklistItem> {
+  const { rows: orderRows } = await pool.query(
+    "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM plan_checklist WHERE plan_id = $1 AND user_id = $2",
+    [planId, userId]
+  );
+  const { rows } = await pool.query(
+    `INSERT INTO plan_checklist (id, plan_id, user_id, description, completed, sort_order)
+     VALUES ($1, $2, $3, $4, false, $5)
+     RETURNING id, plan_id AS "planId", description, completed, sort_order AS "order"`,
+    [id, planId, userId, description, orderRows[0].next_order]
+  );
+  return rows[0] as ChecklistItem;
+}
+
+export async function updateChecklistItem(
+  userId: string,
+  itemId: string,
+  updates: Partial<Pick<ChecklistItem, "description" | "completed" | "order">>
+): Promise<ChecklistItem | null> {
+  const { fields, values, nextIdx } = buildDynamicUpdate(updates, {
+    description: "description",
+    completed: "completed",
+    order: "sort_order",
+  });
+  if (fields.length === 0) return null;
+  let idx = nextIdx;
+  values.push(itemId, userId);
+  const { rows } = await pool.query(
+    `UPDATE plan_checklist SET ${fields.join(", ")}
+     WHERE id = $${idx++} AND user_id = $${idx}
+     RETURNING id, plan_id AS "planId", description, completed, sort_order AS "order"`,
+    values
+  );
+  return rows.length > 0 ? (rows[0] as ChecklistItem) : null;
+}
+
+export async function deleteChecklistItem(
+  userId: string,
+  itemId: string
+): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    "DELETE FROM plan_checklist WHERE id = $1 AND user_id = $2",
+    [itemId, userId]
+  );
+  return (rowCount ?? 0) > 0;
 }

@@ -6,6 +6,7 @@ import { useI18n, useDayLabels } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
+import { useSwipe } from "@/hooks/useSwipe";
 
 export default function CalendarPage() {
   const { t, locale } = useI18n();
@@ -48,6 +49,7 @@ export default function CalendarPage() {
     setCurrent({ year: now.getFullYear(), month: now.getMonth() });
   };
 
+  const swipeHandlers = useSwipe({ onSwipeLeft: next, onSwipeRight: prev });
   const monthName = new Date(current.year, current.month).toLocaleDateString(dateLoc, { month: "long", year: "numeric" });
   const today = new Date().toISOString().split("T")[0];
   const isCurrentMonth = current.year === new Date().getFullYear() && current.month === new Date().getMonth();
@@ -73,7 +75,7 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="card" role="grid" aria-label={`${t("cal.title")} ${monthName}`}>
+      <div className="card" role="grid" aria-label={`${t("cal.title")} ${monthName}`} {...swipeHandlers}>
         <div className="grid grid-cols-7 gap-1.5 mb-2" role="row">
           {dayLabels.map((d) => (
             <div key={d} role="columnheader" className="text-xs text-text-tertiary text-center font-medium py-2">{d}</div>

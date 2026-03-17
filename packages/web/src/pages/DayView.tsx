@@ -8,10 +8,11 @@ import PlanItem from "@/components/PlanItem";
 import CarryOverBanner from "@/components/CarryOverBanner";
 import StandupExport from "@/components/StandupExport";
 import PomodoroTimer from "@/components/PomodoroTimer";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, Reorder } from "framer-motion";
 import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Filter } from "lucide-react";
 import { CATEGORY_LABELS, todayStr, type Category } from "@gmd/shared";
 import { cn } from "@/lib/cn";
+import { useSwipe } from "@/hooks/useSwipe";
 
 function getDateStr(dateParam?: string): string {
   return dateParam || todayStr();
@@ -25,7 +26,7 @@ export default function DayView() {
   const navigate = useNavigate();
   const { t, locale } = useI18n();
   const getCatLabel = useCategoryLabel();
-  const { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan } = useDayLog(date);
+  const { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan, reorderPlan, addChecklist, updateChecklist, deleteChecklist } = useDayLog(date);
   const [filterCat, setFilterCat] = useState<Category | "all">("all");
   const [pomodoroTask, setPomodoroTask] = useState<{ id: string; name: string } | null>(null);
 
@@ -50,6 +51,8 @@ export default function DayView() {
     navigate(`/day/${d.toISOString().split("T")[0]}`);
   };
 
+  const swipeHandlers = useSwipe({ onSwipeLeft: nextDay, onSwipeRight: prevDay });
+
   const completedPlan = dayLog?.plan.filter((p) => p.completed).length || 0;
   const totalPlan = dayLog?.plan.length || 0;
   const taskCount = dayLog?.tasks.length || 0;
@@ -58,7 +61,7 @@ export default function DayView() {
   const dateLoc = locale === "tr" ? "tr-TR" : "en-US";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" {...swipeHandlers}>
       {/* Date header */}
       <div className="card flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -195,30 +198,41 @@ export default function DayView() {
           loading={addPlan.isPending}
           onSubmit={(data) => addPlan.mutate(data)}
         />
-        <div className="mt-2 space-y-1.5">
-          <AnimatePresence mode="popLayout">
-            {filteredPlan.map((item) => (
-                <PlanItem
-                  key={item.id}
-                  item={item}
-                  onToggle={(actualDuration) => updatePlan.mutate({
-                    id: item.id,
-                    completed: !item.completed,
-                    ...(actualDuration !== undefined ? { actualDuration } : {}),
-                  })}
-                  onDelete={() => deletePlan.mutate(item.id)}
-                  onStartPomodoro={() => setPomodoroTask({ id: item.id, name: item.description })}
-                />
-              ))}
-          </AnimatePresence>
-          {dayLog && filteredPlan.length === 0 && filterCat === "all" && (
-            <div className="text-center py-6 text-text-tertiary">
-              <Target size={24} className="mx-auto mb-2 opacity-40" />
-              <p className="text-sm">{t("day.noPlans")}</p>
-              <p className="text-xs mt-0.5">{t("day.noPlansDesc")}</p>
-            </div>
-          )}
-        </div>
+        <Reorder.Group
+          axis="y"
+          values={filteredPlan}
+          onReorder={(newOrder) => {
+            reorderPlan.mutate(newOrder.map((p) => p.id));
+          }}
+          className="mt-2 space-y-1.5"
+          as="div"
+        >
+          {filteredPlan.map((item) => (
+            <Reorder.Item key={item.id} value={item} as="div" dragListener={!item.completed}>
+              <PlanItem
+                item={item}
+                onToggle={(actualDuration) => updatePlan.mutate({
+                  id: item.id,
+                  completed: !item.completed,
+                  ...(actualDuration !== undefined ? { actualDuration } : {}),
+                })}
+                onDelete={() => deletePlan.mutate(item.id)}
+                onUpdate={(data) => updatePlan.mutate({ id: item.id, ...data })}
+                onStartPomodoro={() => setPomodoroTask({ id: item.id, name: item.description })}
+                onAddChecklist={(desc) => addChecklist.mutate({ planId: item.id, description: desc })}
+                onUpdateChecklist={(clId, data) => updateChecklist.mutate({ planId: item.id, clId, ...data })}
+                onDeleteChecklist={(clId) => deleteChecklist.mutate({ planId: item.id, clId })}
+              />
+            </Reorder.Item>
+          ))}
+        </Reorder.Group>
+        {dayLog && filteredPlan.length === 0 && filterCat === "all" && (
+          <div className="text-center py-6 text-text-tertiary">
+            <Target size={24} className="mx-auto mb-2 opacity-40" />
+            <p className="text-sm">{t("day.noPlans")}</p>
+            <p className="text-xs mt-0.5">{t("day.noPlansDesc")}</p>
+          </div>
+        )}
       </section>
 
       {/* Activity log section */}
@@ -235,6 +249,7 @@ export default function DayView() {
                 key={task.id}
                 task={task}
                 onDelete={() => deleteTask.mutate(task.id)}
+                onUpdate={(data) => updateTask.mutate({ id: task.id, ...data })}
               />
             ))}
           </AnimatePresence>

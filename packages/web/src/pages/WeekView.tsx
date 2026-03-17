@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { ChevronLeft, ChevronRight, CalendarDays, Clock, Target, Check, MessageSquare } from "lucide-react";
 import { CATEGORY_COLORS, formatDuration, todayStr, type DayLog } from "@gmd/shared";
 import { motion } from "framer-motion";
+import { useSwipe } from "@/hooks/useSwipe";
 
 function getWeekDates(ref: Date): string[] {
   const d = new Date(ref);
@@ -65,6 +66,7 @@ export default function WeekView() {
   const goToday = () => setWeekRef(new Date());
 
   const isCurrentWeek = dates.includes(today);
+  const swipeHandlers = useSwipe({ onSwipeLeft: nextWeek, onSwipeRight: prevWeek });
 
   const moveItem = useCallback(async (info: DragInfo, toDate: string) => {
     if (info.fromDate === toDate) return;
@@ -197,7 +199,7 @@ export default function WeekView() {
       </div>
 
       {/* Week grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2" {...swipeHandlers}>
         {dates.map((date, i) => {
           const dayLog = dayQueries[i].data;
           const isLoading = dayQueries[i].isLoading;
@@ -279,7 +281,7 @@ export default function WeekView() {
                     onClick={() => navigate(`/day/${date}`)}
                     className={cn(
                       "px-1.5 py-1 rounded-md text-[10px] leading-tight cursor-grab active:cursor-grabbing",
-                      "hover:opacity-80 transition-opacity border-l-2 select-none touch-none",
+                      "hover:opacity-80 transition-opacity border-l-2 select-none touch-manipulation",
                       item.completed && "opacity-40"
                     )}
                     style={{ borderLeftColor: CATEGORY_COLORS[item.category] }}
@@ -328,7 +330,7 @@ export default function WeekView() {
                     onClick={() => navigate(`/day/${date}`)}
                     className={cn(
                       "px-1.5 py-0.5 rounded-md text-[10px] leading-tight cursor-grab active:cursor-grabbing",
-                      "hover:opacity-80 transition-opacity select-none touch-none text-text-secondary"
+                      "hover:opacity-80 transition-opacity select-none touch-manipulation text-text-secondary"
                     )}
                   >
                     <div className="flex items-center gap-1">

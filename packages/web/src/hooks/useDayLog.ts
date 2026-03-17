@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { api } from "@/lib/api";
-import type { CreateTaskInput, CreatePlanInput, TaskEntry, PlanItem, DayLog } from "@gmd/shared";
+import type { CreateTaskInput, CreatePlanInput, TaskEntry, PlanItem, ChecklistItem, DayLog } from "@gmd/shared";
 
 export function useDayLog(date: string) {
   const qc = useQueryClient();
@@ -100,6 +100,7 @@ export function useDayLog(date: string) {
           completed: false,
           order: prev.plan.length,
           scheduledTime: data.scheduledTime,
+          checklist: [],
         };
         qc.setQueryData<DayLog>(key, { ...prev, plan: [...prev.plan, optimistic] });
       }
@@ -141,5 +142,95 @@ export function useDayLog(date: string) {
     onSettled: invalidateWithStats,
   });
 
-  return { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan };
+  const reorderPlan = useMutation({
+    mutationFn: (ids: string[]) => api.reorderPlan(date, ids),
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<DayLog>(key);
+      if (prev) {
+        const planMap = new Map(prev.plan.map((p) => [p.id, p]));
+        const reordered = ids.map((id, i) => {
+          const item = planMap.get(id)!;
+          return { ...item, order: i };
+        });
+        qc.setQueryData<DayLog>(key, { ...prev, plan: reordered });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
+    onSettled: invalidateWithStats,
+  });
+
+  const addChecklist = useMutation({
+    mutationFn: ({ planId, description }: { planId: string; description: string }) =>
+      api.addChecklist(date, planId, { description }),
+    onMutate: async ({ planId, description }) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<DayLog>(key);
+      if (prev) {
+        const optimistic: ChecklistItem = {
+          id: crypto.randomUUID(),
+          planId,
+          description,
+          completed: false,
+          order: prev.plan.find((p) => p.id === planId)?.checklist?.length ?? 0,
+        };
+        qc.setQueryData<DayLog>(key, {
+          ...prev,
+          plan: prev.plan.map((p) =>
+            p.id === planId ? { ...p, checklist: [...(p.checklist || []), optimistic] } : p
+          ),
+        });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
+    onSettled: invalidate,
+  });
+
+  const updateChecklist = useMutation({
+    mutationFn: ({ planId, clId, ...data }: { planId: string; clId: string } & Partial<ChecklistItem>) =>
+      api.updateChecklist(date, planId, clId, data),
+    onMutate: async ({ planId, clId, ...data }) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<DayLog>(key);
+      if (prev) {
+        qc.setQueryData<DayLog>(key, {
+          ...prev,
+          plan: prev.plan.map((p) =>
+            p.id === planId
+              ? { ...p, checklist: (p.checklist || []).map((c) => c.id === clId ? { ...c, ...data } : c) }
+              : p
+          ),
+        });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
+    onSettled: invalidate,
+  });
+
+  const deleteChecklist = useMutation({
+    mutationFn: ({ planId, clId }: { planId: string; clId: string }) =>
+      api.deleteChecklist(date, planId, clId),
+    onMutate: async ({ planId, clId }) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<DayLog>(key);
+      if (prev) {
+        qc.setQueryData<DayLog>(key, {
+          ...prev,
+          plan: prev.plan.map((p) =>
+            p.id === planId
+              ? { ...p, checklist: (p.checklist || []).filter((c) => c.id !== clId) }
+              : p
+          ),
+        });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
+    onSettled: invalidate,
+  });
+
+  return { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan, reorderPlan, addChecklist, updateChecklist, deleteChecklist };
 }

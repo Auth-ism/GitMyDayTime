@@ -79,6 +79,14 @@ const translations = {
     // TaskItem
     "task.deleteNote": "Delete note",
     "task.confirmDelete": "Confirm delete",
+    "task.edit": "Edit note",
+
+    // Inline edit
+    "edit.save": "Save",
+    "edit.cancel": "Cancel",
+
+    // Checklist
+    "checklist.add": "Add a step...",
 
     // CarryOver
     "carry.incomplete": "{count} incomplete task{s} from yesterday",
@@ -311,6 +319,14 @@ const translations = {
     // TaskItem
     "task.deleteNote": "Notu sil",
     "task.confirmDelete": "Silmeyi onayla",
+    "task.edit": "Notu duzenle",
+
+    // Inline edit
+    "edit.save": "Kaydet",
+    "edit.cancel": "Iptal",
+
+    // Checklist
+    "checklist.add": "Adim ekle...",
 
     // CarryOver
     "carry.incomplete": "Dunden {count} tamamlanmamis gorev",

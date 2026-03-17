@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -31,7 +31,18 @@ export default function SearchPage() {
     enabled: debouncedQuery.length >= 2,
   });
 
-  const totalResults = (data?.plans.length || 0) + (data?.tasks.length || 0);
+  // Merge plans and tasks, sort by date descending
+  const results = useMemo(() => {
+    if (!data) return [];
+    const items: Array<{ type: "plan" | "task"; date: string; data: any }> = [
+      ...data.plans.map((p) => ({ type: "plan" as const, date: p.date, data: p })),
+      ...data.tasks.map((t) => ({ type: "task" as const, date: t.date, data: t })),
+    ];
+    items.sort((a, b) => b.date.localeCompare(a.date));
+    return items;
+  }, [data]);
+
+  const totalResults = results.length;
 
   return (
     <div className="space-y-5">
@@ -59,65 +70,65 @@ export default function SearchPage() {
       )}
 
       <AnimatePresence mode="popLayout">
-        {data?.plans.map((item) => (
-          <motion.button
-            key={`plan-${item.id}`}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            onClick={() => navigate(`/day/${item.date}`)}
-            className="w-full card text-left hover:border-border-hover transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0">
-                {item.completed ? (
-                  <Check size={14} className="text-success" />
-                ) : (
-                  <Target size={14} className="text-text-tertiary" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={cn("text-sm", item.completed && "line-through text-text-tertiary")}>
-                  {item.description}
-                </p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span
-                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"
-                    style={{ backgroundColor: CATEGORY_COLORS[item.category] + "20", color: CATEGORY_COLORS[item.category] }}
-                  >
-                    {getCatLabel(item.category)}
-                  </span>
-                  <span className="text-[10px] text-text-tertiary">{item.date}</span>
-                  {item.duration && (
-                    <span className="flex items-center gap-0.5 text-[10px] text-text-tertiary">
-                      <Clock size={9} />
-                      {formatDuration(item.duration)}
-                    </span>
+        {results.map((item) =>
+          item.type === "plan" ? (
+            <motion.button
+              key={`plan-${item.data.id}`}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              onClick={() => navigate(`/day/${item.date}`)}
+              className="w-full card text-left hover:border-border-hover transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0">
+                  {item.data.completed ? (
+                    <Check size={14} className="text-success" />
+                  ) : (
+                    <Target size={14} className="text-text-tertiary" />
                   )}
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className={cn("text-sm", item.data.completed && "line-through text-text-tertiary")}>
+                    {item.data.description}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"
+                      style={{ backgroundColor: CATEGORY_COLORS[item.data.category as Category] + "20", color: CATEGORY_COLORS[item.data.category as Category] }}
+                    >
+                      {getCatLabel(item.data.category)}
+                    </span>
+                    <span className="text-[10px] text-text-tertiary">{item.date}</span>
+                    {item.data.duration && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-text-tertiary">
+                        <Clock size={9} />
+                        {formatDuration(item.data.duration)}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </motion.button>
-        ))}
-
-        {data?.tasks.map((task) => (
-          <motion.button
-            key={`task-${task.id}`}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            onClick={() => navigate(`/day/${task.date}`)}
-            className="w-full card text-left hover:border-border-hover transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <MessageSquare size={14} className="text-text-tertiary flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm">{task.description}</p>
-                <span className="text-[10px] text-text-tertiary">{task.date}</span>
+            </motion.button>
+          ) : (
+            <motion.button
+              key={`task-${item.data.id}`}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              onClick={() => navigate(`/day/${item.date}`)}
+              className="w-full card text-left hover:border-border-hover transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <MessageSquare size={14} className="text-text-tertiary flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm">{item.data.description}</p>
+                  <span className="text-[10px] text-text-tertiary">{item.date}</span>
+                </div>
               </div>
-            </div>
-          </motion.button>
-        ))}
+            </motion.button>
+          )
+        )}
       </AnimatePresence>
 
       {debouncedQuery.length >= 2 && !isLoading && totalResults === 0 && (
