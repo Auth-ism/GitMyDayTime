@@ -206,8 +206,9 @@ authRouter.post("/register", async (req: Request, res: Response) => {
         [email, username, passwordHash]
       );
       const user = rows[0];
+      await createSession(user.id, user.email, res, req);
       await logAuditEvent("register", req, user.id, { email, admin: true });
-      res.status(201).json({ user: { id: user.id, email: user.email, username: user.username } });
+      res.status(201).json({ user: { id: user.id, email: user.email, username: user.username } as UserResponse });
       return;
     } catch (err: any) {
       if (err.code === "23505") {
