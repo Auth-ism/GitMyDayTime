@@ -158,8 +158,23 @@ spec:
                 secretKeyRef:
                   name: gitmydaytime-secret
                   key: jwt-secret
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gitmydaytime-secret
+                  key: resend-api-key
+            - name: RESEND_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gitmydaytime-secret
+                  key: resend-api-key
             - name: REDIS_URL
               value: "redis://gitmydaytime-redis-service:6379"
+            - name: ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: gitmydaytime-secret
+                  key: admin-email
           resources:
             requests:
               memory: "64Mi"
