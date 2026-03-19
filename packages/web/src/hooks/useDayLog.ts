@@ -21,7 +21,7 @@ export function useDayLog(date: string) {
         if (res.injected > 0) {
           qc.invalidateQueries({ queryKey: key });
         }
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [query.data, date]);
 
@@ -101,6 +101,7 @@ export function useDayLog(date: string) {
           order: prev.plan.length,
           scheduledTime: data.scheduledTime,
           checklist: [],
+          itemType: "plan",
         };
         qc.setQueryData<DayLog>(key, { ...prev, plan: [...prev.plan, optimistic] });
       }
@@ -232,5 +233,31 @@ export function useDayLog(date: string) {
     onSettled: invalidate,
   });
 
-  return { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan, reorderPlan, addChecklist, updateChecklist, deleteChecklist };
+  const addReminder = useMutation({
+    mutationFn: (data: Omit<CreatePlanInput, "itemType">) => api.addPlan(date, { ...data, itemType: "reminder" }),
+    onMutate: async (data) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<DayLog>(key);
+      if (prev) {
+        const optimistic: PlanItem = {
+          id: crypto.randomUUID(),
+          description: data.description,
+          category: "other",
+          completed: false,
+          order: prev.plan.length,
+          scheduledTime: data.scheduledTime,
+          checklist: [],
+          itemType: "reminder",
+        };
+        qc.setQueryData<DayLog>(key, { ...prev, plan: [...prev.plan, optimistic] });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
+    onSettled: invalidate,
+  });
+
+  const deleteReminder = deletePlan;
+
+  return { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan, reorderPlan, addReminder, deleteReminder, addChecklist, updateChecklist, deleteChecklist };
 }

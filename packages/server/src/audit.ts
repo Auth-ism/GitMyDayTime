@@ -7,7 +7,8 @@ export type AuditEvent =
   | "register"
   | "logout"
   | "password_change"
-  | "session_refresh";
+  | "session_refresh"
+  | "user_approved";
 
 export function getClientIp(req: Request): string {
   // Trust X-Forwarded-For from reverse proxy (nginx ingress)

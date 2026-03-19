@@ -1,17 +1,17 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Clock, Timer, MessageSquare, ListTodo, Hash, X } from "lucide-react";
-import { parseDuration, type Category } from "@gmd/shared";
+import { Plus, Clock, Timer, MessageSquare, ListTodo, Bell } from "lucide-react";
+import { parseDuration, DEFAULT_CATEGORIES, type Category, type ItemType } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
-  onSubmit: (data: { description: string; category: Category; duration?: number; tags: string[]; scheduledTime?: string }) => void;
+  onSubmit: (data: { description: string; category: Category; duration?: number; tags: string[]; scheduledTime?: string; itemType?: ItemType }) => void;
   loading?: boolean;
-  type: "task" | "plan";
+  type: "task" | "plan" | "reminder";
 }
 
-const categoryKeys: Category[] = ["dev", "meeting", "review", "ops", "learning", "personal", "other"];
+const categoryKeys: string[] = [...DEFAULT_CATEGORIES];
 
 const QUICK_DURATIONS = [
   { label: "15m", value: 15 },
@@ -29,30 +29,29 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
   const [dur, setDur] = useState("");
   const [durMinutes, setDurMinutes] = useState<number | null>(null);
   const [time, setTime] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
   const [justAdded, setJustAdded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isPlan = type === "plan";
+  const isReminder = type === "reminder";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!desc.trim() || loading) return;
-    const duration = isPlan ? (durMinutes ?? (dur ? parseDuration(dur) : undefined)) : undefined;
+    const parsed = dur ? parseDuration(dur) : undefined;
+    const duration = isPlan ? (durMinutes ?? (parsed && parsed > 0 ? parsed : undefined)) : undefined;
     onSubmit({
       description: desc.trim(),
       category: isPlan ? cat : "other",
       duration,
-      tags: isPlan ? [] : tags,
-      ...(isPlan && time ? { scheduledTime: time } : {}),
+      tags: [],
+      ...((isPlan || isReminder) && time ? { scheduledTime: time } : {}),
+      ...(isReminder ? { itemType: "reminder" as ItemType } : {}),
     });
     setDesc("");
     setDur("");
     setDurMinutes(null);
     setTime("");
-    setTags([]);
-    setTagInput("");
     setJustAdded(true);
     inputRef.current?.focus();
   };
@@ -74,14 +73,14 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
     }
   }, [justAdded]);
 
-  const Icon = isPlan ? ListTodo : MessageSquare;
+  const Icon = isPlan ? ListTodo : isReminder ? Bell : MessageSquare;
 
   return (
-    <form onSubmit={handleSubmit} className="card space-y-3" aria-label={isPlan ? t("form.addPlan") : t("form.addNote")}>
+    <form onSubmit={handleSubmit} className="card space-y-3" aria-label={isPlan ? t("form.addPlan") : isReminder ? t("reminder.add" as any) : t("form.addNote")}>
       <div className="flex items-center gap-2 mb-1">
         <Icon size={15} className="text-text-tertiary" />
         <span className="text-xs font-medium text-text-tertiary uppercase tracking-wider">
-          {isPlan ? t("form.plan") : t("form.quickNotes")}
+          {isPlan ? t("form.plan") : isReminder ? t("reminder.title" as any) : t("form.quickNotes")}
         </span>
       </div>
 
@@ -89,13 +88,13 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
       <div className="flex gap-2">
         <div className="flex-1">
           <label htmlFor={`input-${type}`} className="sr-only">
-            {isPlan ? t("form.whatWillYouDo") : t("form.addNotePlace")}
+            {isPlan ? t("form.whatWillYouDo") : isReminder ? t("reminder.placeholder" as any) : t("form.addNotePlace")}
           </label>
           <input
             ref={inputRef}
             id={`input-${type}`}
             className="input"
-            placeholder={isPlan ? t("form.whatWillYouDo") : t("form.addNotePlace")}
+            placeholder={isPlan ? t("form.whatWillYouDo") : isReminder ? t("reminder.placeholder" as any) : t("form.addNotePlace")}
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
             autoComplete="off"
@@ -111,44 +110,17 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
         </button>
       </div>
 
-      {/* Tags — only for quick notes */}
-      {!isPlan && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <Hash size={14} className="text-text-tertiary flex-shrink-0" />
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-bg-secondary text-xs font-medium text-text-secondary border border-border"
-            >
-              {tag}
-              <button
-                type="button"
-                onClick={() => setTags((t) => t.filter((x) => x !== tag))}
-                className="text-text-tertiary hover:text-danger"
-              >
-                <X size={10} />
-              </button>
-            </span>
-          ))}
+      {/* Time — only for reminders (required) */}
+      {isReminder && (
+        <div className="flex items-center gap-2">
+          <Clock size={14} className="text-text-tertiary flex-shrink-0" />
+          <span className="text-xs text-text-tertiary">{t("form.start")}</span>
           <input
-            type="text"
-            className="bg-transparent outline-none text-xs placeholder:text-text-tertiary w-20"
-            placeholder={t("form.addTag")}
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
-                e.preventDefault();
-                const tag = tagInput.trim().toLowerCase().replace(/[^a-z0-9-_]/g, "");
-                if (tag && !tags.includes(tag)) {
-                  setTags((t) => [...t, tag]);
-                }
-                setTagInput("");
-              }
-              if (e.key === "Backspace" && !tagInput && tags.length > 0) {
-                setTags((t) => t.slice(0, -1));
-              }
-            }}
+            type="time"
+            className="input !w-[7.5rem] !text-sm !py-1.5"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            required
           />
         </div>
       )}

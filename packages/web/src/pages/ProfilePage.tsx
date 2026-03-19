@@ -75,6 +75,9 @@ export default function ProfilePage() {
         workEndTime: profile.workEndTime,
         defaultCategory: profile.defaultCategory as any,
         isPublic: profile.isPublic,
+        phoneNumber: profile.phoneNumber,
+        smsNotifications: profile.smsNotifications,
+        emailNotifications: profile.emailNotifications,
       });
     }
   }, [profile]);
@@ -255,6 +258,44 @@ export default function ProfilePage() {
               <Toggle
                 checked={form.isPublic ?? false}
                 onChange={(v) => setForm({ ...form, isPublic: v })}
+              />
+            </div>
+          </div>
+
+          {/* Notifications */}
+          <div className="card space-y-4">
+            <h3 className="text-sm font-semibold text-text">{t("profile.notifications" as any)}</h3>
+
+            <FormField label={t("profile.phoneNumber" as any)}>
+              <input
+                className="input"
+                type="tel"
+                value={form.phoneNumber ?? ""}
+                onChange={(e) => setForm({ ...form, phoneNumber: e.target.value || null })}
+                placeholder="+90 555 000 00 00"
+              />
+              <p className="text-xs text-text-tertiary mt-1">{t("profile.phoneNumberDesc" as any)}</p>
+            </FormField>
+
+            <div className="flex items-center justify-between py-1">
+              <div>
+                <p className="text-sm font-medium text-text">{t("profile.emailNotifications" as any)}</p>
+                <p className="text-xs text-text-tertiary">{t("profile.emailNotificationsDesc" as any)}</p>
+              </div>
+              <Toggle
+                checked={form.emailNotifications ?? false}
+                onChange={(v) => setForm({ ...form, emailNotifications: v })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between py-1">
+              <div>
+                <p className="text-sm font-medium text-text">{t("profile.smsNotifications" as any)}</p>
+                <p className="text-xs text-text-tertiary">{t("profile.smsNotificationsDesc" as any)}</p>
+              </div>
+              <Toggle
+                checked={form.smsNotifications ?? false}
+                onChange={(v) => setForm({ ...form, smsNotifications: v })}
               />
             </div>
           </div>

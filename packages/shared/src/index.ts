@@ -1,15 +1,27 @@
 import { z } from "zod";
 
-export const Category = z.enum([
-  "dev",
-  "meeting",
-  "review",
-  "ops",
-  "learning",
-  "personal",
-  "other",
-]);
+export const Category = z.string().min(1).max(50);
 export type Category = z.infer<typeof Category>;
+
+export const DEFAULT_CATEGORIES = ["dev", "meeting", "review", "ops", "learning", "personal", "other"] as const;
+export type DefaultCategory = (typeof DEFAULT_CATEGORIES)[number];
+
+export const ItemType = z.enum(["plan", "reminder"]);
+export type ItemType = z.infer<typeof ItemType>;
+
+export const UserCategorySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string(),
+  sortOrder: z.number(),
+});
+export type UserCategory = z.infer<typeof UserCategorySchema>;
+
+export const CreateCategoryInput = z.object({
+  name: z.string().min(1).max(50),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#6b7280"),
+});
+export type CreateCategoryInput = z.infer<typeof CreateCategoryInput>;
 
 export const TaskEntrySchema = z.object({
   id: z.string(),
@@ -46,6 +58,8 @@ export const PlanItemSchema = z.object({
   scheduledTime: z.string().optional(),
   actualDuration: z.number().optional(),
   checklist: z.array(ChecklistItemSchema).default([]),
+  itemType: ItemType.default("plan"),
+  notificationSent: z.boolean().optional(),
 });
 export type PlanItem = z.infer<typeof PlanItemSchema>;
 
@@ -69,10 +83,11 @@ export const CreatePlanInput = z.object({
   category: Category.default("other"),
   duration: z.number().optional(),
   scheduledTime: z.string().optional(),
+  itemType: ItemType.default("plan"),
 });
 export type CreatePlanInput = z.infer<typeof CreatePlanInput>;
 
-export const CATEGORY_LABELS: Record<Category, string> = {
+export const CATEGORY_LABELS: Record<string, string> = {
   dev: "Development",
   meeting: "Meeting",
   review: "Code Review",
@@ -82,7 +97,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   other: "Other",
 };
 
-export const CATEGORY_COLORS: Record<Category, string> = {
+export const CATEGORY_COLORS: Record<string, string> = {
   dev: "#6366f1",
   meeting: "#f59e0b",
   review: "#10b981",
@@ -178,6 +193,7 @@ export interface UserResponse {
   id: string;
   email: string;
   username: string;
+  emailVerified: boolean;
 }
 
 // User profile
@@ -199,6 +215,9 @@ export const UserProfileSchema = z.object({
   defaultCategory: z.string(),
   isPublic: z.boolean(),
   notificationEnabled: z.boolean(),
+  phoneNumber: z.string().nullable(),
+  smsNotifications: z.boolean(),
+  emailNotifications: z.boolean(),
   createdAt: z.string(),
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;
@@ -215,9 +234,12 @@ export const UpdateProfileInput = z.object({
   dailyGoal: z.number().min(1).max(100).nullable().optional(),
   workStartTime: z.string().nullable().optional(),
   workEndTime: z.string().nullable().optional(),
-  defaultCategory: Category.optional(),
+  defaultCategory: z.string().optional(),
   isPublic: z.boolean().optional(),
   notificationEnabled: z.boolean().optional(),
+  phoneNumber: z.string().max(20).nullable().optional(),
+  smsNotifications: z.boolean().optional(),
+  emailNotifications: z.boolean().optional(),
   email: z.string().email().optional(),
   username: z.string().min(2).max(32).optional(),
 });

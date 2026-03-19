@@ -8,6 +8,9 @@ import { RegisterInput, LoginInput, type UserResponse } from "@gmd/shared";
 import { pool } from "./db.js";
 import { redis, isRedisConnected, cacheSession, getCachedSession, invalidateSessionCache } from "./redis.js";
 import { logAuditEvent, getClientIp } from "./audit.js";
+import { sendAdminApprovalEmail, sendUserApprovedEmail, sendVerificationEmail } from "./email.js";
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const JWT_EXPIRES = "15m";
@@ -184,23 +187,43 @@ authRouter.post("/register", async (req: Request, res: Response) => {
   }
 
   const { email, username, password } = parsed.data;
+
+  if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    res.status(400).json({ error: "This email is reserved" });
+    return;
+  }
+
   const passwordHash = await argon2.hash(password, {
     memoryCost: 65536,
     timeCost: 3,
     parallelism: 4,
   });
 
+  // Approval token
+  const approvalTokenRaw = crypto.randomBytes(32).toString("hex");
+  const approvalTokenHash = hashSessionToken(approvalTokenRaw);
+
+  // Email verification token (24h)
+  const emailTokenRaw = crypto.randomBytes(32).toString("hex");
+  const emailTokenHash = hashSessionToken(emailTokenRaw);
+  const emailTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
   try {
     const { rows } = await pool.query(
-      `INSERT INTO users (email, username, password_hash) VALUES ($1, $2, $3)
+      `INSERT INTO users (email, username, password_hash, approved, email_verified, approval_token_hash, email_token_hash, email_token_expires_at)
+       VALUES ($1, $2, $3, FALSE, FALSE, $4, $5, $6)
        RETURNING id, email, username`,
-      [email, username, passwordHash]
+      [email, username, passwordHash, approvalTokenHash, emailTokenHash, emailTokenExpires]
     );
 
-    const user = rows[0] as UserResponse;
-    await createSession(user.id, user.email, res, req);
+    const user = rows[0];
     await logAuditEvent("register", req, user.id, { email });
-    res.status(201).json({ user });
+
+    // Fire-and-forget emails — don't block response
+    sendAdminApprovalEmail({ email: user.email, username: user.username }, approvalTokenRaw).catch(console.error);
+    sendVerificationEmail({ email: user.email, username: user.username }, emailTokenRaw).catch(console.error);
+
+    res.status(202).json({ pending: true });
   } catch (err: any) {
     if (err.code === "23505") {
       const field = err.constraint?.includes("email") ? "email" : "username";
@@ -220,7 +243,7 @@ authRouter.post("/login", async (req: Request, res: Response) => {
 
   const { email, password } = parsed.data;
   const { rows } = await pool.query(
-    "SELECT id, email, username, password_hash FROM users WHERE email = $1",
+    "SELECT id, email, username, password_hash, approved FROM users WHERE email = $1",
     [email]
   );
 
@@ -238,11 +261,97 @@ authRouter.post("/login", async (req: Request, res: Response) => {
     return;
   }
 
+  if (!user.approved) {
+    await logAuditEvent("login_failed", req, user.id, { email, reason: "not_approved" });
+    res.status(403).json({ error: "pending_approval" });
+    return;
+  }
+
   await createSession(user.id, user.email, res, req);
   await logAuditEvent("login_success", req, user.id, { email });
   res.json({
     user: { id: user.id, email: user.email, username: user.username } as UserResponse,
   });
+});
+
+authRouter.post("/resend-verification", async (req: Request, res: Response) => {
+  const userId = req.cookies?.gmd_access ? verifyJwt(req.cookies.gmd_access) : null;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const emailTokenRaw = crypto.randomBytes(32).toString("hex");
+  const emailTokenHash = hashSessionToken(emailTokenRaw);
+  const emailTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  const { rows } = await pool.query(
+    `UPDATE users SET email_token_hash = $1, email_token_expires_at = $2
+     WHERE id = $3 AND email_verified = FALSE
+     RETURNING email, username`,
+    [emailTokenHash, emailTokenExpires, userId]
+  );
+
+  if (rows.length > 0) {
+    sendVerificationEmail({ email: rows[0].email, username: rows[0].username }, emailTokenRaw).catch(console.error);
+  }
+
+  res.json({ ok: true });
+});
+
+authRouter.get("/approve", async (req: Request, res: Response) => {
+  const { token } = req.query as { token?: string };
+  if (!token) {
+    res.status(400).send("<p>Geçersiz link.</p>");
+    return;
+  }
+
+  const tokenHash = hashSessionToken(token);
+  const { rows } = await pool.query(
+    `UPDATE users SET approved = TRUE, approval_token_hash = NULL
+     WHERE approval_token_hash = $1 AND approved = FALSE
+     RETURNING id, email, username`,
+    [tokenHash]
+  );
+
+  if (rows.length === 0) {
+    res.status(400).send("<p>Link geçersiz ya da kullanıcı zaten onaylı.</p>");
+    return;
+  }
+
+  const user = rows[0];
+  await logAuditEvent("user_approved", req, user.id, { email: user.email });
+  sendUserApprovedEmail({ email: user.email, username: user.username }).catch(console.error);
+
+  res.send(`
+    <html><body style="font-family:sans-serif;padding:40px;max-width:400px;margin:0 auto;text-align:center;">
+      <h2>✓ Onaylandı</h2>
+      <p><strong>${user.username}</strong> hesabı onaylandı. Kullanıcıya bildirim gönderildi.</p>
+    </body></html>
+  `);
+});
+
+authRouter.get("/verify-email", async (req: Request, res: Response) => {
+  const { token } = req.query as { token?: string };
+  if (!token) {
+    res.status(400).json({ error: "invalid_token" });
+    return;
+  }
+
+  const tokenHash = hashSessionToken(token);
+  const { rows } = await pool.query(
+    `UPDATE users SET email_verified = TRUE, email_token_hash = NULL, email_token_expires_at = NULL
+     WHERE email_token_hash = $1 AND email_token_expires_at > NOW()
+     RETURNING id`,
+    [tokenHash]
+  );
+
+  if (rows.length === 0) {
+    res.status(400).json({ error: "invalid_token" });
+    return;
+  }
+
+  res.json({ ok: true });
 });
 
 authRouter.post("/logout", async (req: Request, res: Response) => {
@@ -263,9 +372,13 @@ authRouter.get("/check", async (req: Request, res: Response) => {
   // Try JWT
   const userId = req.cookies?.gmd_access ? verifyJwt(req.cookies.gmd_access) : null;
   if (userId) {
-    const { rows } = await pool.query("SELECT id, email, username FROM users WHERE id = $1", [userId]);
+    const { rows } = await pool.query(
+      "SELECT id, email, username, email_verified FROM users WHERE id = $1",
+      [userId]
+    );
     if (rows.length > 0) {
-      res.json({ authenticated: true, user: rows[0] as UserResponse });
+      const { email_verified, ...rest } = rows[0];
+      res.json({ authenticated: true, user: { ...rest, emailVerified: email_verified } as UserResponse });
       return;
     }
   }
@@ -275,9 +388,13 @@ authRouter.get("/check", async (req: Request, res: Response) => {
   if (sessionToken) {
     const session = await resolveSession(sessionToken, res);
     if (session) {
-      const { rows } = await pool.query("SELECT id, email, username FROM users WHERE id = $1", [session.userId]);
+      const { rows } = await pool.query(
+        "SELECT id, email, username, email_verified FROM users WHERE id = $1",
+        [session.userId]
+      );
       if (rows.length > 0) {
-        res.json({ authenticated: true, user: rows[0] as UserResponse });
+        const { email_verified, ...rest } = rows[0];
+        res.json({ authenticated: true, user: { ...rest, emailVerified: email_verified } as UserResponse });
         return;
       }
     }

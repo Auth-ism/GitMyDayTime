@@ -4,9 +4,12 @@ import { CreatePlanInput, CreateChecklistInput, PlanItemSchema } from "@gmd/shar
 import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem } from "../storage.js";
 import { pool } from "../db.js";
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 const router = Router();
 
 router.post("/:date/plan", async (req, res) => {
+  if (!DATE_RE.test(req.params.date)) return res.status(400).json({ error: "Invalid date format" });
   const input = CreatePlanInput.safeParse(req.body);
   if (!input.success) return res.status(400).json({ error: input.error });
 
@@ -24,10 +27,18 @@ router.post("/:date/plan", async (req, res) => {
     scheduledTime: input.data.scheduledTime,
     completed: false,
     order: nextOrder,
+    itemType: input.data.itemType ?? "plan",
   });
 
   await addPlanItem(req.userId!, req.params.date, item);
   res.status(201).json(item);
+});
+
+router.put("/:date/plan/reorder", async (req, res) => {
+  if (!DATE_RE.test(req.params.date)) return res.status(400).json({ error: "Invalid date format" });
+  const { ids } = req.body as { ids: string[] };
+  const plan = await reorderPlanItems(req.userId!, req.params.date, ids);
+  res.json(plan);
 });
 
 router.put("/:date/plan/:id", async (req, res) => {
@@ -39,12 +50,6 @@ router.put("/:date/plan/:id", async (req, res) => {
 router.delete("/:date/plan/:id", async (req, res) => {
   await deletePlanItem(req.userId!, req.params.id);
   res.status(204).end();
-});
-
-router.put("/:date/plan/reorder", async (req, res) => {
-  const { ids } = req.body as { ids: string[] };
-  const plan = await reorderPlanItems(req.userId!, req.params.date, ids);
-  res.json(plan);
 });
 
 router.put("/:date/plan/:id/move", async (req, res) => {
@@ -60,7 +65,7 @@ router.put("/:date/plan/:id/move", async (req, res) => {
 router.post("/:date/plan/:planId/checklist", async (req, res) => {
   const input = CreateChecklistInput.safeParse(req.body);
   if (!input.success) return res.status(400).json({ error: input.error });
-  const item = await addChecklistItem(req.userId!, req.params.planId, nanoid(8), input.data.description);
+  const item = await addChecklistItem(req.userId!, req.params.planId, input.data.description);
   res.status(201).json(item);
 });
 

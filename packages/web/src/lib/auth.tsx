@@ -7,8 +7,8 @@ interface AuthContext {
   profile: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  register: (email: string, username: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ ok: boolean; pending?: boolean; error?: string }>;
+  register: (email: string, username: string, password: string) => Promise<{ ok: boolean; pending?: boolean; error?: string }>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -84,13 +84,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, username, password }),
       });
 
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         return { ok: false, error: data.error || "Registration failed" };
       }
 
-      const { user: userData } = await res.json();
-      setUser(userData);
+      if (data.pending) {
+        return { ok: true, pending: true };
+      }
+
+      setUser(data.user);
       await fetchProfile();
       return { ok: true };
     } catch {

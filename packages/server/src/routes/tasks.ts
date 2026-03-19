@@ -3,6 +3,8 @@ import { nanoid } from "nanoid";
 import { CreateTaskInput, TaskEntrySchema } from "@gmd/shared";
 import { getDayLog, addTask, updateTask, deleteTask, moveTask, getIncompleteItems, carryOverItems } from "../storage.js";
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 function getPreviousDate(date: string): string {
   const d = new Date(date + "T12:00:00");
   d.setDate(d.getDate() - 1);
@@ -12,11 +14,13 @@ function getPreviousDate(date: string): string {
 const router = Router();
 
 router.get("/:date", async (req, res) => {
+  if (!DATE_RE.test(req.params.date)) return res.status(400).json({ error: "Invalid date format" });
   const log = await getDayLog(req.userId!, req.params.date);
   res.json(log);
 });
 
 router.post("/:date/tasks", async (req, res) => {
+  if (!DATE_RE.test(req.params.date)) return res.status(400).json({ error: "Invalid date format" });
   const input = CreateTaskInput.safeParse(req.body);
   if (!input.success) return res.status(400).json({ error: input.error });
 

@@ -1,4 +1,4 @@
-import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput } from "@gmd/shared";
+import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput } from "@gmd/shared";
 
 const BASE = "/api";
 
@@ -151,4 +151,22 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
+
+  // Categories
+  getCategories: () => request<UserCategory[]>("/categories"),
+
+  createCategory: (data: CreateCategoryInput) =>
+    request<UserCategory>("/categories", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateCategory: (id: string, data: Partial<CreateCategoryInput>) =>
+    request<UserCategory>(`/categories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteCategory: (id: string) =>
+    request<void>(`/categories/${id}`, { method: "DELETE" }),
 };

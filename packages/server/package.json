@@ -21,7 +21,9 @@
     "jsonwebtoken": "^9.0.2",
     "nanoid": "^5.0.9",
     "pg": "^8.13.1",
-    "rate-limit-redis": "^4.2.0"
+    "rate-limit-redis": "^4.2.0",
+    "resend": "^6.9.4",
+    "twilio": "^5.13.0"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.8",

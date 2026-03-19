@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Check, Trash2, Clock, Timer, Play, Pencil, Plus, ListChecks, ChevronDown } from "lucide-react";
+import { Check, Trash2, Clock, Timer, Play, Pencil, Plus, ListChecks, ChevronDown, Bell } from "lucide-react";
 import { type PlanItem as PlanItemType, type ChecklistItem, formatDuration, parseDuration } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { motion, AnimatePresence } from "framer-motion";
@@ -93,11 +93,7 @@ export default function PlanItem({
   const hasChecklist = checklist.length > 0 || onAddChecklist;
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+    <div
       className={cn(
         "group flex flex-col rounded-xl transition-colors",
         "bg-bg-elevated border border-border hover:border-border-hover",
@@ -303,6 +299,6 @@ export default function PlanItem({
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }

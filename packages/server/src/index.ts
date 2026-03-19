@@ -18,6 +18,8 @@ import statsRoutes from "./routes/stats.js";
 import searchRoutes from "./routes/search.js";
 import recurringRoutes from "./routes/recurring.js";
 import profileRoutes from "./routes/profile.js";
+import categoryRoutes from "./routes/categories.js";
+import { startScheduler } from "./scheduler.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -46,6 +48,15 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+  res.on("finish", () => {
+    const ms = Date.now() - startedAt;
+    console.log(`${req.method} ${req.originalUrl} -> ${res.statusCode} (${ms}ms)`);
+  });
+  next();
+});
+
 // Auth routes with auth-specific rate limiter
 app.use("/api/auth", getAuthLimiter(), authRouter);
 
@@ -61,6 +72,7 @@ app.use("/api/stats", statsRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/recurring", recurringRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/categories", categoryRoutes);
 
 // Serve frontend in production
 const webDist = path.resolve(__dirname, "../../web/dist");
@@ -68,6 +80,9 @@ app.use(express.static(webDist));
 app.get("*", (_req, res) => {
   res.sendFile(path.join(webDist, "index.html"));
 });
+
+// Notification scheduler — runs every minute
+const schedulerInterval = startScheduler();
 
 // Cleanup expired sessions every hour
 const cleanupInterval = setInterval(async () => {
@@ -94,6 +109,7 @@ async function start() {
   // Graceful shutdown
   const shutdown = async () => {
     console.log("Shutting down...");
+    clearInterval(schedulerInterval);
     clearInterval(cleanupInterval);
     server.close();
     await pool.end();

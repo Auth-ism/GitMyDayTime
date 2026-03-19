@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
-import { Clock, ArrowRight, AlertCircle, Globe, Github, Mail } from "lucide-react";
+import { Clock, ArrowRight, AlertCircle, Globe, Github, Mail, CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(false);
 
   const toggleLocale = () => setLocale(locale === "en" ? "tr" : "en" as Locale);
 
@@ -40,7 +41,11 @@ export default function LoginPage() {
         : await register(email, username, password);
 
     if (!result.ok) {
-      setError(result.error || t("login.error"));
+      const errKey = result.error === "pending_approval" ? "login.pendingApprovalError" : "login.error";
+      setError(t(errKey as any) || result.error || t("login.error"));
+      setLoading(false);
+    } else if (result.pending) {
+      setPendingApproval(true);
       setLoading(false);
     }
   };
@@ -74,6 +79,21 @@ export default function LoginPage() {
           {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
         </button>
       </div>
+
+      {pendingApproval ? (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full max-w-sm text-center"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-accent-soft flex items-center justify-center mx-auto mb-4">
+            <CheckCircle size={24} className="text-accent" />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight mb-2">{t("login.pendingTitle" as any)}</h1>
+          <p className="text-sm text-text-secondary leading-relaxed">{t("login.pendingDesc" as any)}</p>
+        </motion.div>
+      ) : (
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -214,6 +234,8 @@ export default function LoginPage() {
           </button>
         </form>
       </motion.div>
+
+      )}
 
       {/* Footer */}
       <div className="fixed bottom-4 left-0 right-0 flex items-center justify-center gap-3 text-[11px] text-text-tertiary">

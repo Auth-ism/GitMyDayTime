@@ -7,8 +7,9 @@ import { motion } from "framer-motion";
 import { Flame, Clock, CheckCircle, TrendingUp, BarChart3 } from "lucide-react";
 
 export default function StatsPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const getCatLabel = useCategoryLabel();
+  const dateLoc = locale === "tr" ? "tr-TR" : "en-US";
   const { data: stats, isLoading } = useQuery({
     queryKey: ["stats", "30d"],
     queryFn: () => api.getStats(),
@@ -42,11 +43,14 @@ export default function StatsPage() {
       fill: CATEGORY_COLORS[key as Category],
     }));
 
-  const activityData = stats.dailyActivity.map((d) => ({
-    date: d.date.slice(5),
-    tasks: d.tasks,
-    minutes: d.minutes,
-  }));
+  const activityData = stats.dailyActivity.map((d) => {
+    const dt = new Date(d.date + "T12:00:00");
+    return {
+      date: dt.toLocaleDateString(dateLoc, { month: "short", day: "numeric" }),
+      tasks: d.tasks,
+      minutes: d.minutes,
+    };
+  });
 
   const tooltipStyle = {
     background: "var(--color-bg-elevated)",

@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDayLog } from "@/hooks/useDayLog";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import TaskForm from "@/components/TaskForm";
 import TaskItem from "@/components/TaskItem";
 import PlanItem from "@/components/PlanItem";
+import ReminderItem from "@/components/ReminderItem";
 import CarryOverBanner from "@/components/CarryOverBanner";
 import StandupExport from "@/components/StandupExport";
 import PomodoroTimer from "@/components/PomodoroTimer";
 import { AnimatePresence, Reorder } from "framer-motion";
-import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Filter } from "lucide-react";
-import { CATEGORY_LABELS, todayStr, type Category } from "@gmd/shared";
+import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Filter } from "lucide-react";
+import { DEFAULT_CATEGORIES, todayStr, type PlanItem as PlanItemData } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { useSwipe } from "@/hooks/useSwipe";
 
@@ -18,7 +19,7 @@ function getDateStr(dateParam?: string): string {
   return dateParam || todayStr();
 }
 
-const categories = Object.keys(CATEGORY_LABELS) as Category[];
+const categories = [...DEFAULT_CATEGORIES];
 
 export default function DayView() {
   const { date: dateParam } = useParams();
@@ -26,8 +27,8 @@ export default function DayView() {
   const navigate = useNavigate();
   const { t, locale } = useI18n();
   const getCatLabel = useCategoryLabel();
-  const { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan, reorderPlan, addChecklist, updateChecklist, deleteChecklist } = useDayLog(date);
-  const [filterCat, setFilterCat] = useState<Category | "all">("all");
+  const { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan, reorderPlan, addReminder, deleteReminder, addChecklist, updateChecklist, deleteChecklist } = useDayLog(date);
+  const [filterCat, setFilterCat] = useState<string>("all");
   const [pomodoroTask, setPomodoroTask] = useState<{ id: string; name: string } | null>(null);
 
   const dayLog = query.data;
@@ -36,8 +37,17 @@ export default function DayView() {
 
   const filteredTasks = dayLog?.tasks.filter((t) => filterCat === "all" || t.category === filterCat) || [];
   const filteredPlan = dayLog?.plan
-    .filter((p) => filterCat === "all" || p.category === filterCat)
+    .filter((p) => p.itemType !== "reminder" && (filterCat === "all" || p.category === filterCat))
     .sort((a, b) => a.order - b.order) || [];
+  const filteredReminders = dayLog?.plan
+    .filter((p) => p.itemType === "reminder")
+    .sort((a, b) => (a.scheduledTime ?? "").localeCompare(b.scheduledTime ?? "")) || [];
+
+  // Local drag state — update visuals during drag, fire API only on drop
+  const [dragOrder, setDragOrder] = useState<PlanItemData[] | null>(null);
+  const planIds = filteredPlan.map((p) => p.id).join();
+  useEffect(() => { setDragOrder(null); }, [planIds]);
+  const displayPlan = dragOrder ?? filteredPlan;
 
   const prevDay = () => {
     const d = new Date(date + "T12:00:00");
@@ -53,8 +63,9 @@ export default function DayView() {
 
   const swipeHandlers = useSwipe({ onSwipeLeft: nextDay, onSwipeRight: prevDay });
 
-  const completedPlan = dayLog?.plan.filter((p) => p.completed).length || 0;
-  const totalPlan = dayLog?.plan.length || 0;
+  const completedPlan = dayLog?.plan.filter((p) => p.itemType !== "reminder" && p.completed).length || 0;
+  const totalPlan = dayLog?.plan.filter((p) => p.itemType !== "reminder").length || 0;
+  const reminderCount = filteredReminders.length;
   const taskCount = dayLog?.tasks.length || 0;
 
   const displayDate = new Date(date + "T12:00:00");
@@ -119,7 +130,7 @@ export default function DayView() {
       </AnimatePresence>
 
       {/* Summary strip */}
-      {(taskCount > 0 || totalPlan > 0) && (
+      {(taskCount > 0 || totalPlan > 0 || reminderCount > 0) && (
         <div className="flex gap-3" role="status">
           {totalPlan > 0 && (
             <div className="flex-1 card !py-3 flex items-center gap-3">
@@ -136,6 +147,15 @@ export default function DayView() {
               </div>
             </div>
           )}
+          {reminderCount > 0 && (
+            <div className="flex-1 card !py-3 flex items-center gap-3">
+              <Bell size={16} className="text-accent flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold">{reminderCount}</p>
+                <p className="text-xs text-text-secondary">{t("reminder.title" as any)}</p>
+              </div>
+            </div>
+          )}
           {taskCount > 0 && (
             <div className="flex-1 card !py-3 flex items-center gap-3">
               <MessageSquare size={16} className="text-text-secondary flex-shrink-0" />
@@ -149,7 +169,7 @@ export default function DayView() {
       )}
 
       {/* Category filter */}
-      {(taskCount > 0 || totalPlan > 0) && (
+      {(taskCount > 0 || totalPlan > 0 || reminderCount > 0) && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1" role="radiogroup">
           <Filter size={14} className="text-text-tertiary flex-shrink-0" />
           <button
@@ -168,7 +188,7 @@ export default function DayView() {
           </button>
           {categories.map((key) => {
             const count = (dayLog?.tasks.filter((t) => t.category === key).length || 0) +
-              (dayLog?.plan.filter((p) => p.category === key).length || 0);
+              (dayLog?.plan.filter((p) => p.itemType !== "reminder" && p.category === key).length || 0);
             if (count === 0) return null;
             return (
               <button
@@ -196,19 +216,31 @@ export default function DayView() {
         <TaskForm
           type="plan"
           loading={addPlan.isPending}
-          onSubmit={(data) => addPlan.mutate(data)}
-        />
+          onSubmit={(data) =>
+            addPlan.mutate({
+              ...data,
+              itemType: data.itemType ?? "plan",
+            })
+          } />
         <Reorder.Group
           axis="y"
-          values={filteredPlan}
-          onReorder={(newOrder) => {
-            reorderPlan.mutate(newOrder.map((p) => p.id));
-          }}
+          values={displayPlan}
+          onReorder={setDragOrder}
           className="mt-2 space-y-1.5"
           as="div"
         >
-          {filteredPlan.map((item) => (
-            <Reorder.Item key={item.id} value={item} as="div" dragListener={!item.completed}>
+          {displayPlan.map((item) => (
+            <Reorder.Item
+              key={item.id}
+              value={item}
+              as="div"
+              dragListener={!item.completed}
+              onDragEnd={() => {
+                if (dragOrder) {
+                  reorderPlan.mutate(dragOrder.map((p) => p.id));
+                }
+              }}
+            >
               <PlanItem
                 item={item}
                 onToggle={(actualDuration) => updatePlan.mutate({
@@ -235,8 +267,34 @@ export default function DayView() {
         )}
       </section>
 
-      {/* Activity log section */}
-      <section aria-labelledby="activity-heading">
+      {/* Reminders section */}
+      <section aria-labelledby="reminders-heading">
+        <TaskForm
+          type="reminder"
+          loading={addReminder.isPending}
+          onSubmit={(data) => addReminder.mutate(data)}
+        />
+        <div className="mt-2 space-y-1.5">
+          <AnimatePresence mode="popLayout">
+            {filteredReminders.map((item) => (
+              <ReminderItem
+                key={item.id}
+                item={item}
+                onDelete={() => deleteReminder.mutate(item.id)}
+              />
+            ))}
+          </AnimatePresence>
+          {dayLog && filteredReminders.length === 0 && (
+            <div className="text-center py-4 text-text-tertiary">
+              <Bell size={20} className="mx-auto mb-1.5 opacity-30" />
+              <p className="text-xs">{t("reminder.empty" as any)}</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Notes section */}
+      <section aria-labelledby="notes-heading">
         <TaskForm
           type="task"
           loading={addTask.isPending}

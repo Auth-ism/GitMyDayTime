@@ -1,10 +1,41 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, Github, Mail, UserCircle } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { NavLink, useLocation, Outlet } from "react-router-dom";
+import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, Github, Mail, UserCircle, WifiOff } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { AnimatePresence, motion } from "framer-motion";
+
+function EmailVerifyBanner() {
+  const { t } = useI18n();
+  const [sent, setSent] = useState(false);
+
+  const resend = async () => {
+    await fetch("/api/auth/resend-verification", { method: "POST", credentials: "include" });
+    setSent(true);
+  };
+
+  return (
+    <div className="bg-accent-soft border-b border-accent/20 px-4 py-2 flex items-center justify-center gap-2 text-xs font-medium text-text-secondary">
+      {t("verify.banner" as any)}
+      {sent ? (
+        <span className="text-accent font-semibold ml-1">{t("verify.bannerSent" as any)}</span>
+      ) : (
+        <button onClick={resend} className="underline text-accent font-semibold ml-1">
+          {t("verify.bannerLink" as any)}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function useOnline() {
+  return useSyncExternalStore(
+    (cb) => { window.addEventListener("online", cb); window.addEventListener("offline", cb); return () => { window.removeEventListener("online", cb); window.removeEventListener("offline", cb); }; },
+    () => navigator.onLine,
+  );
+}
 
 const navIcons = {
   "/": Clock,
@@ -27,9 +58,10 @@ const navLabelKeys = {
 
 export default function Layout() {
   const { theme, toggle } = useTheme();
-  const { logout, profile } = useAuth();
+  const { logout, profile, user } = useAuth();
   const { t, locale, setLocale } = useI18n();
   const location = useLocation();
+  const isOnline = useOnline();
 
   const toggleLocale = () => setLocale(locale === "en" ? "tr" : "en" as Locale);
 
@@ -172,6 +204,17 @@ export default function Layout() {
           </div>
         </div>
       </header>
+
+      {!isOnline && (
+        <div className="bg-danger-soft border-b border-danger/20 px-4 py-2 flex items-center justify-center gap-2 text-xs font-medium text-danger" role="alert">
+          <WifiOff size={14} />
+          {t("offline" as any)}
+        </div>
+      )}
+
+      {user && !user.emailVerified && (
+        <EmailVerifyBanner />
+      )}
 
       <main className="flex-1 pb-20 sm:pb-0" id="main-content">
         <AnimatePresence mode="wait">
