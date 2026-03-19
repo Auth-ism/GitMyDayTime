@@ -1,70 +1,77 @@
 # GitMyDayTime
 
-Minimal daily planner and time tracker. Plan your day, log activities, track time by category.
+Kisisel gunluk planlama ve zaman takip uygulamasi (PWA). Gununuzu planlayin, aktiviteleri kaydedin, kategorilere gore zaman takibi yapin.
 
-## Features
+**Live:** [gmd.byfeb.com](https://gmd.byfeb.com)
 
-- Daily planning with category-based tasks
-- Activity logging with time tracking
-- Weekly calendar view with drag-friendly cards
-- Category filtering (Dev, Meeting, Review, Ops, Learning, Personal)
-- Monthly calendar with activity heatmap
-- Stats dashboard with charts
-- Dark/light theme
-- Password-protected access
+## Ozellikler
 
-## Stack
+- **Gunluk Planlama** — Oncelikli gorevler, zaman cizelgesi, surukle-birak siralama
+- **Tekrar Eden Gorevler** — Gunluk, hafta ici, haftalik veya ozel gun tekrarlari
+- **Pomodoro Zamanlayici** — Plan bazli odak zamanlayicisi
+- **Hatirlaticilar** — Zamanli hatirlaticilar ve web push bildirimleri
+- **Gunluk** — Her gun icin serbest yazi alani
+- **Sablonlar** — Gunluk planlari sablon olarak kaydet ve uygula
+- **Haftalik Gorunum** — 7 gunluk grid, gunler arasi surukle-birak
+- **Takvim** — Aylik aktivite haritasi
+- **Istatistikler** — Kategori dagilimi, tamamlanma oranlari, yillik heatmap, tahmin vs gercek
+- **Arama** — Bulanik metin arama (pg_trgm)
+- **Ozel Kategoriler** — Varsayilanlara ek kullanici tanimli kategoriler
+- **Disa/Ica Aktarma** — Tum verileri JSON olarak indir/yukle
+- **Profil** — Avatar, bildirim ayarlari, pomodoro/calisma saatleri tercihleri
+- **Karanlik/Acik Tema** — CSS degiskenleri ile tam tema destegi
+- **TR/EN Dil Destegi** — Turkce varsayilan
+- **PWA** — Mobil cihazlarda ana ekrana eklenebilir
+- **Guvenlik** — JWT + Redis session, argon2 sifre hash, e-posta dogrulama, admin onayi
 
-- **Frontend**: React, Tailwind CSS, React Query, Framer Motion, Recharts
-- **Backend**: Express, file-based JSON storage
-- **Shared**: Zod schemas, TypeScript monorepo
+## Teknoloji
 
-## Quick Start
+| Katman | Teknoloji |
+|--------|-----------|
+| Frontend | React 19, Vite 8, Tailwind CSS 4, React Query 5, Framer Motion |
+| Backend | Express.js, PostgreSQL (pg), Redis |
+| Shared | Zod schemas, TypeScript monorepo (npm workspaces) |
+| Altyapi | Docker, Kubernetes, Resend (e-posta) |
+
+## Hizli Baslangic
 
 ```bash
-cp .env.example .env     # set your password
+cp .env.example .env     # DATABASE_URL, REDIS_URL, JWT_SECRET, CORS_ORIGIN ayarla
 npm install
-npm run dev              # starts server (3001) + web (5173)
+npm run dev              # server (3001) + web (5173) baslatir
 ```
 
-## Docker
+## Ortam Degiskenleri
+
+| Degisken | Aciklama |
+|----------|----------|
+| `DATABASE_URL` | PostgreSQL baglanti URL'i |
+| `REDIS_URL` | Redis baglanti URL'i |
+| `JWT_SECRET` | JWT imzalama anahtari |
+| `CORS_ORIGIN` | Frontend URL (orn. `https://gmd.byfeb.com`) |
+| `ADMIN_EMAIL` | Admin hesabi e-postasi (otomatik onay) |
+| `RESEND_API_KEY` | Resend API anahtari (e-posta bildirimleri) |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web push bildirimleri |
+
+## Deploy
 
 ```bash
-docker compose up -d
+./deploy.sh          # patch versiyon
+./deploy.sh minor    # minor versiyon
+./deploy.sh major    # major versiyon
 ```
 
-Configure password in `docker-compose.yml` via `GMD_PASSWORD` env var.
+Script: versiyon bump → docker build → push → kubectl rollout → git push + tag
 
-## Deploy (Kubernetes)
-
-```bash
-# Build & push
-docker build -t hub.umceko.com/byfeb/gitmydaytime:latest .
-docker push hub.umceko.com/byfeb/gitmydaytime:latest
-
-# Apply manifests
-kubectl apply -f k8s.yaml
-
-# Or use the deploy script
-./deploy.sh
-```
-
-## Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `GMD_PASSWORD` | Login password | `admin` |
-| `PORT` | Server port | `3001` |
-
-## Project Structure
+## Proje Yapisi
 
 ```
 packages/
-  shared/   # Types, schemas, utilities
-  server/   # Express API + file storage
-  web/      # React SPA
+  shared/   # Zod semalari, TypeScript tipleri, sabitler
+  server/   # Express API, PostgreSQL, Redis, JWT auth
+  web/      # React SPA, PWA
 ```
 
-## License
+## Lisans
 
 MIT
