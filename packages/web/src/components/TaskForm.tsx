@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Clock, Timer, MessageSquare, ListTodo, Bell } from "lucide-react";
+import { Plus, Clock, Timer, MessageSquare, ListTodo, Bell, ChevronDown } from "lucide-react";
 import { parseDuration, DEFAULT_CATEGORIES, type Category, type ItemType, type PriorityType } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
@@ -31,10 +31,24 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
   const [time, setTime] = useState("");
   const [priority, setPriority] = useState<PriorityType>("normal");
   const [justAdded, setJustAdded] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const isPlan = type === "plan";
   const isReminder = type === "reminder";
+
+  // Collapse on click outside
+  useEffect(() => {
+    if (!expanded) return;
+    const handler = (e: MouseEvent) => {
+      if (formRef.current && !formRef.current.contains(e.target as Node)) {
+        if (!desc.trim()) setExpanded(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [expanded, desc]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +70,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
     setTime("");
     setPriority("normal");
     setJustAdded(true);
+    setExpanded(false);
     inputRef.current?.focus();
   };
 
@@ -79,48 +94,54 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
   const Icon = isPlan ? ListTodo : isReminder ? Bell : MessageSquare;
 
   return (
-    <form onSubmit={handleSubmit} className="card space-y-3" aria-label={isPlan ? t("form.addPlan") : isReminder ? t("reminder.add" as any) : t("form.addNote")}>
-      <div className="flex items-center gap-2 mb-1">
-        <Icon size={15} className="text-text-tertiary" />
-        <span className="text-xs font-medium text-text-tertiary uppercase tracking-wider">
-          {isPlan ? t("form.plan") : isReminder ? t("reminder.title" as any) : t("form.quickNotes")}
-        </span>
-      </div>
-
-      {/* Description + Add button */}
-      <div className="flex gap-2">
-        <div className="flex-1">
-          <label htmlFor={`input-${type}`} className="sr-only">
-            {isPlan ? t("form.whatWillYouDo") : isReminder ? t("reminder.placeholder" as any) : t("form.addNotePlace")}
-          </label>
-          <input
-            ref={inputRef}
-            id={`input-${type}`}
-            className="input"
-            placeholder={isPlan ? t("form.whatWillYouDo") : isReminder ? t("reminder.placeholder" as any) : t("form.addNotePlace")}
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
+    <form ref={formRef} onSubmit={handleSubmit} className="card !py-2.5 !px-3" aria-label={isPlan ? t("form.addPlan") : isReminder ? t("reminder.add" as any) : t("form.addNote")}>
+      {/* Compact input row */}
+      <div className="flex items-center gap-2">
+        <Icon size={14} className="text-text-tertiary flex-shrink-0" />
+        <input
+          ref={inputRef}
+          id={`input-${type}`}
+          className="flex-1 bg-transparent text-sm text-text placeholder:text-text-tertiary outline-none py-1.5"
+          placeholder={isPlan ? t("form.whatWillYouDo") : isReminder ? t("reminder.placeholder" as any) : t("form.addNotePlace")}
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+          onFocus={() => setExpanded(true)}
+          autoComplete="off"
+        />
+        {isPlan && (
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className={cn(
+              "p-1 rounded transition-transform text-text-tertiary hover:text-text-secondary",
+              expanded && "rotate-180"
+            )}
+          >
+            <ChevronDown size={14} />
+          </button>
+        )}
         <button
           type="submit"
           disabled={loading || !desc.trim()}
-          className={cn("btn btn-primary", loading && "animate-pulse")}
+          className={cn(
+            "p-1.5 rounded-lg transition-colors",
+            desc.trim()
+              ? "bg-accent text-bg hover:opacity-90"
+              : "text-text-tertiary"
+          )}
         >
           <Plus size={16} />
-          <span className="hidden sm:inline">{t("form.add")}</span>
         </button>
       </div>
 
       {/* Time — only for reminders (required) */}
-      {isReminder && (
-        <div className="flex items-center gap-2">
-          <Clock size={14} className="text-text-tertiary flex-shrink-0" />
+      {isReminder && expanded && (
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
+          <Clock size={13} className="text-text-tertiary flex-shrink-0" />
           <span className="text-xs text-text-tertiary">{t("form.start")}</span>
           <input
             type="time"
-            className="input !w-[7.5rem] !text-sm !py-1.5"
+            className="input !w-[7rem] !text-xs !py-1"
             value={time}
             onChange={(e) => setTime(e.target.value)}
             required
@@ -128,98 +149,97 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
         </div>
       )}
 
-      {isPlan && (
-        <>
-          {/* Category pills */}
-          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Category">
-            {categoryKeys.map((key) => (
-              <button
-                key={key}
-                type="button"
-                role="radio"
-                aria-checked={cat === key}
-                onClick={() => setCat(key)}
-                className={cn(
-                  "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all",
-                  cat === key
-                    ? "bg-accent text-bg shadow-sm"
-                    : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary hover:text-text border border-transparent hover:border-border"
-                )}
-              >
-                {getCatLabel(key)}
-              </button>
-            ))}
-          </div>
+      {/* Expanded plan options */}
+      <AnimatePresence>
+        {isPlan && expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="overflow-hidden"
+          >
+            <div className="pt-2 mt-2 border-t border-border space-y-2.5">
+              {/* Category + Priority in one row */}
+              <div className="flex flex-wrap items-center gap-1">
+                {categoryKeys.map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setCat(key)}
+                    className={cn(
+                      "px-2 py-1 rounded-md text-[11px] font-medium transition-all",
+                      cat === key
+                        ? "bg-accent text-bg"
+                        : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
+                    )}
+                  >
+                    {getCatLabel(key)}
+                  </button>
+                ))}
+                <span className="w-px h-4 bg-border mx-0.5" />
+                {(["normal", "high", "urgent"] as PriorityType[]).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPriority(p)}
+                    className={cn(
+                      "px-2 py-1 rounded-md text-[11px] font-medium transition-all",
+                      priority === p
+                        ? p === "urgent"
+                          ? "bg-red-500 text-white"
+                          : p === "high"
+                          ? "bg-orange-400 text-white"
+                          : "bg-accent text-bg"
+                        : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
+                    )}
+                  >
+                    {p === "urgent" ? "Acil" : p === "high" ? "Yuksek" : "Normal"}
+                  </button>
+                ))}
+              </div>
 
-          {/* Priority */}
-          <div className="flex items-center gap-2" role="group" aria-label="Priority">
-            <span className="text-xs text-text-tertiary">Oncelik:</span>
-            {(["normal", "high", "urgent"] as PriorityType[]).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPriority(p)}
-                className={cn(
-                  "px-2.5 py-1 rounded-lg text-xs font-medium transition-all border",
-                  priority === p
-                    ? p === "urgent"
-                      ? "bg-red-500 text-white border-red-500"
-                      : p === "high"
-                      ? "bg-orange-400 text-white border-orange-400"
-                      : "bg-accent text-bg border-accent"
-                    : "bg-bg-secondary text-text-secondary border-transparent hover:border-border"
-                )}
-              >
-                {p === "urgent" ? "Acil" : p === "high" ? "Yuksek" : "Normal"}
-              </button>
-            ))}
-          </div>
-
-          {/* When & How long */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex items-center gap-2">
-              <Clock size={14} className="text-text-tertiary flex-shrink-0" />
-              <span className="text-xs text-text-tertiary">{t("form.start")}</span>
-              <label htmlFor={`time-${type}`} className="sr-only">{t("form.start")}</label>
-              <input
-                id={`time-${type}`}
-                type="time"
-                className="input !w-[7.5rem] !text-sm !py-1.5"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-              />
+              {/* Time + Duration compact row */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <Clock size={12} className="text-text-tertiary" />
+                  <input
+                    type="time"
+                    className="input !w-[7rem] !text-xs !py-1"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    placeholder="Saat"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <Timer size={12} className="text-text-tertiary" />
+                  {QUICK_DURATIONS.map(({ label, value }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => selectQuickDuration(value)}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded text-[11px] font-medium transition-all",
+                        durMinutes === value
+                          ? "bg-accent text-bg"
+                          : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  <input
+                    className="input !w-16 !text-[11px] !py-1"
+                    placeholder={t("form.custom")}
+                    value={dur}
+                    onChange={(e) => { setDur(e.target.value); setDurMinutes(null); }}
+                  />
+                </div>
+              </div>
             </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <Timer size={14} className="text-text-tertiary flex-shrink-0" />
-              <span className="text-xs text-text-tertiary">{t("form.duration")}</span>
-              {QUICK_DURATIONS.map(({ label, value }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => selectQuickDuration(value)}
-                  className={cn(
-                    "px-2 py-1 rounded-md text-xs font-medium transition-all",
-                    durMinutes === value
-                      ? "bg-accent text-bg"
-                      : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary border border-transparent hover:border-border"
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-              <label htmlFor={`dur-${type}`} className="sr-only">{t("form.custom")}</label>
-              <input
-                id={`dur-${type}`}
-                className="input !w-20 !text-xs !py-1.5"
-                placeholder={t("form.custom")}
-                value={dur}
-                onChange={(e) => { setDur(e.target.value); setDurMinutes(null); }}
-              />
-            </div>
-          </div>
-        </>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Success feedback */}
       <AnimatePresence>
@@ -228,9 +248,8 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="text-xs text-success font-medium flex items-center gap-1"
+            className="text-[11px] text-success font-medium mt-1"
             role="status"
-            aria-live="polite"
           >
             {t("form.addedSuccess")}
           </motion.div>

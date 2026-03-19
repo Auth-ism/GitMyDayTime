@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown, Download, Bell } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown, Download, Upload, Bell } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
 import { useI18n, type Locale } from "@/lib/i18n";
@@ -54,6 +54,10 @@ export default function ProfilePage() {
 
   // Export state
   const [exporting, setExporting] = useState(false);
+
+  // Import state
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string>("");
 
   // Password form
   const [currentPassword, setCurrentPassword] = useState("");
@@ -119,6 +123,26 @@ export default function ProfilePage() {
       console.error("Export failed:", err);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult("");
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const result = await api.importData(data);
+      setImportResult(`${result.plans} plan, ${result.tasks} gorev, ${result.recurringTasks} tekrar, ${result.journals} jurnal yuklendi`);
+    } catch (err: any) {
+      setImportResult("Yukleme basarisiz: " + (err.message || "Bilinmeyen hata"));
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -221,24 +245,16 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center text-bg text-xl font-semibold shrink-0">
+      {/* Header — compact */}
+      <div className="flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl bg-accent flex items-center justify-center text-bg text-sm font-semibold shrink-0">
           {initials}
         </div>
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-text truncate">
+          <h1 className="text-base font-semibold text-text truncate">
             {profile.displayName || profile.username}
           </h1>
-          <p className="text-sm text-text-tertiary">@{profile.username}</p>
-          <p className="text-xs text-text-tertiary mt-0.5">
-            {t("profile.memberSince" as any)}{" "}
-            {new Date(profile.createdAt).toLocaleDateString(locale === "tr" ? "tr-TR" : "en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </p>
+          <p className="text-xs text-text-tertiary">@{profile.username}</p>
         </div>
       </div>
 
@@ -392,17 +408,23 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Data Export */}
-          <div className="card">
-            <h3 className="text-sm font-semibold text-text mb-3">Veri Yonetimi</h3>
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="btn btn-ghost w-full border border-border text-sm"
-            >
-              <Download size={15} />
-              {exporting ? "Hazirlaniyor..." : "Verilerimi Indir (JSON)"}
-            </button>
+          {/* Data Export / Import */}
+          <div className="card space-y-3">
+            <h3 className="text-sm font-semibold text-text">Veri Yonetimi</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={handleExport} disabled={exporting} className="btn btn-ghost border border-border text-sm">
+                <Download size={15} />
+                {exporting ? "Hazirlaniyor..." : "Disa Aktar"}
+              </button>
+              <button onClick={() => fileInputRef.current?.click()} disabled={importing} className="btn btn-ghost border border-border text-sm">
+                <Upload size={15} />
+                {importing ? "Yukleniyor..." : "Ice Aktar"}
+              </button>
+            </div>
+            <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
+            {importResult && (
+              <p className={cn("text-xs", importResult.includes("basarisiz") ? "text-danger" : "text-success")}>{importResult}</p>
+            )}
           </div>
 
           <SaveButton

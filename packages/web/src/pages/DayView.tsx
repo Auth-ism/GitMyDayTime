@@ -17,7 +17,7 @@ import TemplatesModal from "@/components/TemplatesModal";
 import ShortcutHelp from "@/components/ShortcutHelp";
 import { UndoToastContainer, useUndoDelete } from "@/components/UndoToast";
 import { AnimatePresence, Reorder } from "framer-motion";
-import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Filter, Copy, LayoutTemplate, AlignJustify, Clock, Keyboard } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, Keyboard } from "lucide-react";
 import { DEFAULT_CATEGORIES, todayStr, type PlanItem as PlanItemData } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { useSwipe } from "@/hooks/useSwipe";
@@ -44,11 +44,6 @@ export default function DayView() {
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [copyingDay, setCopyingDay] = useState(false);
 
-  // Refs for focusing form inputs via shortcuts
-  const planInputRef = useRef<HTMLInputElement | null>(null);
-  const noteInputRef = useRef<HTMLInputElement | null>(null);
-  const reminderInputRef = useRef<HTMLInputElement | null>(null);
-
   const dayLog = query.data;
   const today = todayStr();
   const isToday = date === today;
@@ -74,43 +69,29 @@ export default function DayView() {
     onDeleteReminder: (id) => deletePlan.mutate(id),
   });
 
-  // Snapshot for undo restore
   const snapshotRef = useRef<typeof dayLog | undefined>(undefined);
   const handleDeletePlan = useCallback((id: string, description: string) => {
     snapshotRef.current = dayLog;
     deletePlanWithUndo(id, description, () => {
-      if (snapshotRef.current) {
-        qc.setQueryData(["daylog", date], snapshotRef.current);
-      }
+      if (snapshotRef.current) qc.setQueryData(["daylog", date], snapshotRef.current);
     });
-    // Optimistic
-    if (dayLog) {
-      qc.setQueryData(["daylog", date], { ...dayLog, plan: dayLog.plan.filter((p) => p.id !== id) });
-    }
+    if (dayLog) qc.setQueryData(["daylog", date], { ...dayLog, plan: dayLog.plan.filter((p) => p.id !== id) });
   }, [dayLog, date, deletePlanWithUndo, qc]);
 
   const handleDeleteTask = useCallback((id: string, description: string) => {
     snapshotRef.current = dayLog;
     deleteTaskWithUndo(id, description, () => {
-      if (snapshotRef.current) {
-        qc.setQueryData(["daylog", date], snapshotRef.current);
-      }
+      if (snapshotRef.current) qc.setQueryData(["daylog", date], snapshotRef.current);
     });
-    if (dayLog) {
-      qc.setQueryData(["daylog", date], { ...dayLog, tasks: dayLog.tasks.filter((t) => t.id !== id) });
-    }
+    if (dayLog) qc.setQueryData(["daylog", date], { ...dayLog, tasks: dayLog.tasks.filter((t) => t.id !== id) });
   }, [dayLog, date, deleteTaskWithUndo, qc]);
 
   const handleDeleteReminder = useCallback((id: string, description: string) => {
     snapshotRef.current = dayLog;
     deleteReminderWithUndo(id, description, () => {
-      if (snapshotRef.current) {
-        qc.setQueryData(["daylog", date], snapshotRef.current);
-      }
+      if (snapshotRef.current) qc.setQueryData(["daylog", date], snapshotRef.current);
     });
-    if (dayLog) {
-      qc.setQueryData(["daylog", date], { ...dayLog, plan: dayLog.plan.filter((p) => p.id !== id) });
-    }
+    if (dayLog) qc.setQueryData(["daylog", date], { ...dayLog, plan: dayLog.plan.filter((p) => p.id !== id) });
   }, [dayLog, date, deleteReminderWithUndo, qc]);
 
   const prevDay = () => {
@@ -168,21 +149,21 @@ export default function DayView() {
   const dateLoc = locale === "tr" ? "tr-TR" : "en-US";
 
   return (
-    <div className="space-y-5" {...swipeHandlers}>
+    <div className="space-y-3" {...swipeHandlers}>
       <UndoToastContainer />
 
-      {/* Date header */}
-      <div className="card flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* Date header — compact */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
           <button onClick={prevDay} className="btn btn-ghost p-2" aria-label={t("day.prevDay")}>
             <ChevronLeft size={18} />
           </button>
-          <div className="text-center min-w-[140px]">
-            <h1 className="text-lg font-semibold leading-tight">
+          <div className="text-center min-w-[130px]">
+            <h1 className="text-base font-semibold leading-tight">
               {isToday ? t("day.today") : displayDate.toLocaleDateString(dateLoc, { weekday: "long" })}
             </h1>
-            <p className="text-sm text-text-secondary">
-              {displayDate.toLocaleDateString(dateLoc, { month: "long", day: "numeric", year: "numeric" })}
+            <p className="text-xs text-text-secondary">
+              {displayDate.toLocaleDateString(dateLoc, { month: "long", day: "numeric" })}
             </p>
           </div>
           <button onClick={nextDay} className="btn btn-ghost p-2" aria-label={t("day.nextDay")}>
@@ -190,121 +171,63 @@ export default function DayView() {
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setShowShortcutHelp(true)}
-            className="btn btn-ghost p-2 text-text-tertiary"
-            aria-label="Keyboard shortcuts"
-            title="Klavye kisayollari (?)"
-          >
-            <Keyboard size={15} />
+        <div className="flex items-center gap-0.5">
+          <button onClick={() => setShowShortcutHelp(true)} className="btn btn-ghost p-2 text-text-tertiary hidden sm:flex" aria-label="Keyboard shortcuts">
+            <Keyboard size={14} />
           </button>
-          <button
-            onClick={handleCopyYesterday}
-            disabled={copyingDay}
-            className="btn btn-ghost p-2 text-text-tertiary"
-            aria-label="Dunden kopyala"
-            title="Dunden kopyala"
-          >
-            <Copy size={15} />
+          <button onClick={handleCopyYesterday} disabled={copyingDay} className="btn btn-ghost p-2 text-text-tertiary" title="Dunden kopyala">
+            <Copy size={14} />
           </button>
-          <button
-            onClick={() => setShowTemplates(true)}
-            className="btn btn-ghost p-2 text-text-tertiary"
-            aria-label="Sablonlar"
-            title="Plan sablonlari"
-          >
-            <LayoutTemplate size={15} />
+          <button onClick={() => setShowTemplates(true)} className="btn btn-ghost p-2 text-text-tertiary" title="Sablonlar">
+            <LayoutTemplate size={14} />
           </button>
           <StandupExport date={date} />
-          <button
-            onClick={() => navigate("/")}
-            className={cn(
-              "btn btn-ghost text-xs transition-opacity",
-              isToday ? "opacity-0 pointer-events-none" : "opacity-100"
-            )}
-            aria-label={t("day.goToday")}
-            tabIndex={isToday ? -1 : 0}
-          >
-            <CalendarDays size={14} />
-            <span className="hidden sm:inline">{t("day.today")}</span>
-          </button>
+          {!isToday && (
+            <button onClick={() => navigate("/")} className="btn btn-ghost text-xs" aria-label={t("day.goToday")}>
+              <CalendarDays size={14} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Carry over banner */}
-      <CarryOverBanner date={date} />
-
-      {/* Pomodoro timer */}
-      <AnimatePresence>
-        {pomodoroTask && (
-          <PomodoroTimer
-            taskName={pomodoroTask.name}
-            onComplete={(minutes) => {
-              updatePlan.mutate({
-                id: pomodoroTask.id,
-                completed: true,
-                actualDuration: minutes,
-              });
-            }}
-            onClose={() => setPomodoroTask(null)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Summary strip */}
-      {(taskCount > 0 || totalPlan > 0 || reminderCount > 0) && (
-        <div className="flex gap-3" role="status">
-          {totalPlan > 0 && (
-            <div className="flex-1 card !py-3 flex items-center gap-3">
-              <Target size={16} className="text-success flex-shrink-0" />
-              <div>
-                <p className="text-sm font-semibold">{completedPlan}/{totalPlan}</p>
-                <p className="text-xs text-text-secondary">{t("day.planned")}</p>
-              </div>
-              <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden" role="progressbar" aria-valuenow={completedPlan} aria-valuemax={totalPlan}>
-                <div
-                  className="h-full bg-success rounded-full transition-all duration-300"
-                  style={{ width: `${totalPlan > 0 ? (completedPlan / totalPlan) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-          )}
+      {/* Inline progress bar — only when plans exist */}
+      {totalPlan > 0 && (
+        <div className="flex items-center gap-3 px-1">
+          <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+            <div
+              className="h-full bg-success rounded-full transition-all duration-300"
+              style={{ width: `${(completedPlan / totalPlan) * 100}%` }}
+            />
+          </div>
+          <span className="text-xs text-text-tertiary font-medium tabular-nums">{completedPlan}/{totalPlan}</span>
           {reminderCount > 0 && (
-            <div className="flex-1 card !py-3 flex items-center gap-3">
-              <Bell size={16} className="text-accent flex-shrink-0" />
-              <div>
-                <p className="text-sm font-semibold">{reminderCount}</p>
-                <p className="text-xs text-text-secondary">{t("reminder.title" as any)}</p>
-              </div>
-            </div>
+            <>
+              <span className="text-text-tertiary">·</span>
+              <span className="text-xs text-text-tertiary flex items-center gap-1"><Bell size={11} />{reminderCount}</span>
+            </>
           )}
           {taskCount > 0 && (
-            <div className="flex-1 card !py-3 flex items-center gap-3">
-              <MessageSquare size={16} className="text-text-secondary flex-shrink-0" />
-              <div>
-                <p className="text-sm font-semibold">{t("day.notes", { count: taskCount, s: taskCount !== 1 ? "s" : "" })}</p>
-                <p className="text-xs text-text-secondary">{t("day.today")}</p>
-              </div>
-            </div>
+            <>
+              <span className="text-text-tertiary">·</span>
+              <span className="text-xs text-text-tertiary flex items-center gap-1"><MessageSquare size={11} />{taskCount}</span>
+            </>
           )}
         </div>
       )}
 
-      {/* Category filter */}
-      {(taskCount > 0 || totalPlan > 0 || reminderCount > 0) && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1" role="radiogroup">
-          <Filter size={14} className="text-text-tertiary flex-shrink-0" />
+      {/* Category filter — compact pills */}
+      {(taskCount > 0 || totalPlan > 0) && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1" role="radiogroup">
           <button
             type="button"
             role="radio"
             aria-checked={filterCat === "all"}
             onClick={() => setFilterCat("all")}
             className={cn(
-              "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap",
+              "px-2 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap",
               filterCat === "all"
-                ? "bg-accent text-bg shadow-sm"
-                : "bg-bg-elevated text-text-secondary hover:bg-bg-tertiary border border-border"
+                ? "bg-accent text-bg"
+                : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
             )}
           >
             {t("day.all")}
@@ -321,39 +244,56 @@ export default function DayView() {
                 aria-checked={filterCat === key}
                 onClick={() => setFilterCat(key)}
                 className={cn(
-                  "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap",
+                  "px-2 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap",
                   filterCat === key
-                    ? "bg-accent text-bg shadow-sm"
-                    : "bg-bg-elevated text-text-secondary hover:bg-bg-tertiary border border-border"
+                    ? "bg-accent text-bg"
+                    : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
                 )}
               >
-                {getCatLabel(key)} <span className="opacity-60">{count}</span>
+                {getCatLabel(key)} <span className="opacity-50">{count}</span>
               </button>
             );
           })}
         </div>
       )}
 
+      {/* Carry over banner */}
+      <CarryOverBanner date={date} />
+
+      {/* Pomodoro timer */}
+      <AnimatePresence>
+        {pomodoroTask && (
+          <PomodoroTimer
+            taskName={pomodoroTask.name}
+            onComplete={(minutes) => {
+              updatePlan.mutate({ id: pomodoroTask.id, completed: true, actualDuration: minutes });
+            }}
+            onClose={() => setPomodoroTask(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Plan section */}
-      <section aria-labelledby="plan-heading">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-text-tertiary uppercase tracking-wider flex items-center gap-1.5">
-            <Target size={13} />
-            Planlar
+      <section>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider flex items-center gap-1.5">
+            <Target size={12} />
+            {t("form.plan")}
           </span>
           <button
             onClick={() => setShowTimeline((v) => !v)}
             className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all border",
+              "flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-all",
               showTimeline
-                ? "border-accent bg-accent-soft text-text"
-                : "border-border text-text-secondary hover:border-border-hover"
+                ? "bg-accent-soft text-text"
+                : "text-text-tertiary hover:text-text-secondary"
             )}
           >
-            {showTimeline ? <AlignJustify size={12} /> : <Clock size={12} />}
+            {showTimeline ? <AlignJustify size={11} /> : <Clock size={11} />}
             {showTimeline ? "Liste" : "Zaman"}
           </button>
         </div>
+
         <TaskForm
           type="plan"
           loading={addPlan.isPending}
@@ -363,11 +303,12 @@ export default function DayView() {
               itemType: data.itemType ?? "plan",
               priority: data.priority ?? "normal",
             })
-          } />
+          }
+        />
 
         <AnimatePresence mode="wait">
           {showTimeline ? (
-            <div className="mt-2">
+            <div className="mt-1.5">
               <TimelineView plans={filteredPlan} />
             </div>
           ) : (
@@ -375,7 +316,7 @@ export default function DayView() {
               axis="y"
               values={displayPlan}
               onReorder={setDragOrder}
-              className="mt-2 space-y-1.5"
+              className="mt-1.5 space-y-1"
               as="div"
             >
               {displayPlan.map((item) => (
@@ -385,9 +326,7 @@ export default function DayView() {
                   as="div"
                   dragListener={!item.completed}
                   onDragEnd={() => {
-                    if (dragOrder) {
-                      reorderPlan.mutate(dragOrder.map((p) => p.id));
-                    }
+                    if (dragOrder) reorderPlan.mutate(dragOrder.map((p) => p.id));
                   }}
                 >
                   <PlanItem
@@ -411,22 +350,18 @@ export default function DayView() {
         </AnimatePresence>
 
         {dayLog && filteredPlan.length === 0 && filterCat === "all" && (
-          <div className="text-center py-6 text-text-tertiary">
-            <Target size={24} className="mx-auto mb-2 opacity-40" />
-            <p className="text-sm">{t("day.noPlans")}</p>
-            <p className="text-xs mt-0.5">{t("day.noPlansDesc")}</p>
-          </div>
+          <p className="text-center py-4 text-xs text-text-tertiary">{t("day.noPlans")}</p>
         )}
       </section>
 
       {/* Reminders section */}
-      <section aria-labelledby="reminders-heading">
+      <section>
         <TaskForm
           type="reminder"
           loading={addReminder.isPending}
           onSubmit={(data) => addReminder.mutate({ ...data, priority: data.priority ?? "normal" })}
         />
-        <div className="mt-2 space-y-1.5">
+        <div className="mt-1.5 space-y-1">
           <AnimatePresence mode="popLayout">
             {filteredReminders.map((item) => (
               <ReminderItem
@@ -436,23 +371,17 @@ export default function DayView() {
               />
             ))}
           </AnimatePresence>
-          {dayLog && filteredReminders.length === 0 && (
-            <div className="text-center py-4 text-text-tertiary">
-              <Bell size={20} className="mx-auto mb-1.5 opacity-30" />
-              <p className="text-xs">{t("reminder.empty" as any)}</p>
-            </div>
-          )}
         </div>
       </section>
 
       {/* Notes section */}
-      <section aria-labelledby="notes-heading">
+      <section>
         <TaskForm
           type="task"
           loading={addTask.isPending}
           onSubmit={(data) => addTask.mutate(data)}
         />
-        <div className="mt-2 space-y-1.5">
+        <div className="mt-1.5 space-y-1">
           <AnimatePresence mode="popLayout">
             {filteredTasks.map((task) => (
               <TaskItem
@@ -463,13 +392,6 @@ export default function DayView() {
               />
             ))}
           </AnimatePresence>
-          {dayLog && filteredTasks.length === 0 && filterCat === "all" && (
-            <div className="text-center py-6 text-text-tertiary">
-              <MessageSquare size={24} className="mx-auto mb-2 opacity-40" />
-              <p className="text-sm">{t("day.noNotes")}</p>
-              <p className="text-xs mt-0.5">{t("day.noNotesDesc")}</p>
-            </div>
-          )}
         </div>
       </section>
 
@@ -478,11 +400,11 @@ export default function DayView() {
 
       {/* Loading state */}
       {query.isLoading && (
-        <div className="space-y-3" aria-busy="true" aria-label={t("day.loading")}>
+        <div className="space-y-2" aria-busy="true">
           {[1, 2, 3].map((i) => (
             <div key={i} className="card animate-pulse">
-              <div className="h-4 bg-bg-tertiary rounded w-3/4 mb-2" />
-              <div className="h-3 bg-bg-tertiary rounded w-1/2" />
+              <div className="h-3 bg-bg-tertiary rounded w-3/4 mb-1.5" />
+              <div className="h-2.5 bg-bg-tertiary rounded w-1/2" />
             </div>
           ))}
         </div>

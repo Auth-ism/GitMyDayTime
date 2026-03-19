@@ -403,15 +403,15 @@ export async function searchItems(
       `SELECT id, description, category, estimated_duration AS "duration",
               completed, sort_order AS "order", scheduled_time AS "scheduledTime",
               actual_duration AS "actualDuration", item_type AS "itemType", date::text
-       FROM plan_items WHERE user_id = $1 AND description ILIKE $2
-       ORDER BY date DESC LIMIT $3`,
-      [userId, pattern, limit]
+       FROM plan_items WHERE user_id = $1 AND (description ILIKE $3 OR similarity(description, $2) > 0.15)
+       ORDER BY similarity(description, $2) DESC, date DESC LIMIT $4`,
+      [userId, query, pattern, limit]
     ),
     pool.query(
       `SELECT id, timestamp, description, category, duration, tags, completed, date::text
-       FROM tasks WHERE user_id = $1 AND description ILIKE $2
-       ORDER BY date DESC LIMIT $3`,
-      [userId, pattern, limit]
+       FROM tasks WHERE user_id = $1 AND (description ILIKE $3 OR similarity(description, $2) > 0.15)
+       ORDER BY similarity(description, $2) DESC, date DESC LIMIT $4`,
+      [userId, query, pattern, limit]
     ),
   ]);
 
@@ -895,6 +895,99 @@ export async function exportUserData(userId: string): Promise<object> {
     recurringTasks: recurring.rows,
     journals: journals.rows,
   };
+}
+
+export async function importUserData(
+  userId: string,
+  data: { plans: any[]; tasks: any[]; recurringTasks?: any[]; journals?: any[] }
+): Promise<{ plans: number; tasks: number; recurringTasks: number; journals: number }> {
+  const client = await pool.connect();
+  const counts = { plans: 0, tasks: 0, recurringTasks: 0, journals: 0 };
+
+  try {
+    await client.query("BEGIN");
+
+    // Import plans
+    for (const plan of data.plans) {
+      const id = nanoid(8);
+      // Calculate next sort_order for this date
+      const { rows: orderRows } = await client.query(
+        "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM plan_items WHERE user_id = $1 AND date = $2",
+        [userId, plan.date]
+      );
+      const sortOrder = orderRows[0].next_order;
+      await client.query(
+        `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type, priority, actual_duration)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [
+          id, userId, plan.date, plan.description,
+          plan.category || "general", plan.duration || null,
+          plan.completed || false, sortOrder,
+          plan.scheduledTime || null, plan.itemType || "plan",
+          plan.priority || "normal", plan.actualDuration || null,
+        ]
+      );
+      counts.plans++;
+    }
+
+    // Import tasks
+    for (const task of data.tasks) {
+      const id = nanoid(8);
+      await client.query(
+        `INSERT INTO tasks (id, user_id, date, description, category, duration, completed, timestamp)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          id, userId, task.date, task.description,
+          task.category || "general", task.duration || null,
+          task.completed || false, task.timestamp || new Date().toISOString(),
+        ]
+      );
+      counts.tasks++;
+    }
+
+    // Import recurring tasks (skip duplicates by description)
+    if (data.recurringTasks) {
+      for (const rt of data.recurringTasks) {
+        const { rows: existing } = await client.query(
+          "SELECT id FROM recurring_tasks WHERE user_id = $1 AND description = $2",
+          [userId, rt.description]
+        );
+        if (existing.length > 0) continue;
+        const id = nanoid(8);
+        await client.query(
+          `INSERT INTO recurring_tasks (id, user_id, description, category, recurrence, scheduled_time, active)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            id, userId, rt.description,
+            rt.category || "general", rt.recurrence || "daily",
+            rt.scheduledTime || null, rt.active !== false,
+          ]
+        );
+        counts.recurringTasks++;
+      }
+    }
+
+    // Import journals (upsert)
+    if (data.journals) {
+      for (const journal of data.journals) {
+        await client.query(
+          `INSERT INTO daily_journals (user_id, date, content)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (user_id, date) DO UPDATE SET content = EXCLUDED.content`,
+          [userId, journal.date, journal.content]
+        );
+        counts.journals++;
+      }
+    }
+
+    await client.query("COMMIT");
+    return counts;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 // ── Web Push ─────────────────────────────────────────────────────

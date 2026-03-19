@@ -143,8 +143,14 @@ export const api = {
   copyDayPlans: (date: string, fromDate: string) =>
     request<{ copied: number }>(`/days/${date}/copy-from/${fromDate}`, { method: "POST" }),
 
-  // Export
+  // Export / Import
   exportData: () => fetch("/api/export", { credentials: "include" }),
+
+  importData: (data: object) =>
+    request<{ plans: number; tasks: number; recurringTasks: number; journals: number }>("/export/import", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   // Web Push
   getVapidKey: () => request<{ publicKey: string }>("/push/vapid-key"),

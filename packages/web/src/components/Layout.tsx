@@ -234,28 +234,15 @@ export default function Layout() {
         </AnimatePresence>
       </main>
 
-      {/* Footer — desktop only */}
-      <footer className="hidden sm:block border-t border-border bg-bg/80 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-tertiary">
-          <div className="flex items-center gap-1.5">
-            <span>{t("footer.madeBy" as any)}</span>
-            <a href="https://github.com/firatege" target="_blank" rel="noopener noreferrer" className="text-text-secondary hover:text-text transition-colors font-medium">
-              firatege
-            </a>
-            <span className="mx-1">·</span>
-            <span>{t("footer.license" as any)}</span>
-          </div>
+      {/* Footer — desktop only, minimal */}
+      <footer className="hidden sm:block border-t border-border">
+        <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between text-[11px] text-text-tertiary">
+          <span>© {new Date().getFullYear()} GitMyDayTime</span>
           <div className="flex items-center gap-3">
-            <a href="https://github.com/firatege/GitMyDayTime" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-text-tertiary hover:text-text transition-colors">
-              <Github size={14} />
-              <span>{t("footer.source" as any)}</span>
-            </a>
-            <a href="mailto:firategebayram@gmail.com" className="flex items-center gap-1 text-text-tertiary hover:text-text transition-colors">
-              <Mail size={14} />
-              <span>{t("footer.contact" as any)}</span>
+            <a href="https://github.com/firatege/GitMyDayTime" target="_blank" rel="noopener noreferrer" className="hover:text-text transition-colors">
+              <Github size={13} />
             </a>
           </div>
-          <p>© {new Date().getFullYear()} GitMyDayTime. {t("footer.rights" as any)}</p>
         </div>
       </footer>
 
