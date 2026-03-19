@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, Clock, Timer, MessageSquare, ListTodo, Bell, ChevronDown } from "lucide-react";
-import { parseDuration, DEFAULT_CATEGORIES, type Category, type ItemType, type PriorityType } from "@gmd/shared";
+import { parseDuration, type Category, type ItemType, type PriorityType } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
+import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/cn";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -10,8 +11,6 @@ interface Props {
   loading?: boolean;
   type: "task" | "plan" | "reminder";
 }
-
-const categoryKeys: string[] = [...DEFAULT_CATEGORIES];
 
 const QUICK_DURATIONS = [
   { label: "15m", value: 15 },
@@ -24,8 +23,11 @@ const QUICK_DURATIONS = [
 export default function TaskForm({ onSubmit, loading, type }: Props) {
   const { t } = useI18n();
   const getCatLabel = useCategoryLabel();
+  const { allCategories, createCategory } = useCategories();
   const [desc, setDesc] = useState("");
   const [cat, setCat] = useState<Category>("dev");
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
   const [dur, setDur] = useState("");
   const [durMinutes, setDurMinutes] = useState<number | null>(null);
   const [time, setTime] = useState("");
@@ -162,7 +164,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
             <div className="pt-2 mt-2 border-t border-border space-y-2.5">
               {/* Category + Priority in one row */}
               <div className="flex flex-wrap items-center gap-1">
-                {categoryKeys.map((key) => (
+                {allCategories.map(({ key, label, isCustom }) => (
                   <button
                     key={key}
                     type="button"
@@ -174,9 +176,41 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                         : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
                     )}
                   >
-                    {getCatLabel(key)}
+                    {isCustom ? label : getCatLabel(key)}
                   </button>
                 ))}
+                {showNewCat ? (
+                  <form
+                    className="flex items-center gap-1"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (newCatName.trim()) {
+                        createCategory.mutate({ name: newCatName.trim(), color: "#6b7280" });
+                        setNewCatName("");
+                        setShowNewCat(false);
+                      }
+                    }}
+                  >
+                    <input
+                      autoFocus
+                      className="input !w-20 !text-[11px] !py-0.5 !px-1.5"
+                      placeholder="Kategori..."
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      onBlur={() => { if (!newCatName.trim()) setShowNewCat(false); }}
+                    />
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewCat(true)}
+                    className="px-1.5 py-1 rounded-md text-[11px] text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary transition-all"
+                    title="Yeni kategori ekle"
+                  >
+                    <Plus size={12} />
+                  </button>
+                )}
                 <span className="w-px h-4 bg-border mx-0.5" />
                 {(["normal", "high", "urgent"] as PriorityType[]).map((p) => (
                   <button
@@ -194,7 +228,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                         : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
                     )}
                   >
-                    {p === "urgent" ? "Acil" : p === "high" ? "Yuksek" : "Normal"}
+                    {t(`priority.${p}` as any)}
                   </button>
                 ))}
               </div>

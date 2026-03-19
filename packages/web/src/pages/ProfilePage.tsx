@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown, Download, Upload, Bell } from "lucide-react";
+import { User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown, Download, Upload, Bell, Camera } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
 import { useI18n, type Locale } from "@/lib/i18n";
@@ -36,6 +36,18 @@ const CATEGORIES = [
 
 type Tab = "account" | "preferences" | "security";
 
+function formatPhoneInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+  if (digits.length <= 8) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8)}`;
+}
+
+function rawPhone(formatted: string): string {
+  return formatted.replace(/\D/g, "");
+}
+
 export default function ProfilePage() {
   const { profile, refreshProfile } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -46,6 +58,11 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+
+  // Email change
+  const [emailPassword, setEmailPassword] = useState("");
+  const [emailChanged, setEmailChanged] = useState(false);
+  const originalEmail = useRef("");
 
   // Push notifications
   const [pushSupported, setPushSupported] = useState(false);
@@ -59,6 +76,10 @@ export default function ProfilePage() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string>("");
 
+  // Avatar
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
   // Password form
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -68,6 +89,9 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState("");
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
+
+  // Phone display
+  const [phoneDisplay, setPhoneDisplay] = useState("");
 
   // Check push notification support
   useEffect(() => {
@@ -85,6 +109,7 @@ export default function ProfilePage() {
   // Initialize form from profile
   useEffect(() => {
     if (profile) {
+      originalEmail.current = profile.email;
       setForm({
         displayName: profile.displayName,
         bio: profile.bio,
@@ -105,8 +130,35 @@ export default function ProfilePage() {
         emailNotifications: profile.emailNotifications,
         pushNotifications: profile.pushNotifications,
       });
+      setPhoneDisplay(profile.phoneNumber ? formatPhoneInput(profile.phoneNumber) : "");
+      if (profile.avatarUrl) setAvatarPreview(profile.avatarUrl);
     }
   }, [profile]);
+
+  useEffect(() => {
+    setEmailChanged(!!form.email && form.email !== originalEmail.current);
+  }, [form.email]);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 150_000) {
+      setError("Fotograf cok buyuk (max 150KB)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      setAvatarPreview(base64);
+      try {
+        await api.uploadAvatar(base64);
+        await refreshProfile();
+      } catch {
+        setError("Avatar yuklenemedi");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -179,11 +231,29 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
+    // Validate phone
+    const phone = rawPhone(phoneDisplay);
+    if (phone && (phone.length !== 10 || !phone.startsWith("5"))) {
+      setError("Gecersiz telefon numarasi (5XXXXXXXXX formatinda 10 hane)");
+      return;
+    }
+
+    // Email change requires password
+    if (emailChanged && !emailPassword) {
+      setError("E-posta degistirmek icin mevcut sifrenizi girin");
+      return;
+    }
+
     setSaving(true);
     setError("");
     setSaved(false);
     try {
-      await api.updateProfile(form);
+      const payload = {
+        ...form,
+        phoneNumber: phone || null,
+        ...(emailChanged ? { currentPassword: emailPassword } : {}),
+      };
+      await api.updateProfile(payload);
       await refreshProfile();
 
       // Sync theme and locale with local providers
@@ -194,10 +264,17 @@ export default function ProfilePage() {
         setLocale(form.locale as Locale);
       }
 
+      setEmailPassword("");
+      originalEmail.current = form.email || originalEmail.current;
+      setEmailChanged(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: any) {
-      setError(err.message || "Failed to save");
+      if (err.message?.includes("401") || err.message?.includes("wrong_password")) {
+        setError("Mevcut sifre yanlis");
+      } else {
+        setError(err.message || "Kaydetme basarisiz");
+      }
     } finally {
       setSaving(false);
     }
@@ -244,11 +321,34 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header — compact */}
+    <div className="space-y-5">
+      {/* Header — with avatar */}
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl bg-accent flex items-center justify-center text-bg text-sm font-semibold shrink-0">
-          {initials}
+        <div className="relative group">
+          {avatarPreview ? (
+            <img
+              src={avatarPreview}
+              alt="Avatar"
+              className="w-12 h-12 rounded-xl object-cover"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-xl bg-accent-soft text-text-secondary flex items-center justify-center text-sm font-semibold">
+              {initials}
+            </div>
+          )}
+          <button
+            onClick={() => avatarInputRef.current?.click()}
+            className="absolute inset-0 rounded-xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+          >
+            <Camera size={16} className="text-white" />
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleAvatarChange}
+            className="hidden"
+          />
         </div>
         <div className="min-w-0">
           <h1 className="text-base font-semibold text-text truncate">
@@ -259,7 +359,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-bg-secondary rounded-xl border border-border">
+      <div className="flex gap-1 p-1 bg-bg-tertiary/50 rounded-xl">
         {tabs.map(({ key, icon: Icon, labelKey }) => (
           <button
             key={key}
@@ -267,7 +367,7 @@ export default function ProfilePage() {
             className={cn(
               "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all flex-1 justify-center",
               activeTab === key
-                ? "bg-bg-elevated text-text shadow-sm border border-border"
+                ? "bg-bg-elevated text-text shadow-sm"
                 : "text-text-tertiary hover:text-text-secondary"
             )}
           >
@@ -312,6 +412,18 @@ export default function ProfilePage() {
                   value={form.email ?? ""}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
+                {emailChanged && (
+                  <div className="mt-2 space-y-1.5">
+                    <p className="text-[11px] text-text-tertiary">E-posta degistirmek icin sifrenizi girin</p>
+                    <input
+                      type="password"
+                      className="input !text-sm"
+                      placeholder="Mevcut sifre"
+                      value={emailPassword}
+                      onChange={(e) => setEmailPassword(e.target.value)}
+                    />
+                  </div>
+                )}
               </FormField>
 
               <FormField label={t("profile.username" as any)}>
@@ -358,9 +470,15 @@ export default function ProfilePage() {
               <input
                 className="input"
                 type="tel"
-                value={form.phoneNumber ?? ""}
-                onChange={(e) => setForm({ ...form, phoneNumber: e.target.value || null })}
-                placeholder="+90 555 000 00 00"
+                inputMode="numeric"
+                value={phoneDisplay}
+                onChange={(e) => {
+                  const formatted = formatPhoneInput(e.target.value);
+                  setPhoneDisplay(formatted);
+                  setForm({ ...form, phoneNumber: rawPhone(formatted) || null });
+                }}
+                placeholder="5XX XXX XX XX"
+                maxLength={13}
               />
               <p className="text-xs text-text-tertiary mt-1">{t("profile.phoneNumberDesc" as any)}</p>
             </FormField>
@@ -390,19 +508,21 @@ export default function ProfilePage() {
             {pushSupported && (
               <div className="flex items-center justify-between py-1">
                 <div>
-                  <p className="text-sm font-medium text-text">Web Push Bildirimleri</p>
-                  <p className="text-xs text-text-tertiary">Tarayici bildirimleri al</p>
+                  <p className="text-sm font-medium text-text">{t("profile.webPush" as any)}</p>
+                  <p className="text-xs text-text-tertiary">{t("profile.webPushDesc" as any)}</p>
                 </div>
                 <button
                   onClick={handleTogglePush}
                   disabled={pushLoading}
                   className={cn(
-                    "btn !py-1.5 !px-3 text-xs",
-                    pushEnabled ? "bg-success text-bg" : "btn-primary"
+                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                    pushEnabled
+                      ? "bg-success/10 text-success"
+                      : "bg-accent-soft text-text-secondary hover:text-text"
                   )}
                 >
-                  <Bell size={12} />
-                  {pushLoading ? "..." : pushEnabled ? "Devre Disi" : "Etkinlestir"}
+                  <Bell size={12} className="inline mr-1" />
+                  {pushLoading ? "..." : pushEnabled ? "Aktif" : "Etkinlestir"}
                 </button>
               </div>
             )}
@@ -410,15 +530,15 @@ export default function ProfilePage() {
 
           {/* Data Export / Import */}
           <div className="card space-y-3">
-            <h3 className="text-sm font-semibold text-text">Veri Yonetimi</h3>
+            <h3 className="text-sm font-semibold text-text">{t("profile.dataManagement" as any)}</h3>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={handleExport} disabled={exporting} className="btn btn-ghost border border-border text-sm">
-                <Download size={15} />
-                {exporting ? "Hazirlaniyor..." : "Disa Aktar"}
+              <button onClick={handleExport} disabled={exporting} className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-bg-secondary text-text-secondary hover:bg-bg-tertiary transition-colors">
+                <Download size={14} />
+                {exporting ? "..." : t("profile.exportData" as any)}
               </button>
-              <button onClick={() => fileInputRef.current?.click()} disabled={importing} className="btn btn-ghost border border-border text-sm">
-                <Upload size={15} />
-                {importing ? "Yukleniyor..." : "Ice Aktar"}
+              <button onClick={() => fileInputRef.current?.click()} disabled={importing} className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-bg-secondary text-text-secondary hover:bg-bg-tertiary transition-colors">
+                <Upload size={14} />
+                {importing ? "..." : "Ice Aktar"}
               </button>
             </div>
             <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
@@ -449,10 +569,10 @@ export default function ProfilePage() {
                     key={th}
                     onClick={() => setForm({ ...form, theme: th })}
                     className={cn(
-                      "flex-1 py-2.5 px-3 rounded-lg text-sm font-medium border transition-all",
+                      "flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all",
                       form.theme === th
-                        ? "border-accent bg-accent-soft text-text"
-                        : "border-border text-text-secondary hover:border-border-hover"
+                        ? "bg-accent text-bg"
+                        : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"
                     )}
                   >
                     {t(th === "light" ? "profile.themeLight" as any : "profile.themeDark" as any)}
@@ -469,10 +589,10 @@ export default function ProfilePage() {
                     key={l}
                     onClick={() => setForm({ ...form, locale: l })}
                     className={cn(
-                      "flex-1 py-2.5 px-3 rounded-lg text-sm font-medium border transition-all",
+                      "flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all",
                       form.locale === l
-                        ? "border-accent bg-accent-soft text-text"
-                        : "border-border text-text-secondary hover:border-border-hover"
+                        ? "bg-accent text-bg"
+                        : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"
                     )}
                   >
                     {l === "tr" ? "Turkce" : "English"}
@@ -664,7 +784,7 @@ export default function ProfilePage() {
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-text-secondary mb-1.5">{label}</label>
+      <label className="block text-xs font-medium text-text-tertiary mb-1.5">{label}</label>
       {children}
     </div>
   );
@@ -678,14 +798,14 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative w-11 h-6 rounded-full transition-colors shrink-0",
+        "relative w-10 h-[22px] rounded-full transition-colors shrink-0",
         checked ? "bg-accent" : "bg-border"
       )}
     >
       <span
         className={cn(
-          "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-bg transition-transform shadow-sm",
-          checked && "translate-x-5"
+          "absolute top-[2px] left-[2px] w-[18px] h-[18px] rounded-full bg-bg transition-transform shadow-sm",
+          checked && "translate-x-[18px]"
         )}
       />
     </button>

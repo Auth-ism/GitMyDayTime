@@ -587,21 +587,73 @@ export async function deleteRecurringTask(userId: string, taskId: string): Promi
   return (rowCount ?? 0) > 0;
 }
 
-// --- 571. Satır: injectRecurringTasks Başlangıcı ---
 export async function injectRecurringTasks(userId: string, date: string): Promise<PlanItem[]> {
   try {
-    // ... Mevcut recurring task mantığın ...
-    // Örnek: const { rows } = await pool.query(...);
+    // Get active recurring tasks
+    const { rows: tasks } = await pool.query(
+      `SELECT * FROM recurring_tasks WHERE user_id = $1 AND active = TRUE`,
+      [userId]
+    );
+    if (tasks.length === 0) return [];
 
-    // Buradaki return ifadesinden sonra fonksiyonu ve try bloğunu kapatıyoruz:
-    const { rows } = await pool.query("SELECT * FROM plan_items WHERE user_id = $1 AND date = $2", [userId, date]);
-    return rows as PlanItem[];
+    // Check which day of week this date falls on (0=Sun, 6=Sat)
+    const dayOfWeek = new Date(date + "T12:00:00").getDay();
 
+    // Filter tasks that should run on this day
+    const applicable = tasks.filter((t: any) => {
+      switch (t.recurrence) {
+        case "daily": return true;
+        case "weekdays": return dayOfWeek >= 1 && dayOfWeek <= 5;
+        case "weekly": return t.week_day === dayOfWeek;
+        case "custom": return (t.custom_days || []).includes(dayOfWeek);
+        default: return false;
+      }
+    });
+    if (applicable.length === 0) return [];
+
+    // Check which tasks already injected for this date
+    const taskIds = applicable.map((t: any) => t.id);
+    const { rows: existing } = await pool.query(
+      `SELECT recurring_task_id FROM recurring_task_instances WHERE recurring_task_id = ANY($1) AND date = $2`,
+      [taskIds, date]
+    );
+    const alreadyInjected = new Set(existing.map((r: any) => r.recurring_task_id));
+
+    // Get current max order for plan items
+    const { rows: orderRows } = await pool.query(
+      `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM plan_items WHERE user_id = $1 AND date = $2`,
+      [userId, date]
+    );
+    let nextOrder = orderRows[0].next_order;
+
+    const created: PlanItem[] = [];
+    for (const task of applicable) {
+      if (alreadyInjected.has(task.id)) continue;
+
+      const planId = nanoid(8);
+      const { rows } = await pool.query(
+        `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, scheduled_time, completed, sort_order, item_type, priority)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, 'plan', 'normal')
+         RETURNING id, description, category, estimated_duration AS duration, completed, sort_order AS "order",
+                   scheduled_time AS "scheduledTime", item_type AS "itemType", priority`,
+        [planId, userId, date, task.description, task.category, task.estimated_duration, task.scheduled_time, nextOrder++]
+      );
+
+      // Mark as injected
+      await pool.query(
+        `INSERT INTO recurring_task_instances (recurring_task_id, date) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [task.id, date]
+      );
+
+      created.push({ ...rows[0], checklist: [], tags: [] } as PlanItem);
+    }
+
+    return created;
   } catch (error) {
     console.error("Error in injectRecurringTasks:", error);
-    return []; // Hata durumunda boş liste dönerek TS2366 hatasını önleriz.
+    return [];
   }
-} // <--- Fonksiyon burada bitmeli!
+}
 
 // ŞİMDİ DİĞER FONKSİYONLAR BAŞLIYOR (Artık hata vermeyecekler)
 

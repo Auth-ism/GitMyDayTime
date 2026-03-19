@@ -127,8 +127,8 @@ export type CreateTemplateInput = z.infer<typeof CreateTemplateInput>;
 export const CATEGORY_LABELS: Record<string, string> = {
   dev: "Development",
   meeting: "Meeting",
-  review: "Code Review",
-  ops: "Operations",
+  review: "Review",
+  ops: "DevOps",
   learning: "Learning",
   personal: "Personal",
   other: "Other",
@@ -281,5 +281,6 @@ export const UpdateProfileInput = z.object({
   pushNotifications: z.boolean().optional(),
   email: z.string().email().optional(),
   username: z.string().min(2).max(32).optional(),
+  currentPassword: z.string().min(1).optional(),
 });
 export type UpdateProfileInput = z.infer<typeof UpdateProfileInput>;

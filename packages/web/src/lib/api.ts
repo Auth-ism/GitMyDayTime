@@ -202,6 +202,12 @@ export const api = {
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
 
+  uploadAvatar: (avatar: string) =>
+    request<{ ok: boolean }>("/profile/avatar", {
+      method: "PUT",
+      body: JSON.stringify({ avatar }),
+    }),
+
   // Categories
   getCategories: () => request<UserCategory[]>("/categories"),
 

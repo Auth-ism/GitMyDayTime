@@ -1,10 +1,16 @@
 import { Router, type Request, type Response } from "express";
 import argon2 from "argon2";
+import crypto from "node:crypto";
 import { UpdateProfileInput, ChangePasswordInput } from "@gmd/shared";
 import { getUserProfile, updateUserProfile } from "../storage.js";
 import { pool } from "../db.js";
+import { sendVerificationEmail } from "../email.js";
 
 const router = Router();
+
+function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
 
 // GET /api/profile — fetch current user profile
 router.get("/", async (req: Request, res: Response) => {
@@ -24,8 +30,40 @@ router.put("/", async (req: Request, res: Response) => {
     return;
   }
 
+  const data = parsed.data;
+
+  // If email is being changed, require password confirmation
+  if (data.email) {
+    const { rows: current } = await pool.query("SELECT email FROM users WHERE id = $1", [req.userId]);
+    if (current.length > 0 && data.email !== current[0].email) {
+      if (!data.currentPassword) {
+        res.status(400).json({ error: "password_required" });
+        return;
+      }
+      const { rows: pwRows } = await pool.query("SELECT password_hash FROM users WHERE id = $1", [req.userId]);
+      const valid = await argon2.verify(pwRows[0].password_hash, data.currentPassword);
+      if (!valid) {
+        res.status(401).json({ error: "wrong_password" });
+        return;
+      }
+      // Set email_verified to false and send verification
+      await pool.query("UPDATE users SET email_verified = FALSE WHERE id = $1", [req.userId]);
+      const emailTokenRaw = crypto.randomBytes(32).toString("hex");
+      const emailTokenHash = hashToken(emailTokenRaw);
+      const emailTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const { rows: userRows } = await pool.query(
+        `UPDATE users SET email_token_hash = $1, email_token_expires_at = $2 WHERE id = $3 RETURNING username`,
+        [emailTokenHash, emailTokenExpires, req.userId]
+      );
+      sendVerificationEmail({ email: data.email, username: userRows[0].username }, emailTokenRaw).catch(console.error);
+    }
+  }
+
+  // Remove currentPassword from data before passing to storage
+  const { currentPassword: _, ...profileData } = data as any;
+
   try {
-    const profile = await updateUserProfile(req.userId!, parsed.data);
+    const profile = await updateUserProfile(req.userId!, profileData);
     if (!profile) {
       res.status(404).json({ error: "User not found" });
       return;
@@ -39,6 +77,22 @@ router.put("/", async (req: Request, res: Response) => {
     }
     throw err;
   }
+});
+
+// PUT /api/profile/avatar — upload avatar (base64)
+router.put("/avatar", async (req: Request, res: Response) => {
+  const { avatar } = req.body;
+  if (!avatar || typeof avatar !== "string") {
+    res.status(400).json({ error: "Invalid avatar data" });
+    return;
+  }
+  // Max ~150KB base64
+  if (avatar.length > 200_000) {
+    res.status(400).json({ error: "Avatar too large (max 150KB)" });
+    return;
+  }
+  await pool.query("UPDATE user_profiles SET avatar_url = $1 WHERE user_id = $2", [avatar, req.userId]);
+  res.json({ ok: true });
 });
 
 // PUT /api/profile/password — change password

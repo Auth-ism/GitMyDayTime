@@ -17,8 +17,8 @@ const translations = {
     // Categories
     "cat.dev": "Development",
     "cat.meeting": "Meeting",
-    "cat.review": "Code Review",
-    "cat.ops": "Operations",
+    "cat.review": "Review",
+    "cat.ops": "DevOps",
     "cat.learning": "Learning",
     "cat.personal": "Personal",
     "cat.other": "Other",
@@ -344,8 +344,8 @@ const translations = {
     // Categories
     "cat.dev": "Geliştirme",
     "cat.meeting": "Toplantı",
-    "cat.review": "Kod İnceleme",
-    "cat.ops": "Operasyon",
+    "cat.review": "İnceleme",
+    "cat.ops": "DevOps",
     "cat.learning": "Öğrenme",
     "cat.personal": "Kişisel",
     "cat.other": "Diğer",

@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #ffffff;
-  --color-bg-secondary: #f7f7f8;
-  --color-bg-tertiary: #ededef;
-  --color-bg-elevated: #ffffff;
+  --color-bg: #f5f5f7;
+  --color-bg-secondary: #ededf0;
+  --color-bg-tertiary: #e3e3e7;
+  --color-bg-elevated: #fafafc;
   --color-text: #0f0f0f;
   --color-text-secondary: #525252;
   --color-text-tertiary: #737373;

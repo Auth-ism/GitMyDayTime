@@ -18,16 +18,15 @@ import ShortcutHelp from "@/components/ShortcutHelp";
 import { UndoToastContainer, useUndoDelete } from "@/components/UndoToast";
 import { AnimatePresence, Reorder } from "framer-motion";
 import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, Keyboard } from "lucide-react";
-import { DEFAULT_CATEGORIES, todayStr, type PlanItem as PlanItemData } from "@gmd/shared";
+import { todayStr, type PlanItem as PlanItemData } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { useSwipe } from "@/hooks/useSwipe";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCategories } from "@/hooks/useCategories";
 
 function getDateStr(dateParam?: string): string {
   return dateParam || todayStr();
 }
-
-const categories = [...DEFAULT_CATEGORIES];
 
 export default function DayView() {
   const { date: dateParam } = useParams();
@@ -37,6 +36,7 @@ export default function DayView() {
   const getCatLabel = useCategoryLabel();
   const qc = useQueryClient();
   const { query, addTask, updateTask, deleteTask, addPlan, updatePlan, deletePlan, reorderPlan, addReminder, deleteReminder, addChecklist, updateChecklist, deleteChecklist } = useDayLog(date);
+  const { allCategories } = useCategories();
   const [filterCat, setFilterCat] = useState<string>("all");
   const [pomodoroTask, setPomodoroTask] = useState<{ id: string; name: string } | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
@@ -178,8 +178,9 @@ export default function DayView() {
           <button onClick={handleCopyYesterday} disabled={copyingDay} className="btn btn-ghost p-2 text-text-tertiary" title="Dunden kopyala">
             <Copy size={14} />
           </button>
-          <button onClick={() => setShowTemplates(true)} className="btn btn-ghost p-2 text-text-tertiary" title="Sablonlar">
+          <button onClick={() => setShowTemplates(true)} className="btn btn-ghost px-2 py-1.5 text-text-tertiary text-[11px] gap-1" title="Şablonlar">
             <LayoutTemplate size={14} />
+            <span className="hidden sm:inline">Şablon</span>
           </button>
           <StandupExport date={date} />
           {!isToday && (
@@ -232,7 +233,7 @@ export default function DayView() {
           >
             {t("day.all")}
           </button>
-          {categories.map((key) => {
+          {allCategories.map(({ key, label, isCustom }) => {
             const count = (dayLog?.tasks.filter((t) => t.category === key).length || 0) +
               (dayLog?.plan.filter((p) => p.itemType !== "reminder" && p.category === key).length || 0);
             if (count === 0) return null;
@@ -250,7 +251,7 @@ export default function DayView() {
                     : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
                 )}
               >
-                {getCatLabel(key)} <span className="opacity-50">{count}</span>
+                {isCustom ? label : getCatLabel(key)} <span className="opacity-50">{count}</span>
               </button>
             );
           })}
