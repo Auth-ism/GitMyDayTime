@@ -19,6 +19,10 @@ import searchRoutes from "./routes/search.js";
 import recurringRoutes from "./routes/recurring.js";
 import profileRoutes from "./routes/profile.js";
 import categoryRoutes from "./routes/categories.js";
+import journalRoutes from "./routes/journal.js";
+import templateRoutes from "./routes/templates.js";
+import exportRoutes from "./routes/export.js";
+import pushRoutes from "./routes/push.js";
 import { startScheduler } from "./scheduler.js";
 
 const app = express();
@@ -68,11 +72,15 @@ app.use(authMiddleware);
 
 app.use("/api/days", taskRoutes);
 app.use("/api/days", planRoutes);
+app.use("/api/days", journalRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/recurring", recurringRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/templates", templateRoutes);
+app.use("/api/export", exportRoutes);
+app.use("/api/push", pushRoutes);
 
 // Serve frontend in production
 const webDist = path.resolve(__dirname, "../../web/dist");

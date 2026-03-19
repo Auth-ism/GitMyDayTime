@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, Clock, Timer, MessageSquare, ListTodo, Bell } from "lucide-react";
-import { parseDuration, DEFAULT_CATEGORIES, type Category, type ItemType } from "@gmd/shared";
+import { parseDuration, DEFAULT_CATEGORIES, type Category, type ItemType, type PriorityType } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
-  onSubmit: (data: { description: string; category: Category; duration?: number; tags: string[]; scheduledTime?: string; itemType?: ItemType }) => void;
+  onSubmit: (data: { description: string; category: Category; duration?: number; tags: string[]; scheduledTime?: string; itemType?: ItemType; priority?: PriorityType }) => void;
   loading?: boolean;
   type: "task" | "plan" | "reminder";
 }
@@ -29,6 +29,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
   const [dur, setDur] = useState("");
   const [durMinutes, setDurMinutes] = useState<number | null>(null);
   const [time, setTime] = useState("");
+  const [priority, setPriority] = useState<PriorityType>("normal");
   const [justAdded, setJustAdded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,11 +48,13 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
       tags: [],
       ...((isPlan || isReminder) && time ? { scheduledTime: time } : {}),
       ...(isReminder ? { itemType: "reminder" as ItemType } : {}),
+      ...(isPlan ? { priority } : {}),
     });
     setDesc("");
     setDur("");
     setDurMinutes(null);
     setTime("");
+    setPriority("normal");
     setJustAdded(true);
     inputRef.current?.focus();
   };
@@ -144,6 +147,30 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                 )}
               >
                 {getCatLabel(key)}
+              </button>
+            ))}
+          </div>
+
+          {/* Priority */}
+          <div className="flex items-center gap-2" role="group" aria-label="Priority">
+            <span className="text-xs text-text-tertiary">Oncelik:</span>
+            {(["normal", "high", "urgent"] as PriorityType[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPriority(p)}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg text-xs font-medium transition-all border",
+                  priority === p
+                    ? p === "urgent"
+                      ? "bg-red-500 text-white border-red-500"
+                      : p === "high"
+                      ? "bg-orange-400 text-white border-orange-400"
+                      : "bg-accent text-bg border-accent"
+                    : "bg-bg-secondary text-text-secondary border-transparent hover:border-border"
+                )}
+              >
+                {p === "urgent" ? "Acil" : p === "high" ? "Yuksek" : "Normal"}
               </button>
             ))}
           </div>

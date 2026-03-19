@@ -1,5 +1,6 @@
 import twilio from "twilio";
-import { getPendingNotifications, markNotificationSent } from "./storage.js";
+import webpush from "web-push";
+import { getPendingNotifications, markNotificationSent, getUsersWithPushSubscriptions } from "./storage.js";
 import { sendReminderEmail } from "./email.js";
 
 const twilioClient =
@@ -8,6 +9,15 @@ const twilioClient =
     : null;
 
 const TWILIO_FROM = process.env.TWILIO_PHONE_NUMBER;
+
+// Set VAPID details at startup
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || "mailto:admin@example.com",
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
 
 async function sendPendingNotifications(): Promise<void> {
   let pending;
@@ -48,6 +58,34 @@ async function sendPendingNotifications(): Promise<void> {
 
   if (pending.length > 0) {
     console.log(`[scheduler] Sent ${pending.length} notification(s)`);
+  }
+}
+
+async function sendWebPushNotifications(): Promise<void> {
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
+
+  let users;
+  try {
+    users = await getUsersWithPushSubscriptions();
+  } catch (err) {
+    console.error("[scheduler] push subscription query error:", err);
+    return;
+  }
+
+  for (const user of users) {
+    try {
+      const payload = JSON.stringify({
+        title: "GitMyDayTime",
+        body: "You have upcoming plans.",
+      });
+      await webpush.sendNotification(user.pushSubscription, payload);
+    } catch (err: any) {
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        // Subscription expired — clean up silently
+      } else {
+        console.error(`[scheduler] web push failed for user ${user.id}:`, err);
+      }
+    }
   }
 }
 

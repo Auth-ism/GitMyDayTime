@@ -9,6 +9,9 @@ export type DefaultCategory = (typeof DEFAULT_CATEGORIES)[number];
 export const ItemType = z.enum(["plan", "reminder"]);
 export type ItemType = z.infer<typeof ItemType>;
 
+export const PriorityType = z.enum(["urgent", "high", "normal"]);
+export type PriorityType = z.infer<typeof PriorityType>;
+
 export const UserCategorySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -60,6 +63,7 @@ export const PlanItemSchema = z.object({
   checklist: z.array(ChecklistItemSchema).default([]),
   itemType: ItemType.default("plan"),
   notificationSent: z.boolean().optional(),
+  priority: PriorityType.default("normal"),
 });
 export type PlanItem = z.infer<typeof PlanItemSchema>;
 
@@ -84,8 +88,41 @@ export const CreatePlanInput = z.object({
   duration: z.number().optional(),
   scheduledTime: z.string().optional(),
   itemType: ItemType.default("plan"),
+  priority: PriorityType.default("normal"),
 });
 export type CreatePlanInput = z.infer<typeof CreatePlanInput>;
+
+export const PlanTemplateItemSchema = z.object({
+  id: z.string(),
+  templateId: z.string(),
+  description: z.string(),
+  category: Category,
+  duration: z.number().optional(),
+  scheduledTime: z.string().optional(),
+  priority: PriorityType.default("normal"),
+  order: z.number(),
+});
+export type PlanTemplateItem = z.infer<typeof PlanTemplateItemSchema>;
+
+export const PlanTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  items: z.array(PlanTemplateItemSchema),
+  createdAt: z.string(),
+});
+export type PlanTemplate = z.infer<typeof PlanTemplateSchema>;
+
+export const CreateTemplateInput = z.object({
+  name: z.string().min(1).max(64),
+  items: z.array(z.object({
+    description: z.string().min(1),
+    category: Category.default("other"),
+    duration: z.number().optional(),
+    scheduledTime: z.string().optional(),
+    priority: PriorityType.default("normal"),
+  })),
+});
+export type CreateTemplateInput = z.infer<typeof CreateTemplateInput>;
 
 export const CATEGORY_LABELS: Record<string, string> = {
   dev: "Development",
@@ -218,6 +255,7 @@ export const UserProfileSchema = z.object({
   phoneNumber: z.string().nullable(),
   smsNotifications: z.boolean(),
   emailNotifications: z.boolean(),
+  pushNotifications: z.boolean(),
   createdAt: z.string(),
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;
@@ -240,6 +278,7 @@ export const UpdateProfileInput = z.object({
   phoneNumber: z.string().max(20).nullable().optional(),
   smsNotifications: z.boolean().optional(),
   emailNotifications: z.boolean().optional(),
+  pushNotifications: z.boolean().optional(),
   email: z.string().email().optional(),
   username: z.string().min(2).max(32).optional(),
 });

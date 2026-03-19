@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { CreatePlanInput, CreateChecklistInput, PlanItemSchema } from "@gmd/shared";
-import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem } from "../storage.js";
+import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem, copyDayPlans } from "../storage.js";
 import { pool } from "../db.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -28,6 +28,7 @@ router.post("/:date/plan", async (req, res) => {
     completed: false,
     order: nextOrder,
     itemType: input.data.itemType ?? "plan",
+    priority: input.data.priority ?? "normal",
   });
 
   await addPlanItem(req.userId!, req.params.date, item);
@@ -58,6 +59,13 @@ router.put("/:date/plan/:id/move", async (req, res) => {
   const moved = await movePlanItem(req.userId!, req.params.id, newDate);
   if (!moved) return res.status(404).json({ error: "Plan item not found" });
   res.json(moved);
+});
+
+router.post("/:date/copy-from/:fromDate", async (req, res) => {
+  if (!DATE_RE.test(req.params.date) || !DATE_RE.test(req.params.fromDate))
+    return res.status(400).json({ error: "Invalid date" });
+  const count = await copyDayPlans(req.userId!, req.params.fromDate, req.params.date);
+  res.json({ copied: count });
 });
 
 // ── Checklist ───────────────────────────────────────────────────

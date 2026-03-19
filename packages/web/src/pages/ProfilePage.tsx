@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown } from "lucide-react";
+import { User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown, Download, Bell } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
 import { useI18n, type Locale } from "@/lib/i18n";
@@ -47,6 +47,14 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
+  // Push notifications
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  // Export state
+  const [exporting, setExporting] = useState(false);
+
   // Password form
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -56,6 +64,19 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState("");
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
+
+  // Check push notification support
+  useEffect(() => {
+    const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+    setPushSupported(supported);
+    if (supported) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.pushManager.getSubscription().then((sub) => {
+          setPushEnabled(!!sub);
+        });
+      }).catch(() => {});
+    }
+  }, []);
 
   // Initialize form from profile
   useEffect(() => {
@@ -78,9 +99,60 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber,
         smsNotifications: profile.smsNotifications,
         emailNotifications: profile.emailNotifications,
+        pushNotifications: profile.pushNotifications,
       });
     }
   }, [profile]);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await api.exportData();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `gmd-export-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleTogglePush = async () => {
+    if (!pushSupported) return;
+    setPushLoading(true);
+    try {
+      if (pushEnabled) {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) await sub.unsubscribe();
+        await api.unsubscribePush();
+        setPushEnabled(false);
+        setForm({ ...form, pushNotifications: false });
+      } else {
+        const { publicKey } = await api.getVapidKey();
+        if (!publicKey) return;
+        const reg = await navigator.serviceWorker.ready;
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") return;
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+        await api.subscribePush(sub.toJSON() as PushSubscriptionJSON);
+        setPushEnabled(true);
+        setForm({ ...form, pushNotifications: true });
+      }
+    } catch (err) {
+      console.error("Push toggle failed:", err);
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -298,6 +370,39 @@ export default function ProfilePage() {
                 onChange={(v) => setForm({ ...form, smsNotifications: v })}
               />
             </div>
+
+            {pushSupported && (
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <p className="text-sm font-medium text-text">Web Push Bildirimleri</p>
+                  <p className="text-xs text-text-tertiary">Tarayici bildirimleri al</p>
+                </div>
+                <button
+                  onClick={handleTogglePush}
+                  disabled={pushLoading}
+                  className={cn(
+                    "btn !py-1.5 !px-3 text-xs",
+                    pushEnabled ? "bg-success text-bg" : "btn-primary"
+                  )}
+                >
+                  <Bell size={12} />
+                  {pushLoading ? "..." : pushEnabled ? "Devre Disi" : "Etkinlestir"}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Data Export */}
+          <div className="card">
+            <h3 className="text-sm font-semibold text-text mb-3">Veri Yonetimi</h3>
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="btn btn-ghost w-full border border-border text-sm"
+            >
+              <Download size={15} />
+              {exporting ? "Hazirlaniyor..." : "Verilerimi Indir (JSON)"}
+            </button>
           </div>
 
           <SaveButton
@@ -563,6 +668,14 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       />
     </button>
   );
+}
+
+function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = window.atob(base64);
+  const arr = new Uint8Array([...raw].map((c) => c.charCodeAt(0)));
+  return arr.buffer as ArrayBuffer;
 }
 
 function SaveButton({

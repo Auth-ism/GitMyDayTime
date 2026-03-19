@@ -1,6 +1,6 @@
 import { pool } from "./db.js";
 import { nanoid } from "nanoid";
-import { DEFAULT_CATEGORIES, type DayLog, type TaskEntry, type PlanItem, type ChecklistItem, type RecurringTask, type CreateRecurringTaskInput, type UserProfile, type UpdateProfileInput, type UserCategory } from "@gmd/shared";
+import { DEFAULT_CATEGORIES, type DayLog, type TaskEntry, type PlanItem, type ChecklistItem, type RecurringTask, type CreateRecurringTaskInput, type UserProfile, type UpdateProfileInput, type UserCategory, type PlanTemplate, type CreateTemplateInput } from "@gmd/shared";
 
 // Helpers to normalize DB row types
 function serializeTimestamp(val: unknown): string {
@@ -16,6 +16,7 @@ function toPlanItem(r: any): PlanItem {
     ...r,
     scheduledTime: formatTime(r.scheduledTime),
     notificationSent: r.notificationSent ?? false,
+    priority: r.priority ?? "normal",
   } as PlanItem;
 }
 
@@ -43,6 +44,7 @@ function toUserProfile(r: any): UserProfile {
     phoneNumber: r.phone_number ?? null,
     smsNotifications: r.sms_notifications ?? false,
     emailNotifications: r.email_notifications ?? false,
+    pushNotifications: r.push_notifications ?? false,
     createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   };
 }
@@ -52,7 +54,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     `SELECT id, email, username, display_name, bio, avatar_url, timezone, locale, theme,
             pomodoro_duration, break_duration, daily_goal, work_start_time, work_end_time,
             default_category, is_public, notification_enabled,
-            phone_number, sms_notifications, email_notifications, created_at
+            phone_number, sms_notifications, email_notifications, push_notifications, created_at
      FROM users WHERE id = $1`,
     [userId]
   );
@@ -81,6 +83,7 @@ export async function updateUserProfile(
     phoneNumber: "phone_number",
     smsNotifications: "sms_notifications",
     emailNotifications: "email_notifications",
+    pushNotifications: "push_notifications",
     email: "email",
     username: "username",
   });
@@ -95,7 +98,7 @@ export async function updateUserProfile(
      RETURNING id, email, username, display_name, bio, avatar_url, timezone, locale, theme,
                pomodoro_duration, break_duration, daily_goal, work_start_time, work_end_time,
                default_category, is_public, notification_enabled,
-               phone_number, sms_notifications, email_notifications, created_at`,
+               phone_number, sms_notifications, email_notifications, push_notifications, created_at`,
     values
   );
 
@@ -132,7 +135,8 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog> {
               scheduled_time AS "scheduledTime",
               actual_duration AS "actualDuration",
               item_type AS "itemType",
-              notification_sent AS "notificationSent"
+              notification_sent AS "notificationSent",
+              priority
        FROM plan_items WHERE user_id = $1 AND date = $2 ORDER BY sort_order`,
       [userId, date]
     ),
@@ -222,9 +226,9 @@ export async function addPlanItem(
   item: PlanItem
 ): Promise<PlanItem> {
   await pool.query(
-    `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-    [item.id, userId, date, item.description, item.category, item.duration ?? null, item.completed, item.order, item.scheduledTime ?? null, item.itemType ?? "plan"]
+    `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type, priority)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [item.id, userId, date, item.description, item.category, item.duration ?? null, item.completed, item.order, item.scheduledTime ?? null, item.itemType ?? "plan", item.priority ?? "normal"]
   );
   return item;
 }
@@ -243,6 +247,7 @@ export async function updatePlanItem(
     scheduledTime: "scheduled_time",
     actualDuration: "actual_duration",
     itemType: "item_type",
+    priority: "priority",
   });
 
   if (fields.length === 0) return null;
@@ -254,7 +259,7 @@ export async function updatePlanItem(
      WHERE id = $${idx++} AND user_id = $${idx}
      RETURNING id, description, category, estimated_duration AS "duration", completed, sort_order AS "order",
                scheduled_time AS "scheduledTime", actual_duration AS "actualDuration",
-               item_type AS "itemType"`,
+               item_type AS "itemType", priority`,
     values
   );
 
@@ -747,4 +752,215 @@ export async function markNotificationSent(id: string): Promise<void> {
     "UPDATE plan_items SET notification_sent = TRUE WHERE id = $1",
     [id]
   );
+}
+
+// ── Daily Journal ─────────────────────────────────────────────────
+
+export async function getJournal(userId: string, date: string): Promise<string> {
+  const { rows } = await pool.query(
+    "SELECT content FROM daily_journals WHERE user_id = $1 AND date = $2",
+    [userId, date]
+  );
+  return rows[0]?.content ?? "";
+}
+
+export async function upsertJournal(userId: string, date: string, content: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO daily_journals (id, user_id, date, content, updated_at)
+     VALUES ($1, $2, $3, $4, NOW())
+     ON CONFLICT (user_id, date) DO UPDATE SET content = $4, updated_at = NOW()`,
+    [nanoid(8), userId, date, content]
+  );
+}
+
+// ── Plan Templates ───────────────────────────────────────────────
+
+export async function getTemplates(userId: string): Promise<PlanTemplate[]> {
+  const { rows: tmpl } = await pool.query(
+    "SELECT id, name, created_at FROM plan_templates WHERE user_id = $1 ORDER BY created_at DESC",
+    [userId]
+  );
+  if (tmpl.length === 0) return [];
+  const templateIds = tmpl.map((t: any) => t.id);
+  const { rows: items } = await pool.query(
+    `SELECT id, template_id AS "templateId", description, category, estimated_duration AS duration,
+            scheduled_time AS "scheduledTime", priority, sort_order AS "order"
+     FROM template_items WHERE template_id = ANY($1) ORDER BY sort_order`,
+    [templateIds]
+  );
+  const byTemplate: Record<string, any[]> = {};
+  for (const item of items) {
+    if (!byTemplate[item.templateId]) byTemplate[item.templateId] = [];
+    byTemplate[item.templateId].push({ ...item, scheduledTime: formatTime(item.scheduledTime) });
+  }
+  return tmpl.map((t: any) => ({
+    id: t.id,
+    name: t.name,
+    items: (byTemplate[t.id] || []).map((i: any) => ({ ...i, duration: i.duration ?? undefined })),
+    createdAt: serializeTimestamp(t.created_at),
+  }));
+}
+
+export async function createTemplate(userId: string, input: CreateTemplateInput): Promise<PlanTemplate> {
+  const id = nanoid(8);
+  await pool.query(
+    "INSERT INTO plan_templates (id, user_id, name) VALUES ($1, $2, $3)",
+    [id, userId, input.name]
+  );
+  const items: PlanTemplate["items"] = [];
+  for (let i = 0; i < input.items.length; i++) {
+    const item = input.items[i];
+    const itemId = nanoid(8);
+    await pool.query(
+      `INSERT INTO template_items (id, template_id, description, category, estimated_duration, scheduled_time, priority, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [itemId, id, item.description, item.category, item.duration ?? null, item.scheduledTime ?? null, item.priority ?? "normal", i]
+    );
+    items.push({
+      id: itemId,
+      templateId: id,
+      description: item.description,
+      category: item.category ?? "other",
+      duration: item.duration,
+      scheduledTime: item.scheduledTime,
+      priority: (item.priority ?? "normal") as "urgent" | "high" | "normal",
+      order: i,
+    });
+  }
+  const { rows } = await pool.query("SELECT created_at FROM plan_templates WHERE id = $1", [id]);
+  return { id, name: input.name, items, createdAt: serializeTimestamp(rows[0].created_at) };
+}
+
+export async function deleteTemplate(userId: string, templateId: string): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    "DELETE FROM plan_templates WHERE id = $1 AND user_id = $2",
+    [templateId, userId]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+// ── Copy Day Plans ───────────────────────────────────────────────
+
+export async function copyDayPlans(userId: string, fromDate: string, toDate: string): Promise<number> {
+  const { rows } = await pool.query(
+    `SELECT description, category, estimated_duration, scheduled_time, item_type, priority
+     FROM plan_items WHERE user_id = $1 AND date = $2 AND item_type = 'plan'
+     ORDER BY sort_order`,
+    [userId, fromDate]
+  );
+  if (rows.length === 0) return 0;
+  const { rows: orderRows } = await pool.query(
+    "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM plan_items WHERE user_id = $1 AND date = $2",
+    [userId, toDate]
+  );
+  let nextOrder = orderRows[0].next_order;
+  for (const row of rows) {
+    await pool.query(
+      `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type, priority)
+       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $9, $10)`,
+      [nanoid(8), userId, toDate, row.description, row.category, row.estimated_duration, nextOrder++, row.scheduled_time, row.item_type, row.priority ?? "normal"]
+    );
+  }
+  return rows.length;
+}
+
+// ── Export User Data ─────────────────────────────────────────────
+
+export async function exportUserData(userId: string): Promise<object> {
+  const [planItems, tasks, recurring, journals] = await Promise.all([
+    pool.query(
+      `SELECT date::text, description, category, estimated_duration AS duration, actual_duration AS "actualDuration",
+              completed, scheduled_time AS "scheduledTime", item_type AS "itemType", priority
+       FROM plan_items WHERE user_id = $1 ORDER BY date, sort_order`,
+      [userId]
+    ),
+    pool.query(
+      `SELECT date::text, description, category, duration, completed, timestamp
+       FROM tasks WHERE user_id = $1 ORDER BY date, timestamp`,
+      [userId]
+    ),
+    pool.query(
+      "SELECT description, category, recurrence, scheduled_time AS \"scheduledTime\", active FROM recurring_tasks WHERE user_id = $1",
+      [userId]
+    ),
+    pool.query(
+      "SELECT date::text, content FROM daily_journals WHERE user_id = $1 ORDER BY date",
+      [userId]
+    ),
+  ]);
+  return {
+    exportedAt: new Date().toISOString(),
+    plans: planItems.rows,
+    tasks: tasks.rows,
+    recurringTasks: recurring.rows,
+    journals: journals.rows,
+  };
+}
+
+// ── Web Push ─────────────────────────────────────────────────────
+
+export async function savePushSubscription(userId: string, subscription: object | null): Promise<void> {
+  await pool.query(
+    "UPDATE users SET push_subscription = $1 WHERE id = $2",
+    [subscription ? JSON.stringify(subscription) : null, userId]
+  );
+}
+
+export async function getUsersWithPushSubscriptions(): Promise<{ id: string; pushSubscription: any; timezone: string }[]> {
+  const { rows } = await pool.query(
+    "SELECT id, push_subscription AS \"pushSubscription\", timezone FROM users WHERE push_subscription IS NOT NULL AND push_notifications = TRUE"
+  );
+  return rows;
+}
+
+// ── Yearly Activity (Heatmap) ─────────────────────────────────────
+
+export async function getYearlyActivity(userId: string): Promise<{ date: string; count: number }[]> {
+  const { rows } = await pool.query(
+    `SELECT date::text, COUNT(*)::int AS count
+     FROM plan_items
+     WHERE user_id = $1
+       AND completed = true
+       AND date >= CURRENT_DATE - INTERVAL '365 days'
+     GROUP BY date
+     ORDER BY date`,
+    [userId]
+  );
+  return rows as { date: string; count: number }[];
+}
+
+// ── Category Completion Rates ─────────────────────────────────────
+
+export async function getCategoryCompletionRates(userId: string, from: string, to: string): Promise<Record<string, { total: number; completed: number }>> {
+  const { rows } = await pool.query(
+    `SELECT category,
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE completed)::int AS completed
+     FROM plan_items WHERE user_id = $1 AND date BETWEEN $2 AND $3 AND item_type = 'plan'
+     GROUP BY category`,
+    [userId, from, to]
+  );
+  const result: Record<string, { total: number; completed: number }> = {};
+  for (const row of rows) {
+    result[row.category] = { total: row.total, completed: row.completed };
+  }
+  return result;
+}
+
+// ── Estimate vs Actual Accuracy ───────────────────────────────────
+
+export async function getEstimateAccuracy(userId: string, from: string, to: string): Promise<{ avgEstimate: number; avgActual: number; count: number }> {
+  const { rows } = await pool.query(
+    `SELECT
+       COALESCE(AVG(estimated_duration), 0)::int AS "avgEstimate",
+       COALESCE(AVG(actual_duration), 0)::int AS "avgActual",
+       COUNT(*)::int AS count
+     FROM plan_items
+     WHERE user_id = $1 AND date BETWEEN $2 AND $3
+       AND completed = true
+       AND estimated_duration IS NOT NULL
+       AND actual_duration IS NOT NULL`,
+    [userId, from, to]
+  );
+  return rows[0] as { avgEstimate: number; avgActual: number; count: number };
 }

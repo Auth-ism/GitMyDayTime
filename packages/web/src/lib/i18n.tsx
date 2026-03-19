@@ -273,6 +273,62 @@ const translations = {
     "footer.license": "MIT License",
     "footer.rights": "All rights reserved.",
     "footer.source": "Source",
+
+    // Priority
+    "priority.urgent": "Urgent",
+    "priority.high": "High",
+    "priority.normal": "Normal",
+
+    // Journal
+    "journal.title": "Daily Journal",
+    "journal.placeholder": "How did your day go? Write your thoughts...",
+    "journal.wordCount": "{count} words",
+    "journal.saved": "Saved",
+
+    // Templates
+    "templates.title": "Plan Templates",
+    "templates.saveToday": "Save today as template",
+    "templates.apply": "Apply",
+    "templates.applied": "Applied",
+    "templates.empty": "No templates yet",
+    "templates.namePlace": "Template name...",
+    "templates.planCount": "{count} plans",
+
+    // Timeline
+    "timeline.title": "Timeline",
+    "timeline.empty": "No scheduled plans",
+    "timeline.emptyDesc": "Add start times to plans",
+    "timeline.unscheduled": "Unscheduled",
+    "timeline.viewList": "List",
+    "timeline.viewTimeline": "Timeline",
+
+    // Copy day
+    "day.copyYesterday": "Copy from yesterday",
+    "day.copying": "Copying...",
+
+    // Undo
+    "undo.deleted": "\"{desc}\" deleted",
+    "undo.undo": "Undo",
+
+    // Shortcuts
+    "shortcuts.title": "Keyboard Shortcuts",
+
+    // Stats new
+    "stats.estimateVsActual": "Estimate vs Actual",
+    "stats.avgEstimate": "Avg Estimate",
+    "stats.avgActual": "Avg Actual",
+    "stats.accuracy": "Accuracy",
+    "stats.completionByCategory": "Completion by Category",
+    "stats.yearlyActivity": "Yearly Activity",
+    "stats.less": "Less",
+    "stats.more": "More",
+
+    // Profile new
+    "profile.webPush": "Web Push Notifications",
+    "profile.webPushDesc": "Receive browser notifications",
+    "profile.exportData": "Export My Data",
+    "profile.exportDataDesc": "Download all your data as JSON",
+    "profile.dataManagement": "Data Management",
   },
   tr: {
     // Nav
@@ -544,6 +600,62 @@ const translations = {
     "footer.license": "MIT Lisans",
     "footer.rights": "Tüm hakları saklıdır.",
     "footer.source": "Kaynak Kod",
+
+    // Priority
+    "priority.urgent": "Acil",
+    "priority.high": "Yüksek",
+    "priority.normal": "Normal",
+
+    // Journal
+    "journal.title": "Günlük",
+    "journal.placeholder": "Bugünü nasıl geçirdin? Düşüncelerini yaz...",
+    "journal.wordCount": "{count} kelime",
+    "journal.saved": "Kaydedildi",
+
+    // Templates
+    "templates.title": "Plan Şablonları",
+    "templates.saveToday": "Bugünü şablon olarak kaydet",
+    "templates.apply": "Uygula",
+    "templates.applied": "Uygulandı",
+    "templates.empty": "Henüz şablon yok",
+    "templates.namePlace": "Şablon adı...",
+    "templates.planCount": "{count} plan",
+
+    // Timeline
+    "timeline.title": "Zaman Çizelgesi",
+    "timeline.empty": "Zamanlanmış plan yok",
+    "timeline.emptyDesc": "Planlara başlangıç saati ekleyin",
+    "timeline.unscheduled": "Zamanlanmamış",
+    "timeline.viewList": "Liste",
+    "timeline.viewTimeline": "Zaman",
+
+    // Copy day
+    "day.copyYesterday": "Dünden kopyala",
+    "day.copying": "Kopyalanıyor...",
+
+    // Undo
+    "undo.deleted": "\"{desc}\" silindi",
+    "undo.undo": "Geri Al",
+
+    // Shortcuts
+    "shortcuts.title": "Klavye Kısayolları",
+
+    // Stats new
+    "stats.estimateVsActual": "Tahmin vs Gerçek",
+    "stats.avgEstimate": "Ort. Tahmin",
+    "stats.avgActual": "Ort. Gerçek",
+    "stats.accuracy": "Doğruluk",
+    "stats.completionByCategory": "Kategori Tamamlama Oranı",
+    "stats.yearlyActivity": "Yıllık Aktivite",
+    "stats.less": "Az",
+    "stats.more": "Çok",
+
+    // Profile new
+    "profile.webPush": "Web Push Bildirimleri",
+    "profile.webPushDesc": "Tarayıcı bildirimleri al",
+    "profile.exportData": "Verilerimi İndir",
+    "profile.exportDataDesc": "Tüm verilerini JSON olarak indir",
+    "profile.dataManagement": "Veri Yönetimi",
   },
 } as const;
 

@@ -1,4 +1,4 @@
-import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput } from "@gmd/shared";
+import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput } from "@gmd/shared";
 
 const BASE = "/api";
 
@@ -111,8 +111,52 @@ export const api = {
       dailyActivity: { date: string; tasks: number; planned: number; completedPlan: number; minutes: number }[];
       streak: number;
       daysTracked: number;
+      categoryRates: Record<string, { total: number; completed: number }>;
+      estimateAccuracy: { avgEstimate: number; avgActual: number; count: number };
     }>(`/stats?${params}`);
   },
+
+  getYearlyActivity: () => request<{ date: string; count: number }[]>("/stats/yearly"),
+
+  // Journal
+  getJournal: (date: string) => request<{ content: string }>(`/days/${date}/journal`),
+
+  updateJournal: (date: string, content: string) =>
+    request<{ ok: boolean }>(`/days/${date}/journal`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    }),
+
+  // Templates
+  getTemplates: () => request<PlanTemplate[]>("/templates"),
+
+  createTemplate: (data: CreateTemplateInput) =>
+    request<PlanTemplate>("/templates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteTemplate: (id: string) =>
+    request<void>(`/templates/${id}`, { method: "DELETE" }),
+
+  // Copy day plans
+  copyDayPlans: (date: string, fromDate: string) =>
+    request<{ copied: number }>(`/days/${date}/copy-from/${fromDate}`, { method: "POST" }),
+
+  // Export
+  exportData: () => fetch("/api/export", { credentials: "include" }),
+
+  // Web Push
+  getVapidKey: () => request<{ publicKey: string }>("/push/vapid-key"),
+
+  subscribePush: (subscription: PushSubscriptionJSON) =>
+    request<{ ok: boolean }>("/push/subscribe", {
+      method: "POST",
+      body: JSON.stringify({ subscription }),
+    }),
+
+  unsubscribePush: () =>
+    request<{ ok: boolean }>("/push/subscribe", { method: "DELETE" }),
 
   // Recurring tasks
   getRecurringTasks: () => request<RecurringTask[]>("/recurring"),

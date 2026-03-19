@@ -102,6 +102,7 @@ export function useDayLog(date: string) {
           scheduledTime: data.scheduledTime,
           checklist: [],
           itemType: "plan",
+          priority: (data as any).priority ?? "normal",
         };
         qc.setQueryData<DayLog>(key, { ...prev, plan: [...prev.plan, optimistic] });
       }
@@ -248,6 +249,7 @@ export function useDayLog(date: string) {
           scheduledTime: data.scheduledTime,
           checklist: [],
           itemType: "reminder",
+          priority: "normal",
         };
         qc.setQueryData<DayLog>(key, { ...prev, plan: [...prev.plan, optimistic] });
       }

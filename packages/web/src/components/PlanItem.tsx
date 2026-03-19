@@ -1,9 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { Check, Trash2, Clock, Timer, Play, Pencil, Plus, ListChecks, ChevronDown, Bell } from "lucide-react";
-import { type PlanItem as PlanItemType, type ChecklistItem, formatDuration, parseDuration } from "@gmd/shared";
+import { type PlanItem as PlanItemType, type ChecklistItem, type PriorityType, formatDuration, parseDuration } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
+
+const PRIORITY_COLORS: Record<PriorityType, string> = {
+  urgent: "bg-red-500",
+  high: "bg-orange-400",
+  normal: "",
+};
+
+const PRIORITY_BORDER: Record<PriorityType, string> = {
+  urgent: "border-l-2 border-l-red-500",
+  high: "border-l-2 border-l-orange-400",
+  normal: "",
+};
 
 interface Props {
   item: PlanItemType;
@@ -29,6 +41,7 @@ export default function PlanItem({
   const [editValue, setEditValue] = useState(item.description);
   const [expanded, setExpanded] = useState(false);
   const [newCheckItem, setNewCheckItem] = useState("");
+  const [editPriority, setEditPriority] = useState<PriorityType>(item.priority ?? "normal");
   const editRef = useRef<HTMLInputElement>(null);
   const checkInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,8 +81,11 @@ export default function PlanItem({
 
   const handleEditSave = () => {
     const trimmed = editValue.trim();
-    if (trimmed && trimmed !== item.description && onUpdate) {
-      onUpdate({ description: trimmed });
+    if (onUpdate) {
+      const updates: Partial<PlanItemType> = {};
+      if (trimmed && trimmed !== item.description) updates.description = trimmed;
+      if (editPriority !== (item.priority ?? "normal")) updates.priority = editPriority;
+      if (Object.keys(updates).length > 0) onUpdate(updates);
     }
     setEditing(false);
   };
@@ -92,12 +108,15 @@ export default function PlanItem({
   const checkDone = checklist.filter((c) => c.completed).length;
   const hasChecklist = checklist.length > 0 || onAddChecklist;
 
+  const priority = item.priority ?? "normal";
+
   return (
     <div
       className={cn(
         "group flex flex-col rounded-xl transition-colors",
         "bg-bg-elevated border border-border hover:border-border-hover",
-        item.completed && "opacity-70"
+        item.completed && "opacity-70",
+        PRIORITY_BORDER[priority]
       )}
     >
       <div className="flex items-center gap-3 py-2.5 px-3.5">
@@ -118,25 +137,46 @@ export default function PlanItem({
 
         <div className="flex-1 min-w-0">
           {editing ? (
-            <input
-              ref={editRef}
-              type="text"
-              className="input !py-1 !px-2 !text-sm"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleEditSave();
-                if (e.key === "Escape") handleEditCancel();
-              }}
-              onBlur={handleEditSave}
-            />
+            <div className="space-y-1.5">
+              <input
+                ref={editRef}
+                type="text"
+                className="input !py-1 !px-2 !text-sm"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleEditSave();
+                  if (e.key === "Escape") handleEditCancel();
+                }}
+              />
+              <div className="flex gap-1.5" role="group" aria-label="Priority">
+                {(["normal", "high", "urgent"] as PriorityType[]).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setEditPriority(p)}
+                    className={cn(
+                      "px-2 py-0.5 rounded text-[10px] font-medium border transition-all",
+                      editPriority === p ? "border-accent bg-accent-soft text-text" : "border-border text-text-tertiary"
+                    )}
+                  >
+                    {p === "urgent" ? "Acil" : p === "high" ? "Yuksek" : "Normal"}
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : (
-            <p
-              className={cn("text-sm leading-snug", item.completed && "line-through text-text-tertiary", onUpdate && "cursor-pointer")}
-              onClick={() => { if (onUpdate && !item.completed) { setEditing(true); } }}
-            >
-              {item.description}
-            </p>
+            <div className="flex items-center gap-1.5">
+              {priority !== "normal" && (
+                <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", PRIORITY_COLORS[priority])} />
+              )}
+              <p
+                className={cn("text-sm leading-snug", item.completed && "line-through text-text-tertiary", onUpdate && "cursor-pointer")}
+                onClick={() => { if (onUpdate && !item.completed) { setEditing(true); setEditPriority(item.priority ?? "normal"); } }}
+              >
+                {item.description}
+              </p>
+            </div>
           )}
           <div className="flex items-center gap-2.5 mt-0.5">
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-bg-secondary text-text-secondary">
@@ -174,7 +214,7 @@ export default function PlanItem({
 
         {!item.completed && onUpdate && !editing && (
           <button
-            onClick={() => setEditing(true)}
+            onClick={() => { setEditing(true); setEditPriority(item.priority ?? "normal"); }}
             aria-label="Edit"
             className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
           >
