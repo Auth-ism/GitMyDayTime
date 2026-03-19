@@ -188,16 +188,35 @@ authRouter.post("/register", async (req: Request, res: Response) => {
 
   const { email, username, password } = parsed.data;
 
-  if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-    res.status(400).json({ error: "This email is reserved" });
-    return;
-  }
+  const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   const passwordHash = await argon2.hash(password, {
     memoryCost: 65536,
     timeCost: 3,
     parallelism: 4,
   });
+
+  if (isAdmin) {
+    // Admin user — auto-approve and verify
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO users (email, username, password_hash, approved, email_verified)
+         VALUES ($1, $2, $3, TRUE, TRUE)
+         RETURNING id, email, username`,
+        [email, username, passwordHash]
+      );
+      const user = rows[0];
+      await logAuditEvent("register", req, user.id, { email, admin: true });
+      res.status(201).json({ user: { id: user.id, email: user.email, username: user.username } });
+      return;
+    } catch (err: any) {
+      if (err.code === "23505") {
+        res.status(409).json({ error: "Email or username already taken" });
+        return;
+      }
+      throw err;
+    }
+  }
 
   // Approval token
   const approvalTokenRaw = crypto.randomBytes(32).toString("hex");
