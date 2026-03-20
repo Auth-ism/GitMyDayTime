@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useRecurringTasks } from "@/hooks/useRecurringTasks";
+import { useCategories } from "@/hooks/useCategories";
 import { useI18n, useCategoryLabel, useDayLabels, useRecurrenceLabel } from "@/lib/i18n";
-import { type Category, type RecurrencePattern, type CreateRecurringTaskInput } from "@gmd/shared";
+import { type RecurrencePattern, type CreateRecurringTaskInput } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { Plus, Trash2, Repeat, Power, Clock, Timer } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-
-const categoryKeys: Category[] = ["dev", "meeting", "review", "ops", "learning", "personal", "other"];
 const recurrenceKeys: RecurrencePattern[] = ["daily", "weekdays", "weekly", "custom"];
 
 const QUICK_DURATIONS = [
@@ -23,10 +22,11 @@ export default function RecurringPage() {
   const dayLabels = useDayLabels();
   const getRecLabel = useRecurrenceLabel();
   const { query, create, update, remove } = useRecurringTasks();
+  const { allCategories } = useCategories();
   const [showForm, setShowForm] = useState(false);
 
   const [desc, setDesc] = useState("");
-  const [cat, setCat] = useState<Category>("dev");
+  const [cat, setCat] = useState("dev");
   const [recurrence, setRecurrence] = useState<RecurrencePattern>("daily");
   const [weekDay, setWeekDay] = useState(1);
   const [customDays, setCustomDays] = useState<number[]>([]);
@@ -109,7 +109,7 @@ export default function RecurringPage() {
             />
 
             <div className="flex flex-wrap gap-1.5">
-              {categoryKeys.map((key) => (
+              {allCategories.map(({ key, label, isCustom }) => (
                 <button
                   key={key}
                   type="button"
@@ -121,7 +121,7 @@ export default function RecurringPage() {
                       : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary border border-transparent hover:border-border"
                   )}
                 >
-                  {getCatLabel(key)}
+                  {isCustom ? label : getCatLabel(key)}
                 </button>
               ))}
             </div>
@@ -306,6 +306,7 @@ function RecurringTaskCard({
 }) {
   const { t } = useI18n();
   const getCatLabel = useCategoryLabel();
+  const { getCategoryLabel } = useCategories();
   const dayLabels = useDayLabels();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -332,8 +333,8 @@ function RecurringTaskCard({
         className={cn(
           "p-1.5 rounded-lg transition-colors",
           task.active
-            ? "text-success hover:bg-success/10"
-            : "text-text-tertiary hover:bg-bg-tertiary"
+            ? "text-success hover:text-amber-500 hover:bg-amber-500/10"
+            : "text-text-tertiary hover:text-success hover:bg-success/10"
         )}
         aria-label={task.active ? t("recurring.pause") : t("recurring.resume")}
       >
@@ -344,7 +345,10 @@ function RecurringTaskCard({
         <p className="text-sm font-medium truncate">{task.description}</p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-xs px-1.5 py-0.5 rounded bg-bg-secondary text-text-secondary">
-            {getCatLabel(task.category)}
+            {(() => {
+              const custom = getCategoryLabel(task.category);
+              return custom !== task.category ? custom : getCatLabel(task.category);
+            })()}
           </span>
           <span className="text-xs text-text-tertiary">{scheduleText}</span>
           {task.scheduledTime && (
