@@ -25,18 +25,14 @@ export function isRedisConnected(): boolean {
   return connected && redis.status === "ready";
 }
 
-// Session cache helpers — cache session lookups to avoid DB hits
-const SESSION_CACHE_TTL = 300; // 5 min
+// ── Session cache ────────────────────────────────────────────────
+
+const SESSION_TTL = 300; // 5 min
 
 export async function cacheSession(tokenHash: string, userId: string, email: string): Promise<void> {
   if (!isRedisConnected()) return;
   try {
-    await redis.set(
-      `session:${tokenHash}`,
-      JSON.stringify({ userId, email }),
-      "EX",
-      SESSION_CACHE_TTL
-    );
+    await redis.set(`session:${tokenHash}`, JSON.stringify({ userId, email }), "EX", SESSION_TTL);
   } catch { /* ignore */ }
 }
 
@@ -55,4 +51,94 @@ export async function invalidateSessionCache(tokenHash: string): Promise<void> {
   try {
     await redis.del(`session:${tokenHash}`);
   } catch { /* ignore */ }
+}
+
+// ── Generic JSON cache ───────────────────────────────────────────
+
+export async function cacheGet<T>(key: string): Promise<T | null> {
+  if (!isRedisConnected()) return null;
+  try {
+    const data = await redis.get(key);
+    return data ? JSON.parse(data) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function cacheSet(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+  if (!isRedisConnected()) return;
+  try {
+    await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
+  } catch { /* ignore */ }
+}
+
+export async function cacheDel(...keys: string[]): Promise<void> {
+  if (!isRedisConnected() || keys.length === 0) return;
+  try {
+    await redis.del(...keys);
+  } catch { /* ignore */ }
+}
+
+export async function cacheDelPattern(pattern: string): Promise<void> {
+  if (!isRedisConnected()) return;
+  try {
+    let cursor = "0";
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
+      cursor = nextCursor;
+      if (keys.length > 0) await redis.del(...keys);
+    } while (cursor !== "0");
+  } catch { /* ignore */ }
+}
+
+// ── Reminder sorted set ─────────────────────────────────────────
+// Score = Unix timestamp (seconds) when the reminder should fire
+// Member = "userId:planItemId"
+
+const REMINDER_KEY = "reminders";
+
+export async function scheduleReminder(userId: string, itemId: string, fireAt: number): Promise<void> {
+  if (!isRedisConnected()) return;
+  try {
+    await redis.zadd(REMINDER_KEY, fireAt, `${userId}:${itemId}`);
+  } catch { /* ignore */ }
+}
+
+export async function unscheduleReminder(userId: string, itemId: string): Promise<void> {
+  if (!isRedisConnected()) return;
+  try {
+    await redis.zrem(REMINDER_KEY, `${userId}:${itemId}`);
+  } catch { /* ignore */ }
+}
+
+export async function getDueReminders(): Promise<{ userId: string; itemId: string }[]> {
+  if (!isRedisConnected()) return [];
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const members = await redis.zrangebyscore(REMINDER_KEY, 0, now);
+    if (members.length === 0) return [];
+    // Remove them atomically
+    await redis.zremrangebyscore(REMINDER_KEY, 0, now);
+    return members.map((m) => {
+      const [userId, itemId] = m.split(":");
+      return { userId, itemId };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function rebuildReminderIndex(items: { userId: string; itemId: string; fireAt: number }[]): Promise<void> {
+  if (!isRedisConnected() || items.length === 0) return;
+  try {
+    await redis.del(REMINDER_KEY);
+    const pipeline = redis.pipeline();
+    for (const { userId, itemId, fireAt } of items) {
+      pipeline.zadd(REMINDER_KEY, fireAt, `${userId}:${itemId}`);
+    }
+    await pipeline.exec();
+    console.log(`[redis] Rebuilt reminder index with ${items.length} items`);
+  } catch (err) {
+    console.error("[redis] Failed to rebuild reminder index:", err);
+  }
 }

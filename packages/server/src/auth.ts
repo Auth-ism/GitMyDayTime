@@ -327,11 +327,16 @@ authRouter.get("/approve", async (req: Request, res: Response) => {
   }
 
   const tokenHash = hashSessionToken(token);
+
+  // Generate a one-time login token for the approved user
+  const loginTokenRaw = crypto.randomBytes(32).toString("hex");
+  const loginTokenHash = hashSessionToken(loginTokenRaw);
+
   const { rows } = await pool.query(
-    `UPDATE users SET approved = TRUE, approval_token_hash = NULL
+    `UPDATE users SET approved = TRUE, approval_token_hash = $2
      WHERE approval_token_hash = $1 AND approved = FALSE
      RETURNING id, email, username`,
-    [tokenHash]
+    [tokenHash, loginTokenHash]
   );
 
   if (rows.length === 0) {
@@ -341,14 +346,45 @@ authRouter.get("/approve", async (req: Request, res: Response) => {
 
   const user = rows[0];
   await logAuditEvent("user_approved", req, user.id, { email: user.email });
-  sendUserApprovedEmail({ email: user.email, username: user.username }).catch(console.error);
+  sendUserApprovedEmail({ email: user.email, username: user.username }, loginTokenRaw).catch(console.error);
 
-  res.send(`
-    <html><body style="font-family:sans-serif;padding:40px;max-width:400px;margin:0 auto;text-align:center;">
-      <h2>✓ Onaylandı</h2>
-      <p><strong>${user.username}</strong> hesabı onaylandı. Kullanıcıya bildirim gönderildi.</p>
-    </body></html>
-  `);
+  res.send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Onaylandı</title></head>
+<body style="font-family:system-ui,sans-serif;padding:40px 20px;max-width:400px;margin:0 auto;text-align:center;background:#fafafa;color:#111;">
+  <div style="background:#fff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.1);">
+    <div style="width:48px;height:48px;background:#16a34a;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;">
+      <span style="color:#fff;font-size:24px;">✓</span>
+    </div>
+    <h2 style="margin:0 0 8px;font-size:20px;">Onaylandı</h2>
+    <p style="margin:0;color:#666;font-size:14px;"><strong>${user.username}</strong> hesabı onaylandı.<br/>Kullanıcıya giriş linki gönderildi.</p>
+  </div>
+</body></html>`);
+});
+
+authRouter.get("/auto-login", async (req: Request, res: Response) => {
+  const { token } = req.query as { token?: string };
+  if (!token) {
+    res.redirect("/");
+    return;
+  }
+
+  const tokenHash = hashSessionToken(token);
+  const { rows } = await pool.query(
+    `UPDATE users SET approval_token_hash = NULL
+     WHERE approval_token_hash = $1 AND approved = TRUE
+     RETURNING id, email`,
+    [tokenHash]
+  );
+
+  if (rows.length === 0) {
+    res.redirect("/");
+    return;
+  }
+
+  const user = rows[0];
+  await createSession(user.id, user.email, res, req);
+  await logAuditEvent("auto_login", req, user.id, { email: user.email });
+  res.redirect("/");
 });
 
 authRouter.get("/verify-email", async (req: Request, res: Response) => {

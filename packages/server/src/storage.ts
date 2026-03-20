@@ -1,6 +1,24 @@
 import { pool } from "./db.js";
 import { nanoid } from "nanoid";
 import { DEFAULT_CATEGORIES, type DayLog, type TaskEntry, type PlanItem, type ChecklistItem, type RecurringTask, type CreateRecurringTaskInput, type UserProfile, type UpdateProfileInput, type UserCategory, type PlanTemplate, type CreateTemplateInput } from "@gmd/shared";
+import { cacheGet, cacheSet, cacheDel, cacheDelPattern, scheduleReminder, unscheduleReminder } from "./redis.js";
+
+// Cache TTLs (seconds)
+const TTL = {
+  PROFILE: 900,     // 15 min
+  DAYLOG: 300,      // 5 min
+  CATEGORIES: 600,  // 10 min
+  RECURRING: 600,   // 10 min
+  STATS: 300,       // 5 min
+};
+
+// Cache invalidation helpers
+export async function invalidateDayLog(userId: string, date: string): Promise<void> {
+  await cacheDel(`daylog:${userId}:${date}`);
+}
+export async function invalidateStats(userId: string): Promise<void> {
+  await cacheDelPattern(`stats:${userId}:*`);
+}
 
 // Helpers to normalize DB row types
 function serializeTimestamp(val: unknown): string {
@@ -50,6 +68,10 @@ function toUserProfile(r: any): UserProfile {
 }
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const cacheKey = `profile:${userId}`;
+  const cached = await cacheGet<UserProfile>(cacheKey);
+  if (cached) return cached;
+
   const { rows } = await pool.query(
     `SELECT id, email, username, display_name, bio, avatar_url, timezone, locale, theme,
             pomodoro_duration, break_duration, daily_goal, work_start_time, work_end_time,
@@ -58,7 +80,9 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
      FROM users WHERE id = $1`,
     [userId]
   );
-  return rows.length > 0 ? toUserProfile(rows[0]) : null;
+  const profile = rows.length > 0 ? toUserProfile(rows[0]) : null;
+  if (profile) await cacheSet(cacheKey, profile, TTL.PROFILE);
+  return profile;
 }
 
 export async function updateUserProfile(
@@ -102,7 +126,9 @@ export async function updateUserProfile(
     values
   );
 
-  return rows.length > 0 ? toUserProfile(rows[0]) : null;
+  const profile = rows.length > 0 ? toUserProfile(rows[0]) : null;
+  if (profile) await cacheDel(`profile:${userId}`);
+  return profile;
 }
 
 // Generic dynamic UPDATE builder
@@ -123,6 +149,10 @@ function buildDynamicUpdate(
 }
 
 export async function getDayLog(userId: string, date: string): Promise<DayLog> {
+  const cacheKey = `daylog:${userId}:${date}`;
+  const cached = await cacheGet<DayLog>(cacheKey);
+  if (cached) return cached;
+
   const [tasksResult, planResult] = await Promise.all([
     pool.query(
       `SELECT id, timestamp, description, category, duration, tags, completed
@@ -160,7 +190,7 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog> {
     }
   }
 
-  return {
+  const dayLog: DayLog = {
     date,
     tasks: tasksResult.rows.map((r) => ({
       ...r,
@@ -168,6 +198,8 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog> {
     })) as TaskEntry[],
     plan: planItems.map((p) => ({ ...p, checklist: checklistByPlan[p.id] || [] })),
   };
+  await cacheSet(cacheKey, dayLog, TTL.DAYLOG);
+  return dayLog;
 }
 
 export async function addTask(
@@ -180,6 +212,7 @@ export async function addTask(
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [task.id, userId, date, task.timestamp, task.description, task.category, task.duration ?? null, task.tags, task.completed]
   );
+  await invalidateDayLog(userId, date);
   return task;
 }
 
@@ -209,14 +242,18 @@ export async function updateTask(
   );
 
   if (rows.length === 0) return null;
+  await invalidateDayLog(userId, date);
   return { ...rows[0], timestamp: serializeTimestamp(rows[0].timestamp) } as TaskEntry;
 }
 
 export async function deleteTask(userId: string, taskId: string): Promise<boolean> {
+  // Get date before deleting for cache invalidation
+  const { rows: dateRows } = await pool.query("SELECT date FROM tasks WHERE id = $1 AND user_id = $2", [taskId, userId]);
   const { rowCount } = await pool.query(
     "DELETE FROM tasks WHERE id = $1 AND user_id = $2",
     [taskId, userId]
   );
+  if (dateRows[0]) await invalidateDayLog(userId, dateRows[0].date);
   return (rowCount ?? 0) > 0;
 }
 
@@ -230,6 +267,14 @@ export async function addPlanItem(
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     [item.id, userId, date, item.description, item.category, item.duration ?? null, item.completed, item.order, item.scheduledTime ?? null, item.itemType ?? "plan", item.priority ?? "normal"]
   );
+  await invalidateDayLog(userId, date);
+  await invalidateStats(userId);
+  // Schedule reminder in Redis if it has a time
+  if (item.scheduledTime && (item.itemType === "reminder" || item.itemType === "plan")) {
+    const [h, m] = item.scheduledTime.split(":").map(Number);
+    const fireDate = new Date(`${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
+    await scheduleReminder(userId, item.id, Math.floor(fireDate.getTime() / 1000));
+  }
   return item;
 }
 
@@ -257,20 +302,35 @@ export async function updatePlanItem(
   const { rows } = await pool.query(
     `UPDATE plan_items SET ${fields.join(", ")}
      WHERE id = $${idx++} AND user_id = $${idx}
-     RETURNING id, description, category, estimated_duration AS "duration", completed, sort_order AS "order",
+     RETURNING id, date, description, category, estimated_duration AS "duration", completed, sort_order AS "order",
                scheduled_time AS "scheduledTime", actual_duration AS "actualDuration",
                item_type AS "itemType", priority`,
     values
   );
 
-  return rows.length > 0 ? toPlanItem(rows[0]) : null;
+  if (rows.length > 0) {
+    await invalidateDayLog(userId, rows[0].date);
+    if (updates.completed !== undefined || updates.actualDuration !== undefined) {
+      await invalidateStats(userId);
+    }
+    const item = toPlanItem(rows[0]);
+    delete (item as any).date;
+    return item;
+  }
+  return null;
 }
 
 export async function deletePlanItem(userId: string, itemId: string): Promise<boolean> {
+  const { rows: dateRows } = await pool.query("SELECT date FROM plan_items WHERE id = $1 AND user_id = $2", [itemId, userId]);
   const { rowCount } = await pool.query(
     "DELETE FROM plan_items WHERE id = $1 AND user_id = $2",
     [itemId, userId]
   );
+  if (dateRows[0]) {
+    await invalidateDayLog(userId, dateRows[0].date);
+    await invalidateStats(userId);
+  }
+  await unscheduleReminder(userId, itemId);
   return (rowCount ?? 0) > 0;
 }
 
@@ -437,6 +497,10 @@ export async function getStats(
   streak: number;
   daysTracked: number;
 }> {
+  const cacheKey = `stats:${userId}:${from}:${to}`;
+  const cached = await cacheGet<Awaited<ReturnType<typeof getStats>>>(cacheKey);
+  if (cached) return cached;
+
   const [totalsResult, byCategoryResult, dailyResult, streakResult] = await Promise.all([
     pool.query(
       `SELECT
@@ -500,7 +564,7 @@ export async function getStats(
     byCategory[row.category] = { count: row.count, minutes: row.minutes };
   }
 
-  return {
+  const result = {
     totalTasks: totalsResult.rows[0].total_tasks,
     totalMinutes: totalsResult.rows[0].total_minutes,
     byCategory,
@@ -508,6 +572,8 @@ export async function getStats(
     streak: streakResult.rows[0].streak,
     daysTracked: dailyResult.rows.length,
   };
+  await cacheSet(cacheKey, result, TTL.STATS);
+  return result;
 }
 
 // ── Recurring Tasks ──────────────────────────────────────────────
@@ -528,11 +594,17 @@ function toRecurringTask(r: any): RecurringTask {
 }
 
 export async function getRecurringTasks(userId: string): Promise<RecurringTask[]> {
+  const cacheKey = `recurring:${userId}`;
+  const cached = await cacheGet<RecurringTask[]>(cacheKey);
+  if (cached) return cached;
+
   const { rows } = await pool.query(
     `SELECT * FROM recurring_tasks WHERE user_id = $1 ORDER BY created_at`,
     [userId]
   );
-  return rows.map(toRecurringTask);
+  const tasks = rows.map(toRecurringTask);
+  await cacheSet(cacheKey, tasks, TTL.RECURRING);
+  return tasks;
 }
 
 export async function createRecurringTask(
@@ -546,6 +618,7 @@ export async function createRecurringTask(
      RETURNING *`,
     [id, userId, input.description, input.category, input.duration ?? null, input.scheduledTime ?? null, input.recurrence, input.weekDay ?? null, input.customDays ?? []]
   );
+  await cacheDel(`recurring:${userId}`);
   return toRecurringTask(rows[0]);
 }
 
@@ -576,7 +649,11 @@ export async function updateRecurringTask(
     values
   );
 
-  return rows.length > 0 ? toRecurringTask(rows[0]) : null;
+  if (rows.length > 0) {
+    await cacheDel(`recurring:${userId}`);
+    return toRecurringTask(rows[0]);
+  }
+  return null;
 }
 
 export async function deleteRecurringTask(userId: string, taskId: string): Promise<boolean> {
@@ -584,6 +661,7 @@ export async function deleteRecurringTask(userId: string, taskId: string): Promi
     "DELETE FROM recurring_tasks WHERE id = $1 AND user_id = $2",
     [taskId, userId]
   );
+  if ((rowCount ?? 0) > 0) await cacheDel(`recurring:${userId}`);
   return (rowCount ?? 0) > 0;
 }
 
@@ -708,11 +786,17 @@ export async function deleteChecklistItem(userId: string, itemId: string): Promi
 }
 
 export async function getUserCategories(userId: string): Promise<UserCategory[]> {
+  const cacheKey = `categories:${userId}`;
+  const cached = await cacheGet<UserCategory[]>(cacheKey);
+  if (cached) return cached;
+
   const { rows } = await pool.query(
     "SELECT id, name, color, sort_order AS \"sortOrder\" FROM user_categories WHERE user_id = $1 ORDER BY sort_order ASC",
     [userId]
   );
-  return rows as UserCategory[];
+  const cats = rows as UserCategory[];
+  await cacheSet(cacheKey, cats, TTL.CATEGORIES);
+  return cats;
 }
 
 export async function createUserCategory(
@@ -731,6 +815,7 @@ export async function createUserCategory(
      RETURNING id, name, color, sort_order AS "sortOrder"`,
     [id, userId, name, color, orderRows[0].next_order]
   );
+  await cacheDel(`categories:${userId}`);
   return rows[0] as UserCategory;
 }
 
@@ -752,6 +837,7 @@ export async function updateUserCategory(
      RETURNING id, name, color, sort_order AS "sortOrder"`,
     values
   );
+  if (rows.length > 0) await cacheDel(`categories:${userId}`);
   return rows.length > 0 ? (rows[0] as UserCategory) : null;
 }
 
@@ -760,6 +846,7 @@ export async function deleteUserCategory(userId: string, categoryId: string): Pr
     "DELETE FROM user_categories WHERE id = $1 AND user_id = $2",
     [categoryId, userId]
   );
+  if ((rowCount ?? 0) > 0) await cacheDel(`categories:${userId}`);
   return (rowCount ?? 0) > 0;
 }
 
@@ -775,6 +862,8 @@ export interface PendingNotification {
   phoneNumber: string | null;
   smsNotifications: boolean;
   emailNotifications: boolean;
+  pushNotifications: boolean;
+  pushSubscription: any;
   timezone: string;
 }
 
@@ -786,12 +875,14 @@ export async function getPendingNotifications(): Promise<PendingNotification[]> 
             u.phone_number AS "phoneNumber",
             u.sms_notifications AS "smsNotifications",
             u.email_notifications AS "emailNotifications",
+            u.push_notifications AS "pushNotifications",
+            u.push_subscription AS "pushSubscription",
             COALESCE(u.timezone, 'UTC') AS timezone
      FROM plan_items pi
      JOIN users u ON u.id = pi.user_id
      WHERE pi.notification_sent = FALSE
        AND pi.scheduled_time IS NOT NULL
-       AND (u.sms_notifications = TRUE OR u.email_notifications = TRUE)
+       AND (u.sms_notifications = TRUE OR u.email_notifications = TRUE OR u.push_notifications = TRUE)
        AND pi.date = (NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC'))::date
        AND TO_CHAR(NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC'), 'HH24:MI')
            = TO_CHAR(pi.scheduled_time, 'HH24:MI')`

@@ -284,13 +284,13 @@ export default function DayView() {
           <button
             onClick={() => setShowTimeline((v) => !v)}
             className={cn(
-              "flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-all",
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all border",
               showTimeline
-                ? "bg-accent-soft text-text"
-                : "text-text-tertiary hover:text-text-secondary"
+                ? "bg-accent text-bg border-accent"
+                : "bg-bg-secondary text-text-secondary border-border hover:border-accent hover:text-accent"
             )}
           >
-            {showTimeline ? <AlignJustify size={11} /> : <Clock size={11} />}
+            {showTimeline ? <AlignJustify size={12} /> : <Clock size={12} />}
             {showTimeline ? "Liste" : "Zaman"}
           </button>
         </div>

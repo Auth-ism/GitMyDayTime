@@ -11,7 +11,7 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { authMiddleware, authRouter, getAuthLimiter, getGlobalLimiter, IS_PROD } from "./auth.js";
 import { pool, runMigrations } from "./db.js";
-import { connectRedis, redis } from "./redis.js";
+import { connectRedis, redis, isRedisConnected, rebuildReminderIndex } from "./redis.js";
 import taskRoutes from "./routes/tasks.js";
 import planRoutes from "./routes/plan.js";
 import statsRoutes from "./routes/stats.js";
@@ -109,6 +109,27 @@ async function start() {
 
   // Run DB migrations
   await runMigrations();
+
+  // Rebuild Redis reminder index from today's unsent items
+  if (isRedisConnected()) {
+    try {
+      const { rows } = await pool.query(
+        `SELECT pi.user_id AS "userId", pi.id AS "itemId",
+                EXTRACT(EPOCH FROM (pi.date + pi.scheduled_time))::int AS "fireAt"
+         FROM plan_items pi
+         JOIN users u ON u.id = pi.user_id
+         WHERE pi.notification_sent = FALSE
+           AND pi.scheduled_time IS NOT NULL
+           AND pi.date >= CURRENT_DATE
+           AND pi.date <= CURRENT_DATE + 1`
+      );
+      if (rows.length > 0) {
+        await rebuildReminderIndex(rows);
+      }
+    } catch (err) {
+      console.error("[startup] Failed to rebuild reminder index:", err);
+    }
+  }
 
   const server = app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

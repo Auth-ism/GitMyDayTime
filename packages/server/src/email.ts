@@ -24,16 +24,20 @@ export async function sendAdminApprovalEmail(
   });
 }
 
-export async function sendUserApprovedEmail(user: { email: string; username: string }): Promise<void> {
+export async function sendUserApprovedEmail(user: { email: string; username: string }, loginToken?: string): Promise<void> {
+  const loginUrl = loginToken
+    ? `${APP_URL}/api/auth/auto-login?token=${loginToken}`
+    : APP_URL;
   await resend.emails.send({
     from: FROM,
     to: user.email,
     subject: "GitMyDayTime hesabınız onaylandı",
     html: `
       <p>Merhaba ${user.username},</p>
-      <p>Hesabınız onaylandı. Artık giriş yapabilirsiniz.</p>
+      <p>Hesabınız onaylandı! Aşağıdaki butona tıklayarak doğrudan giriş yapabilirsiniz.</p>
       <br/>
-      <a href="${APP_URL}" style="display:inline-block;background:#000;color:#fff;padding:10px 24px;text-decoration:none;border-radius:6px;font-weight:600;">Uygulamaya git</a>
+      <a href="${loginUrl}" style="display:inline-block;background:#000;color:#fff;padding:10px 24px;text-decoration:none;border-radius:6px;font-weight:600;">Giriş yap</a>
+      <p style="color:#999;font-size:12px;margin-top:16px;">Bu link tek kullanımlıktır.</p>
     `,
   });
 }
