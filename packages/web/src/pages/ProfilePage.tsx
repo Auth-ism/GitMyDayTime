@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown, Download, Upload, Bell, Camera, Mail, AlertCircle } from "lucide-react";
+import { User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown, Download, Upload, Bell, Camera, Mail, AlertCircle, Plus, Pencil, Trash2, X, Tag } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
 import { useI18n, type Locale } from "@/lib/i18n";
+import { useCategories } from "@/hooks/useCategories";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { AnimatePresence, motion } from "framer-motion";
 import type { UserProfile, UpdateProfileInput } from "@gmd/shared";
 
 const TIMEZONES = [
@@ -517,6 +519,9 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {/* Categories */}
+          <CategoryManager />
+
           {/* Notifications */}
           <div className="card space-y-4">
             <h3 className="text-sm font-semibold text-text">{t("profile.notifications" as any)}</h3>
@@ -864,6 +869,187 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
         )}
       />
     </button>
+  );
+}
+
+const PRESET_COLORS = [
+  "#ef4444", "#f97316", "#f59e0b", "#22c55e", "#06b6d4",
+  "#3b82f6", "#8b5cf6", "#ec4899", "#6b7280", "#78716c",
+];
+
+function CategoryManager() {
+  const { t } = useI18n();
+  const { userCategories, createCategory, updateCategory, deleteCategory } = useCategories();
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newColor, setNewColor] = useState("#3b82f6");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const handleCreate = () => {
+    if (!newName.trim()) return;
+    createCategory.mutate({ name: newName.trim(), color: newColor }, {
+      onSuccess: () => { setNewName(""); setNewColor("#3b82f6"); setShowAdd(false); },
+    });
+  };
+
+  const handleUpdate = () => {
+    if (!editId || !editName.trim()) return;
+    updateCategory.mutate({ id: editId, name: editName.trim(), color: editColor }, {
+      onSuccess: () => setEditId(null),
+    });
+  };
+
+  const handleDelete = (id: string) => {
+    deleteCategory.mutate(id, {
+      onSuccess: () => setConfirmDeleteId(null),
+    });
+  };
+
+  return (
+    <div className="card space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Tag size={16} className="text-text-secondary" />
+          <h3 className="text-sm font-semibold text-text">{t("profile.categories" as any)}</h3>
+        </div>
+        <button
+          onClick={() => setShowAdd(!showAdd)}
+          className="p-1.5 rounded-lg text-text-tertiary hover:text-accent hover:bg-accent-soft transition-colors"
+        >
+          {showAdd ? <X size={16} /> : <Plus size={16} />}
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {showAdd && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-bg-secondary">
+              <input
+                autoFocus
+                className="input flex-1 !text-sm !py-1.5"
+                placeholder={t("profile.categoryName" as any)}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); handleCreate(); } }}
+              />
+              <div className="flex gap-1">
+                {PRESET_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setNewColor(c)}
+                    className={cn(
+                      "w-5 h-5 rounded-full transition-all shrink-0",
+                      newColor === c ? "ring-2 ring-offset-1 ring-accent scale-110" : "hover:scale-110"
+                    )}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={handleCreate}
+                disabled={!newName.trim() || createCategory.isPending}
+                className="btn btn-primary !py-1.5 !px-3 !text-xs"
+              >
+                {createCategory.isPending ? "..." : t("form.add" as any)}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {userCategories.length === 0 && !showAdd && (
+        <p className="text-xs text-text-tertiary text-center py-2">
+          {t("profile.noCustomCategories" as any)}
+        </p>
+      )}
+
+      <div className="space-y-1">
+        <AnimatePresence mode="popLayout">
+          {userCategories.map((cat) => (
+            <motion.div
+              key={cat.id}
+              layout
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-bg-secondary transition-colors group"
+            >
+              {editId === cat.id ? (
+                <>
+                  <div className="flex gap-1 shrink-0">
+                    {PRESET_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setEditColor(c)}
+                        className={cn(
+                          "w-4 h-4 rounded-full transition-all",
+                          editColor === c ? "ring-2 ring-offset-1 ring-accent scale-110" : "hover:scale-110"
+                        )}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                  <input
+                    autoFocus
+                    className="input flex-1 !text-sm !py-1"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); handleUpdate(); }
+                      if (e.key === "Escape") setEditId(null);
+                    }}
+                  />
+                  <button onClick={handleUpdate} className="p-1 text-success hover:bg-success/10 rounded transition-colors">
+                    <Check size={14} />
+                  </button>
+                  <button onClick={() => setEditId(null)} className="p-1 text-text-tertiary hover:bg-bg-tertiary rounded transition-colors">
+                    <X size={14} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                  <span className="text-sm font-medium text-text flex-1 truncate">{cat.name}</span>
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => { setEditId(cat.id); setEditName(cat.name); setEditColor(cat.color); }}
+                      className="p-1 text-text-tertiary hover:text-accent hover:bg-accent-soft rounded transition-colors"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    {confirmDeleteId === cat.id ? (
+                      <button
+                        onClick={() => handleDelete(cat.id)}
+                        className="p-1 text-danger bg-danger/10 rounded transition-colors text-xs font-medium px-2"
+                      >
+                        {t("recurring.delete" as any)}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => { setConfirmDeleteId(cat.id); setTimeout(() => setConfirmDeleteId(null), 3000); }}
+                        className="p-1 text-text-tertiary hover:text-danger hover:bg-danger/10 rounded transition-colors"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 }
 

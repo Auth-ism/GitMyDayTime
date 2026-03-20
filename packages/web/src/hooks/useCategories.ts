@@ -40,6 +40,11 @@ export function useCategories() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
   });
 
+  const updateCategory = useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; color?: string }) => api.updateCategory(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
+  });
+
   const deleteCategory = useMutation({
     mutationFn: (id: string) => api.deleteCategory(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
@@ -55,5 +60,5 @@ export function useCategories() {
     return found ? found.color : "#888";
   };
 
-  return { allCategories, createCategory, deleteCategory, getCategoryLabel, getCategoryColor };
+  return { allCategories, userCategories, createCategory, updateCategory, deleteCategory, getCategoryLabel, getCategoryColor };
 }
