@@ -266,7 +266,7 @@ export const UpdateProfileInput = z.object({
   avatarUrl: z.string().url().nullable().optional(),
   timezone: z.string().max(64).optional(),
   locale: z.enum(["tr", "en"]).optional(),
-  theme: z.enum(["light", "dark"]).optional(),
+  theme: z.enum(["light", "dark", "system"]).optional(),
   pomodoroDuration: z.number().min(1).max(120).optional(),
   breakDuration: z.number().min(1).max(60).optional(),
   dailyGoal: z.number().min(1).max(100).nullable().optional(),

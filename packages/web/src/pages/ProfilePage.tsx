@@ -211,24 +211,35 @@ export default function ProfilePage() {
         const sub = await reg.pushManager.getSubscription();
         if (sub) await sub.unsubscribe();
         await api.unsubscribePush();
+        await api.updateProfile({ pushNotifications: false });
+        await refreshProfile();
         setPushEnabled(false);
-        setForm({ ...form, pushNotifications: false });
+        setForm((f) => ({ ...f, pushNotifications: false }));
       } else {
         const { publicKey } = await api.getVapidKey();
-        if (!publicKey) return;
-        const reg = await navigator.serviceWorker.ready;
+        if (!publicKey) {
+          console.error("VAPID public key is empty");
+          return;
+        }
         const permission = await Notification.requestPermission();
-        if (permission !== "granted") return;
+        if (permission !== "granted") {
+          console.warn("Notification permission denied:", permission);
+          return;
+        }
+        const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(publicKey),
         });
         await api.subscribePush(sub.toJSON() as PushSubscriptionJSON);
+        await api.updateProfile({ pushNotifications: true });
+        await refreshProfile();
         setPushEnabled(true);
-        setForm({ ...form, pushNotifications: true });
+        setForm((f) => ({ ...f, pushNotifications: true }));
       }
     } catch (err) {
       console.error("Push toggle failed:", err);
+      alert("Push bildirimi etkinleştirilemedi: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setPushLoading(false);
     }
@@ -324,8 +335,15 @@ export default function ProfilePage() {
     );
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey && e.target instanceof HTMLInputElement) {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" onKeyDown={handleKeyDown}>
       {/* Header — with avatar */}
       <div className="flex items-center gap-3">
         <div className="relative group">
@@ -601,7 +619,7 @@ export default function ProfilePage() {
             {/* Theme */}
             <FormField label={t("profile.theme" as any)}>
               <div className="flex gap-2">
-                {(["light", "dark"] as const).map((th) => (
+                {(["system", "light", "dark"] as const).map((th) => (
                   <button
                     key={th}
                     onClick={() => setForm({ ...form, theme: th })}
@@ -612,7 +630,7 @@ export default function ProfilePage() {
                         : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"
                     )}
                   >
-                    {t(th === "light" ? "profile.themeLight" as any : "profile.themeDark" as any)}
+                    {th === "system" ? t("profile.themeSystem" as any) : t(th === "light" ? "profile.themeLight" as any : "profile.themeDark" as any)}
                   </button>
                 ))}
               </div>

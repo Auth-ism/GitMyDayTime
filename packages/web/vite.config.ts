@@ -33,6 +33,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        importScripts: ["/sw-push.js"],
         runtimeCaching: [
           {
             urlPattern: /\/api\//,
