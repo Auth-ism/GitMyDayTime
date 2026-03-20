@@ -3,6 +3,7 @@ import { Plus, Clock, Timer, MessageSquare, ListTodo, Bell, ChevronDown } from "
 import { parseDuration, type Category, type ItemType, type PriorityType } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { useCategories } from "@/hooks/useCategories";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -24,8 +25,9 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
   const { t } = useI18n();
   const getCatLabel = useCategoryLabel();
   const { allCategories, createCategory } = useCategories();
+  const { profile } = useAuth();
   const [desc, setDesc] = useState("");
-  const [cat, setCat] = useState<Category>("dev");
+  const [cat, setCat] = useState<Category>(profile?.defaultCategory || "dev");
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [dur, setDur] = useState("");
@@ -180,18 +182,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                   </button>
                 ))}
                 {showNewCat ? (
-                  <form
-                    className="flex items-center gap-1"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (newCatName.trim()) {
-                        createCategory.mutate({ name: newCatName.trim(), color: "#6b7280" });
-                        setNewCatName("");
-                        setShowNewCat(false);
-                      }
-                    }}
-                  >
+                  <div className="flex items-center gap-1">
                     <input
                       autoFocus
                       className="input !w-20 !text-[11px] !py-0.5 !px-1.5"
@@ -199,8 +190,22 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                       value={newCatName}
                       onChange={(e) => setNewCatName(e.target.value)}
                       onBlur={() => { if (!newCatName.trim()) setShowNewCat(false); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (newCatName.trim()) {
+                            createCategory.mutate({ name: newCatName.trim(), color: "#6b7280" }, {
+                              onSuccess: (created) => { setCat(created.id); },
+                            });
+                            setNewCatName("");
+                            setShowNewCat(false);
+                          }
+                        }
+                        if (e.key === "Escape") setShowNewCat(false);
+                      }}
                     />
-                  </form>
+                  </div>
                 ) : (
                   <button
                     type="button"
