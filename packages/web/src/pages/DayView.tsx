@@ -79,8 +79,8 @@ export default function DayView() {
         addPlan.mutate({
           description: item.description,
           category: item.category,
-          duration: item.duration,
-          scheduledTime: item.scheduledTime,
+          duration: item.duration ?? undefined,
+          scheduledTime: item.scheduledTime ?? undefined,
           itemType: item.itemType ?? "plan",
           priority: item.priority ?? "normal",
         });
@@ -96,7 +96,7 @@ export default function DayView() {
         addTask.mutate({
           description: task.description,
           category: task.category,
-          duration: task.duration,
+          duration: task.duration ?? undefined,
           tags: task.tags,
         });
       });
@@ -111,7 +111,7 @@ export default function DayView() {
         addReminder.mutate({
           description: item.description,
           category: item.category,
-          scheduledTime: item.scheduledTime,
+          scheduledTime: item.scheduledTime ?? undefined,
           priority: item.priority ?? "normal",
         });
       });

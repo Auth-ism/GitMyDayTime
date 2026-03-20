@@ -286,6 +286,9 @@ export default function ProfilePage() {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey && e.target instanceof HTMLInputElement) {
+      // Don't trigger save for inputs inside CategoryManager
+      const target = e.target as HTMLElement;
+      if (target.closest("[data-category-manager]")) return;
       e.preventDefault();
       handleSave();
     }
@@ -736,6 +739,7 @@ function CategoryManager() {
 
   return (
     <Section>
+      <div data-category-manager className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Tag size={14} className="text-text-secondary" />
@@ -824,6 +828,7 @@ function CategoryManager() {
             </motion.div>
           ))}
         </AnimatePresence>
+      </div>
       </div>
     </Section>
   );
