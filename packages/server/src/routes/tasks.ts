@@ -12,13 +12,15 @@ const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<v
   (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
 router.get("/:date", wrap(async (req, res) => {
-  if (!DATE_RE.test(req.params.date)) { res.status(400).json({ error: "Invalid date format" }); return; }
-  const log = await getDayLog(req.userId!, req.params.date);
+  const date = req.params.date as string;
+  if (!DATE_RE.test(date)) { res.status(400).json({ error: "Invalid date format" }); return; }
+  const log = await getDayLog(req.userId!, date);
   res.json(log);
 }));
 
 router.post("/:date/tasks", wrap(async (req, res) => {
-  if (!DATE_RE.test(req.params.date)) { res.status(400).json({ error: "Invalid date format" }); return; }
+  const date = req.params.date as string;
+  if (!DATE_RE.test(date)) { res.status(400).json({ error: "Invalid date format" }); return; }
   const input = CreateTaskInput.safeParse(req.body);
   if (!input.success) { res.status(400).json({ error: zodMsg(input.error) }); return; }
 
@@ -32,7 +34,7 @@ router.post("/:date/tasks", wrap(async (req, res) => {
     completed: false,
   });
 
-  await addTask(req.userId!, req.params.date, task);
+  await addTask(req.userId!, date, task);
   res.status(201).json(task);
 }));
 

@@ -25,20 +25,20 @@ router.post("/", wrap(async (req, res) => {
 
 // Update a recurring task
 router.put("/:id", wrap(async (req, res) => {
-  const updated = await updateRecurringTask(req.userId!, req.params.id, req.body);
+  const updated = await updateRecurringTask(req.userId!, req.params.id as string, req.body);
   if (!updated) { res.status(404).json({ error: "Recurring task not found" }); return; }
   res.json(updated);
 }));
 
 // Delete a recurring task
 router.delete("/:id", wrap(async (req, res) => {
-  await deleteRecurringTask(req.userId!, req.params.id);
+  await deleteRecurringTask(req.userId!, req.params.id as string);
   res.status(204).end();
 }));
 
 // Inject recurring tasks for a specific date
 router.post("/inject/:date", wrap(async (req, res) => {
-  const created = await injectRecurringTasks(req.userId!, req.params.date);
+  const created = await injectRecurringTasks(req.userId!, req.params.date as string);
   res.json({ injected: created.length, items: created });
 }));
 
