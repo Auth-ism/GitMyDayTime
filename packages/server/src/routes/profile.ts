@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import argon2 from "argon2";
 import crypto from "node:crypto";
 import { UpdateProfileInput, ChangePasswordInput } from "@gmd/shared";
@@ -9,22 +9,25 @@ import { sendVerificationEmail } from "../email.js";
 
 const router = Router();
 
+const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
+  (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
+
 function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
 // GET /api/profile — fetch current user profile
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", wrap(async (req: Request, res: Response) => {
   const profile = await getUserProfile(req.userId!);
   if (!profile) {
     res.status(404).json({ error: "User not found" });
     return;
   }
   res.json(profile);
-});
+}));
 
 // PUT /api/profile — update profile
-router.put("/", async (req: Request, res: Response) => {
+router.put("/", wrap(async (req: Request, res: Response) => {
   const parsed = UpdateProfileInput.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: zodMsg(parsed.error) });
@@ -78,10 +81,10 @@ router.put("/", async (req: Request, res: Response) => {
     }
     throw err;
   }
-});
+}));
 
 // PUT /api/profile/avatar — upload avatar (base64)
-router.put("/avatar", async (req: Request, res: Response) => {
+router.put("/avatar", wrap(async (req: Request, res: Response) => {
   const { avatar } = req.body;
   if (!avatar || typeof avatar !== "string") {
     res.status(400).json({ error: "Invalid avatar data" });
@@ -92,12 +95,12 @@ router.put("/avatar", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Avatar too large (max 150KB)" });
     return;
   }
-  await pool.query("UPDATE user_profiles SET avatar_url = $1 WHERE user_id = $2", [avatar, req.userId]);
+  await pool.query("UPDATE users SET avatar_url = $1 WHERE id = $2", [avatar, req.userId]);
   res.json({ ok: true });
-});
+}));
 
 // PUT /api/profile/password — change password
-router.put("/password", async (req: Request, res: Response) => {
+router.put("/password", wrap(async (req: Request, res: Response) => {
   const parsed = ChangePasswordInput.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: zodMsg(parsed.error) });
@@ -134,6 +137,6 @@ router.put("/password", async (req: Request, res: Response) => {
   );
 
   res.json({ ok: true });
-});
+}));
 
 export default router;
