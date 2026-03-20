@@ -175,6 +175,18 @@ spec:
                 secretKeyRef:
                   name: gitmydaytime-secret
                   key: admin-email
+            - name: VAPID_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gitmydaytime-secret
+                  key: vapid-public-key
+            - name: VAPID_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gitmydaytime-secret
+                  key: vapid-private-key
+            - name: VAPID_SUBJECT
+              value: "mailto:admin@byfeb.com"
           resources:
             requests:
               memory: "64Mi"
