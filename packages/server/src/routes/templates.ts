@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { CreateTemplateInput } from "@gmd/shared";
+import { zodMsg } from "../validation.js";
 import { getTemplates, createTemplate, deleteTemplate } from "../storage.js";
 
 const router = Router();
@@ -11,7 +12,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   const input = CreateTemplateInput.safeParse(req.body);
-  if (!input.success) return res.status(400).json({ error: input.error });
+  if (!input.success) return res.status(400).json({ error: zodMsg(input.error) });
   const template = await createTemplate(req.userId!, input.data);
   res.status(201).json(template);
 });

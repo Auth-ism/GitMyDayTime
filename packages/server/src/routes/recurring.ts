@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { CreateRecurringTaskInput } from "@gmd/shared";
+import { zodMsg } from "../validation.js";
 import { getRecurringTasks, createRecurringTask, updateRecurringTask, deleteRecurringTask, injectRecurringTasks } from "../storage.js";
 
 const router = Router();
@@ -14,7 +15,7 @@ router.get("/", async (req, res) => {
 // Create a recurring task
 router.post("/", async (req, res) => {
   const input = CreateRecurringTaskInput.safeParse(req.body);
-  if (!input.success) return res.status(400).json({ error: input.error });
+  if (!input.success) return res.status(400).json({ error: zodMsg(input.error) });
 
   const task = await createRecurringTask(req.userId!, nanoid(8), input.data);
   res.status(201).json(task);

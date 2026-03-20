@@ -6,12 +6,12 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
-import { useI18n, type Locale } from "@/lib/i18n";
+import { useI18n, useCategoryLabel, type Locale } from "@/lib/i18n";
 import { useCategories } from "@/hooks/useCategories";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { AnimatePresence, motion } from "framer-motion";
-import type { UpdateProfileInput } from "@gmd/shared";
+import { CATEGORY_COLORS, type UpdateProfileInput } from "@gmd/shared";
 
 const TIMEZONES = [
   "Europe/Istanbul", "Europe/London", "Europe/Berlin", "Europe/Paris",
@@ -249,9 +249,7 @@ export default function ProfilePage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: any) {
-      if (err.message?.includes("401") || err.message?.includes("wrong_password")) {
-        setError("Mevcut sifre yanlis");
-      } else { setError(err.message || "Kaydetme basarisiz"); }
+      setError(err.message || "Kaydetme basarisiz");
     } finally { setSaving(false); }
   };
 
@@ -696,6 +694,8 @@ const PRESET_COLORS = [
 
 function CategoryManager() {
   const { t } = useI18n();
+  const getCatLabel = useCategoryLabel();
+  const { profile, refreshProfile } = useAuth();
   const { userCategories, createCategory, updateCategory, deleteCategory } = useCategories();
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
@@ -704,6 +704,8 @@ function CategoryManager() {
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const hiddenCategories: string[] = profile?.hiddenCategories ?? [];
 
   const handleCreate = () => {
     if (!newName.trim()) return;
@@ -723,6 +725,15 @@ function CategoryManager() {
     deleteCategory.mutate(id, { onSuccess: () => setConfirmDeleteId(null) });
   };
 
+  const toggleDefaultCategory = async (key: string) => {
+    const isHidden = hiddenCategories.includes(key);
+    const updated = isHidden
+      ? hiddenCategories.filter((c) => c !== key)
+      : [...hiddenCategories, key];
+    await api.updateProfile({ hiddenCategories: updated });
+    refreshProfile();
+  };
+
   return (
     <Section>
       <div className="flex items-center justify-between">
@@ -734,6 +745,34 @@ function CategoryManager() {
           {showAdd ? <X size={14} /> : <Plus size={14} />}
         </button>
       </div>
+
+      {/* Default categories with visibility toggle */}
+      <div className="space-y-0.5">
+        {CATEGORIES.map(({ value, labelKey }) => {
+          const isHidden = hiddenCategories.includes(value);
+          return (
+            <div key={value} className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-bg-secondary transition-colors group">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[value as keyof typeof CATEGORY_COLORS] }} />
+              <span className={cn("text-xs font-medium flex-1 truncate", isHidden ? "text-text-tertiary line-through" : "text-text")}>{getCatLabel(value)}</span>
+              <button
+                onClick={() => toggleDefaultCategory(value)}
+                className={cn(
+                  "p-0.5 rounded transition-colors",
+                  isHidden ? "text-text-tertiary hover:text-accent" : "text-accent hover:text-text-tertiary"
+                )}
+                aria-label={isHidden ? "Show category" : "Hide category"}
+              >
+                {isHidden ? <EyeOff size={13} /> : <Eye size={13} />}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Divider between defaults and customs */}
+      {(userCategories.length > 0 || showAdd) && (
+        <div className="border-t border-border my-1" />
+      )}
 
       <AnimatePresence>
         {showAdd && (
@@ -752,10 +791,6 @@ function CategoryManager() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {userCategories.length === 0 && !showAdd && (
-        <p className="text-[10px] text-text-tertiary text-center py-1">{t("profile.noCustomCategories" as any)}</p>
-      )}
 
       <div className="space-y-0.5">
         <AnimatePresence mode="popLayout">

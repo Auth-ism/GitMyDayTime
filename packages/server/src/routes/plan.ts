@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { CreatePlanInput, CreateChecklistInput, PlanItemSchema } from "@gmd/shared";
+import { zodMsg } from "../validation.js";
 import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem, copyDayPlans } from "../storage.js";
 import { pool } from "../db.js";
 
@@ -11,7 +12,7 @@ const router = Router();
 router.post("/:date/plan", async (req, res) => {
   if (!DATE_RE.test(req.params.date)) return res.status(400).json({ error: "Invalid date format" });
   const input = CreatePlanInput.safeParse(req.body);
-  if (!input.success) return res.status(400).json({ error: input.error });
+  if (!input.success) return res.status(400).json({ error: zodMsg(input.error) });
 
   const { rows } = await pool.query(
     "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM plan_items WHERE user_id = $1 AND date = $2",
@@ -72,7 +73,7 @@ router.post("/:date/copy-from/:fromDate", async (req, res) => {
 
 router.post("/:date/plan/:planId/checklist", async (req, res) => {
   const input = CreateChecklistInput.safeParse(req.body);
-  if (!input.success) return res.status(400).json({ error: input.error });
+  if (!input.success) return res.status(400).json({ error: zodMsg(input.error) });
   const item = await addChecklistItem(req.userId!, req.params.planId, input.data.description);
   res.status(201).json(item);
 });

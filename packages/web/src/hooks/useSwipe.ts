@@ -6,7 +6,7 @@ interface UseSwipeOptions {
   threshold?: number;
 }
 
-export function useSwipe({ onSwipeLeft, onSwipeRight, threshold = 50 }: UseSwipeOptions) {
+export function useSwipe({ onSwipeLeft, onSwipeRight, threshold = 100 }: UseSwipeOptions) {
   const startX = useRef(0);
   const startY = useRef(0);
 

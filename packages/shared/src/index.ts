@@ -262,6 +262,7 @@ export const UserProfileSchema = z.object({
   reminderEmailNotifications: z.boolean(),
   reminderSmsNotifications: z.boolean(),
   reminderPushNotifications: z.boolean(),
+  hiddenCategories: z.array(z.string()),
   createdAt: z.string(),
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;
@@ -291,6 +292,7 @@ export const UpdateProfileInput = z.object({
   reminderEmailNotifications: z.boolean().optional(),
   reminderSmsNotifications: z.boolean().optional(),
   reminderPushNotifications: z.boolean().optional(),
+  hiddenCategories: z.array(z.string()).optional(),
   email: z.string().email().optional(),
   username: z.string().min(2).max(32).optional(),
   currentPassword: z.string().min(1).optional(),

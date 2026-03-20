@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { CreateTaskInput, TaskEntrySchema } from "@gmd/shared";
+import { zodMsg } from "../validation.js";
 import { getDayLog, addTask, updateTask, deleteTask, moveTask, getIncompleteItems, carryOverItems } from "../storage.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -22,7 +23,7 @@ router.get("/:date", async (req, res) => {
 router.post("/:date/tasks", async (req, res) => {
   if (!DATE_RE.test(req.params.date)) return res.status(400).json({ error: "Invalid date format" });
   const input = CreateTaskInput.safeParse(req.body);
-  if (!input.success) return res.status(400).json({ error: input.error });
+  if (!input.success) return res.status(400).json({ error: zodMsg(input.error) });
 
   const task = TaskEntrySchema.parse({
     id: nanoid(8),

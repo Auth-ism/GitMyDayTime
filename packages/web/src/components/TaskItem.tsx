@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { Trash2, MessageSquare, Hash, Pencil } from "lucide-react";
 import { type TaskEntry } from "@gmd/shared";
 import { useI18n } from "@/lib/i18n";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 
 interface Props {
@@ -45,11 +44,7 @@ export default function TaskItem({ task, onDelete, onUpdate }: Props) {
   };
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+    <div
       className="group flex items-start gap-3 py-2.5 px-3.5 rounded-xl bg-bg-elevated border border-border hover:border-border-hover transition-colors"
     >
       <MessageSquare size={14} className="text-text-tertiary mt-0.5 flex-shrink-0" />
@@ -110,6 +105,6 @@ export default function TaskItem({ task, onDelete, onUpdate }: Props) {
       >
         <Trash2 size={14} />
       </button>
-    </motion.div>
+    </div>
   );
 }

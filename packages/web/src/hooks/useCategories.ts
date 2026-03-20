@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { DEFAULT_CATEGORIES, CATEGORY_COLORS, type Category } from "@gmd/shared";
+import { useAuth } from "@/lib/auth";
 
 export interface MergedCategory {
   key: string;
@@ -18,6 +19,8 @@ const DEFAULT_CAT_LIST: MergedCategory[] = DEFAULT_CATEGORIES.map((key) => ({
 
 export function useCategories() {
   const qc = useQueryClient();
+  const { profile } = useAuth();
+  const hiddenCategories = profile?.hiddenCategories ?? [];
 
   const { data: userCategories = [] } = useQuery({
     queryKey: ["categories"],
@@ -26,7 +29,7 @@ export function useCategories() {
   });
 
   const allCategories: MergedCategory[] = [
-    ...DEFAULT_CAT_LIST,
+    ...DEFAULT_CAT_LIST.filter((c) => !hiddenCategories.includes(c.key)),
     ...userCategories.map((uc) => ({
       key: uc.id,
       label: uc.name,

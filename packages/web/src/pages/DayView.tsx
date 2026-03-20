@@ -15,12 +15,13 @@ import JournalSection from "@/components/JournalSection";
 import TimelineView from "@/components/TimelineView";
 import TemplatesModal from "@/components/TemplatesModal";
 import ShortcutHelp from "@/components/ShortcutHelp";
-import { UndoToastContainer, useUndoDelete } from "@/components/UndoToast";
+import { UndoToastContainer, showUndoToast } from "@/components/UndoToast";
 import { AnimatePresence, Reorder } from "framer-motion";
 import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, Keyboard } from "lucide-react";
 import { todayStr, type PlanItem as PlanItemData } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { useSwipe } from "@/hooks/useSwipe";
+import SwipeableItem from "@/components/SwipeableItem";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCategories } from "@/hooks/useCategories";
 
@@ -57,42 +58,58 @@ export default function DayView() {
     .sort((a, b) => (a.scheduledTime ?? "").localeCompare(b.scheduledTime ?? "")) || [];
 
   // Local drag state
+  const planListRef = useRef<HTMLDivElement>(null);
   const [dragOrder, setDragOrder] = useState<PlanItemData[] | null>(null);
   const planIds = filteredPlan.map((p) => p.id).join();
   useEffect(() => { setDragOrder(null); }, [planIds]);
   const displayPlan = dragOrder ?? filteredPlan;
 
-  // Undo delete
-  const { deletePlanWithUndo, deleteTaskWithUndo, deleteReminderWithUndo } = useUndoDelete({
-    onDeletePlan: (id) => deletePlan.mutate(id),
-    onDeleteTask: (id) => deleteTask.mutate(id),
-    onDeleteReminder: (id) => deletePlan.mutate(id),
-  });
-
-  const snapshotRef = useRef<typeof dayLog | undefined>(undefined);
+  // Delete handlers — delete immediately, undo re-adds the item
   const handleDeletePlan = useCallback((id: string, description: string) => {
-    snapshotRef.current = dayLog;
-    deletePlanWithUndo(id, description, () => {
-      if (snapshotRef.current) qc.setQueryData(["daylog", date], snapshotRef.current);
-    });
-    if (dayLog) qc.setQueryData(["daylog", date], { ...dayLog, plan: dayLog.plan.filter((p) => p.id !== id) });
-  }, [dayLog, date, deletePlanWithUndo, qc]);
+    const item = dayLog?.plan.find((p) => p.id === id);
+    deletePlan.mutate(id);
+    if (item) {
+      showUndoToast(`"${description}" silindi`, () => {
+        addPlan.mutate({
+          description: item.description,
+          category: item.category,
+          duration: item.duration,
+          scheduledTime: item.scheduledTime,
+          itemType: item.itemType ?? "plan",
+          priority: item.priority ?? "normal",
+        });
+      });
+    }
+  }, [dayLog, deletePlan, addPlan]);
 
   const handleDeleteTask = useCallback((id: string, description: string) => {
-    snapshotRef.current = dayLog;
-    deleteTaskWithUndo(id, description, () => {
-      if (snapshotRef.current) qc.setQueryData(["daylog", date], snapshotRef.current);
-    });
-    if (dayLog) qc.setQueryData(["daylog", date], { ...dayLog, tasks: dayLog.tasks.filter((t) => t.id !== id) });
-  }, [dayLog, date, deleteTaskWithUndo, qc]);
+    const task = dayLog?.tasks.find((t) => t.id === id);
+    deleteTask.mutate(id);
+    if (task) {
+      showUndoToast(`"${description}" silindi`, () => {
+        addTask.mutate({
+          description: task.description,
+          category: task.category,
+          duration: task.duration,
+          tags: task.tags,
+        });
+      });
+    }
+  }, [dayLog, deleteTask, addTask]);
 
   const handleDeleteReminder = useCallback((id: string, description: string) => {
-    snapshotRef.current = dayLog;
-    deleteReminderWithUndo(id, description, () => {
-      if (snapshotRef.current) qc.setQueryData(["daylog", date], snapshotRef.current);
-    });
-    if (dayLog) qc.setQueryData(["daylog", date], { ...dayLog, plan: dayLog.plan.filter((p) => p.id !== id) });
-  }, [dayLog, date, deleteReminderWithUndo, qc]);
+    const item = dayLog?.plan.find((p) => p.id === id);
+    deletePlan.mutate(id);
+    if (item) {
+      showUndoToast(`"${description}" silindi`, () => {
+        addReminder.mutate({
+          description: item.description,
+          scheduledTime: item.scheduledTime,
+          priority: item.priority ?? "normal",
+        });
+      });
+    }
+  }, [dayLog, deletePlan, addReminder]);
 
   const prevDay = () => {
     const d = new Date(date + "T12:00:00");
@@ -314,6 +331,7 @@ export default function DayView() {
             </div>
           ) : (
             <Reorder.Group
+              ref={planListRef}
               axis="y"
               values={displayPlan}
               onReorder={setDragOrder}
@@ -326,24 +344,31 @@ export default function DayView() {
                   value={item}
                   as="div"
                   dragListener={!item.completed}
+                  dragConstraints={planListRef}
+                  dragElastic={0.1}
                   onDragEnd={() => {
                     if (dragOrder) reorderPlan.mutate(dragOrder.map((p) => p.id));
                   }}
                 >
-                  <PlanItem
-                    item={item}
-                    onToggle={(actualDuration) => updatePlan.mutate({
-                      id: item.id,
-                      completed: !item.completed,
-                      ...(actualDuration !== undefined ? { actualDuration } : {}),
-                    })}
-                    onDelete={() => handleDeletePlan(item.id, item.description)}
-                    onUpdate={(data) => updatePlan.mutate({ id: item.id, ...data })}
-                    onStartPomodoro={() => setPomodoroTask({ id: item.id, name: item.description })}
-                    onAddChecklist={(desc) => addChecklist.mutate({ planId: item.id, description: desc })}
-                    onUpdateChecklist={(clId, data) => updateChecklist.mutate({ planId: item.id, clId, ...data })}
-                    onDeleteChecklist={(clId) => deleteChecklist.mutate({ planId: item.id, clId })}
-                  />
+                  <SwipeableItem
+                    onSwipeRight={() => updatePlan.mutate({ id: item.id, completed: !item.completed })}
+                    onSwipeLeft={() => handleDeletePlan(item.id, item.description)}
+                  >
+                    <PlanItem
+                      item={item}
+                      onToggle={(actualDuration) => updatePlan.mutate({
+                        id: item.id,
+                        completed: !item.completed,
+                        ...(actualDuration !== undefined ? { actualDuration } : {}),
+                      })}
+                      onDelete={() => handleDeletePlan(item.id, item.description)}
+                      onUpdate={(data) => updatePlan.mutate({ id: item.id, ...data })}
+                      onStartPomodoro={() => setPomodoroTask({ id: item.id, name: item.description })}
+                      onAddChecklist={(desc) => addChecklist.mutate({ planId: item.id, description: desc })}
+                      onUpdateChecklist={(clId, data) => updateChecklist.mutate({ planId: item.id, clId, ...data })}
+                      onDeleteChecklist={(clId) => deleteChecklist.mutate({ planId: item.id, clId })}
+                    />
+                  </SwipeableItem>
                 </Reorder.Item>
               ))}
             </Reorder.Group>
@@ -365,11 +390,15 @@ export default function DayView() {
         <div className="mt-1.5 space-y-1">
           <AnimatePresence mode="popLayout">
             {filteredReminders.map((item) => (
-              <ReminderItem
+              <SwipeableItem
                 key={item.id}
-                item={item}
-                onDelete={() => handleDeleteReminder(item.id, item.description)}
-              />
+                onSwipeLeft={() => handleDeleteReminder(item.id, item.description)}
+              >
+                <ReminderItem
+                  item={item}
+                  onDelete={() => handleDeleteReminder(item.id, item.description)}
+                />
+              </SwipeableItem>
             ))}
           </AnimatePresence>
         </div>
@@ -385,12 +414,20 @@ export default function DayView() {
         <div className="mt-1.5 space-y-1">
           <AnimatePresence mode="popLayout">
             {filteredTasks.map((task) => (
-              <TaskItem
+              <SwipeableItem
                 key={task.id}
-                task={task}
-                onDelete={() => handleDeleteTask(task.id, task.description)}
-                onUpdate={(data) => updateTask.mutate({ id: task.id, ...data })}
-              />
+                layout
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                onSwipeLeft={() => handleDeleteTask(task.id, task.description)}
+              >
+                <TaskItem
+                  task={task}
+                  onDelete={() => handleDeleteTask(task.id, task.description)}
+                  onUpdate={(data) => updateTask.mutate({ id: task.id, ...data })}
+                />
+              </SwipeableItem>
             ))}
           </AnimatePresence>
         </div>

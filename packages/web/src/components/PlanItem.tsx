@@ -122,6 +122,7 @@ export default function PlanItem({
       <div className="flex items-center gap-3 py-2.5 px-3.5">
         <button
           onClick={handleToggle}
+          onPointerDown={(e) => e.stopPropagation()}
           role="checkbox"
           aria-checked={item.completed}
           aria-label={t("plan.markAs", { desc: item.description, status: item.completed ? t("plan.incomplete") : t("plan.complete") })}

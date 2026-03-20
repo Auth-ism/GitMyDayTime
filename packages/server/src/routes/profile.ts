@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import argon2 from "argon2";
 import crypto from "node:crypto";
 import { UpdateProfileInput, ChangePasswordInput } from "@gmd/shared";
+import { zodMsg } from "../validation.js";
 import { getUserProfile, updateUserProfile } from "../storage.js";
 import { pool } from "../db.js";
 import { sendVerificationEmail } from "../email.js";
@@ -26,7 +27,7 @@ router.get("/", async (req: Request, res: Response) => {
 router.put("/", async (req: Request, res: Response) => {
   const parsed = UpdateProfileInput.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.errors[0].message });
+    res.status(400).json({ error: zodMsg(parsed.error) });
     return;
   }
 
@@ -37,13 +38,13 @@ router.put("/", async (req: Request, res: Response) => {
     const { rows: current } = await pool.query("SELECT email FROM users WHERE id = $1", [req.userId]);
     if (current.length > 0 && data.email !== current[0].email) {
       if (!data.currentPassword) {
-        res.status(400).json({ error: "password_required" });
+        res.status(400).json({ error: "Current password is required to change email" });
         return;
       }
       const { rows: pwRows } = await pool.query("SELECT password_hash FROM users WHERE id = $1", [req.userId]);
       const valid = await argon2.verify(pwRows[0].password_hash, data.currentPassword);
       if (!valid) {
-        res.status(401).json({ error: "wrong_password" });
+        res.status(400).json({ error: "Current password is incorrect" });
         return;
       }
       // Set email_verified to false and send verification
@@ -99,7 +100,7 @@ router.put("/avatar", async (req: Request, res: Response) => {
 router.put("/password", async (req: Request, res: Response) => {
   const parsed = ChangePasswordInput.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.errors[0].message });
+    res.status(400).json({ error: zodMsg(parsed.error) });
     return;
   }
 

@@ -1,3 +1,6 @@
+Not: Kullanici email verfy etmeden uyg girecek email send dsadece uyg girdikten sonra kullasnici sen de basarsa atiolcak ilk kayitta email atilmiyacak !!!  \
+NOT: Kaydirma da sitenin sonuna kadar kayiyior
+NOT: Check boxlari isaretliyemiyuorum
 # Feature Planlari
 
 Yapilabilecek gelistirmeler ve yeni ozellikler. Oncelik sirasina gore gruplanmistir.

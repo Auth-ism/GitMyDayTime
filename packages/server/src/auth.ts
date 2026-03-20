@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
 import { RegisterInput, LoginInput, type UserResponse } from "@gmd/shared";
+import { zodMsg } from "./validation.js";
 import { pool } from "./db.js";
 import { redis, isRedisConnected, cacheSession, getCachedSession, invalidateSessionCache } from "./redis.js";
 import { logAuditEvent, getClientIp } from "./audit.js";
@@ -182,7 +183,7 @@ export const authRouter = Router();
 authRouter.post("/register", async (req: Request, res: Response) => {
   const parsed = RegisterInput.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.errors[0].message });
+    res.status(400).json({ error: zodMsg(parsed.error) });
     return;
   }
 
@@ -257,7 +258,7 @@ authRouter.post("/register", async (req: Request, res: Response) => {
 authRouter.post("/login", async (req: Request, res: Response) => {
   const parsed = LoginInput.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input" });
+    res.status(400).json({ error: zodMsg(parsed.error) });
     return;
   }
 

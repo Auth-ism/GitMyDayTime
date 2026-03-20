@@ -11,12 +11,19 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   });
 
-  if (res.status === 401) {
-    window.location.href = "/login";
-    throw new Error("Unauthorized");
-  }
+  if (!res.ok) {
+    let errorMessage = `API error: ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.error) errorMessage = data.error;
+    } catch {}
 
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+    if (res.status === 401) {
+      window.location.href = "/login";
+    }
+
+    throw new Error(errorMessage);
+  }
   if (res.status === 204) return undefined as T;
   return res.json();
 }

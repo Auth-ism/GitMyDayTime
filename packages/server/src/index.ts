@@ -61,6 +61,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health check — before auth so k8s probes work without a token
+app.get("/api/health", async (_req, res) => {
+  const checks: Record<string, string> = {};
+  try {
+    await pool.query("SELECT 1");
+    checks.db = "ok";
+  } catch {
+    checks.db = "fail";
+  }
+  checks.redis = isRedisConnected() ? "ok" : "fail";
+  const healthy = checks.db === "ok";
+  res.status(healthy ? 200 : 503).json({ status: healthy ? "ok" : "degraded", checks });
+});
+
 // Auth routes with auth-specific rate limiter
 app.use("/api/auth", getAuthLimiter(), authRouter);
 
@@ -81,6 +95,14 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/templates", templateRoutes);
 app.use("/api/export", exportRoutes);
 app.use("/api/push", pushRoutes);
+
+// Global async error handler — Express 4 doesn't catch async errors
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("[unhandled]", err.stack || err.message);
+  if (!res.headersSent) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // Serve frontend in production
 const webDist = path.resolve(__dirname, "../../web/dist");

@@ -74,6 +74,7 @@ function toUserProfile(r: any): UserProfile {
     reminderEmailNotifications: r.reminder_email_notifications ?? true,
     reminderSmsNotifications: r.reminder_sms_notifications ?? false,
     reminderPushNotifications: r.reminder_push_notifications ?? true,
+    hiddenCategories: r.hidden_categories ?? [],
     createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   };
 }
@@ -90,7 +91,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
             phone_number, sms_notifications, email_notifications, push_notifications,
             plan_email_notifications, plan_sms_notifications, plan_push_notifications,
             reminder_email_notifications, reminder_sms_notifications, reminder_push_notifications,
-            created_at
+            hidden_categories, created_at
      FROM users WHERE id = $1`,
     [userId]
   );
@@ -103,7 +104,13 @@ export async function updateUserProfile(
   userId: string,
   updates: UpdateProfileInput
 ): Promise<UserProfile | null> {
-  const { fields, values, nextIdx } = buildDynamicUpdate(updates, {
+  // JSONB columns must be serialized to JSON string for pg
+  const normalizedUpdates = { ...updates } as Record<string, unknown>;
+  if (normalizedUpdates.hiddenCategories !== undefined) {
+    normalizedUpdates.hiddenCategories = JSON.stringify(normalizedUpdates.hiddenCategories);
+  }
+
+  const { fields, values, nextIdx } = buildDynamicUpdate(normalizedUpdates, {
     displayName: "display_name",
     bio: "bio",
     avatarUrl: "avatar_url",
@@ -128,6 +135,7 @@ export async function updateUserProfile(
     reminderEmailNotifications: "reminder_email_notifications",
     reminderSmsNotifications: "reminder_sms_notifications",
     reminderPushNotifications: "reminder_push_notifications",
+    hiddenCategories: "hidden_categories",
     email: "email",
     username: "username",
   });
@@ -145,7 +153,7 @@ export async function updateUserProfile(
                phone_number, sms_notifications, email_notifications, push_notifications,
                plan_email_notifications, plan_sms_notifications, plan_push_notifications,
                reminder_email_notifications, reminder_sms_notifications, reminder_push_notifications,
-               created_at`,
+               hidden_categories, created_at`,
     values
   );
 
@@ -915,9 +923,8 @@ export async function getPendingNotifications(): Promise<PendingNotification[]> 
        AND pi.scheduled_time IS NOT NULL
        AND (u.plan_email_notifications = TRUE OR u.plan_sms_notifications = TRUE OR u.plan_push_notifications = TRUE
             OR u.reminder_email_notifications = TRUE OR u.reminder_sms_notifications = TRUE OR u.reminder_push_notifications = TRUE)
-       AND pi.date = (NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC'))::date
-       AND TO_CHAR(NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC'), 'HH24:MI')
-           = TO_CHAR(pi.scheduled_time, 'HH24:MI')`
+       AND (pi.date + pi.scheduled_time) <= (NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC'))
+       AND (pi.date + pi.scheduled_time) > ((NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC')) - INTERVAL '2 minutes')`
   );
   return rows as PendingNotification[];
 }
