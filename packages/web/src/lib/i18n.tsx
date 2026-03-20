@@ -204,6 +204,7 @@ const translations = {
     "verify.banner": "Please verify your email address.",
     "verify.bannerLink": "Resend email",
     "verify.bannerSent": "Email sent!",
+    "verify.bannerClose": "Dismiss",
     "verify.loading": "Verifying...",
     "verify.successTitle": "Email verified",
     "verify.successDesc": "Your email address has been verified successfully.",
@@ -329,6 +330,9 @@ const translations = {
     "profile.exportData": "Export My Data",
     "profile.exportDataDesc": "Download all your data as JSON",
     "profile.dataManagement": "Data Management",
+    "profile.emailVerified": "Email verified",
+    "profile.emailNotVerified": "Email not verified",
+    "profile.resendVerification": "Send verification email",
   },
   tr: {
     // Nav
@@ -531,6 +535,7 @@ const translations = {
     "verify.banner": "E-posta adresinizi doğrulayın.",
     "verify.bannerLink": "Tekrar gönder",
     "verify.bannerSent": "E-posta gönderildi!",
+    "verify.bannerClose": "Kapat",
     "verify.loading": "Doğrulanıyor...",
     "verify.successTitle": "E-posta doğrulandı",
     "verify.successDesc": "E-posta adresiniz başarıyla doğrulandı.",
@@ -656,6 +661,9 @@ const translations = {
     "profile.exportData": "Verilerimi İndir",
     "profile.exportDataDesc": "Tüm verilerini JSON olarak indir",
     "profile.dataManagement": "Veri Yönetimi",
+    "profile.emailVerified": "E-posta doğrulanmış",
+    "profile.emailNotVerified": "E-posta doğrulanmamış",
+    "profile.resendVerification": "Doğrulama e-postası gönder",
   },
 } as const;
 

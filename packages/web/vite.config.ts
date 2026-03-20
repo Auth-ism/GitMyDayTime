@@ -76,6 +76,7 @@ export default defineConfig({
           },
         ],
         navigateFallback: "index.html",
+        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],

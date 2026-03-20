@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown, Download, Upload, Bell, Camera } from "lucide-react";
+import { User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown, Download, Upload, Bell, Camera, Mail, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
 import { useI18n, type Locale } from "@/lib/i18n";
@@ -49,7 +49,7 @@ function rawPhone(formatted: string): string {
 }
 
 export default function ProfilePage() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, user } = useAuth();
   const { theme, setTheme } = useTheme();
   const { t, locale, setLocale } = useI18n();
 
@@ -63,6 +63,10 @@ export default function ProfilePage() {
   const [emailPassword, setEmailPassword] = useState("");
   const [emailChanged, setEmailChanged] = useState(false);
   const originalEmail = useRef("");
+
+  // Email verification resend from profile
+  const [verifySent, setVerifySent] = useState(false);
+  const [verifySending, setVerifySending] = useState(false);
 
   // Push notifications
   const [pushSupported, setPushSupported] = useState(false);
@@ -424,6 +428,39 @@ export default function ProfilePage() {
                     />
                   </div>
                 )}
+                {/* Email verification status */}
+                <div className="mt-1.5">
+                  {user?.emailVerified ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success">
+                      <Check size={12} />
+                      {t("profile.emailVerified" as any)}
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-500">
+                        <AlertCircle size={12} />
+                        {t("profile.emailNotVerified" as any)}
+                      </span>
+                      {verifySent ? (
+                        <span className="text-[11px] text-accent font-medium">{t("verify.bannerSent" as any)}</span>
+                      ) : (
+                        <button
+                          onClick={async () => {
+                            setVerifySending(true);
+                            try {
+                              await fetch("/api/auth/resend-verification", { method: "POST", credentials: "include" });
+                              setVerifySent(true);
+                            } catch {} finally { setVerifySending(false); }
+                          }}
+                          disabled={verifySending}
+                          className="text-[11px] text-accent font-medium underline hover:text-accent/80 transition-colors"
+                        >
+                          {verifySending ? "..." : t("profile.resendVerification" as any)}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </FormField>
 
               <FormField label={t("profile.username" as any)}>

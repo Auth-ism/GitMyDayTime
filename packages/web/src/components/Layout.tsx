@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from "react";
 import { NavLink, useLocation, Outlet } from "react-router-dom";
-import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, Github, Mail, UserCircle, WifiOff } from "lucide-react";
+import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, Github, Mail, UserCircle, WifiOff, X } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
@@ -10,11 +10,21 @@ import { AnimatePresence, motion } from "framer-motion";
 function EmailVerifyBanner() {
   const { t } = useI18n();
   const [sent, setSent] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem("gmd-verify-banner-dismissed") === "1"; } catch { return false; }
+  });
 
   const resend = async () => {
     await fetch("/api/auth/resend-verification", { method: "POST", credentials: "include" });
     setSent(true);
   };
+
+  const dismiss = () => {
+    setDismissed(true);
+    try { localStorage.setItem("gmd-verify-banner-dismissed", "1"); } catch {}
+  };
+
+  if (dismissed) return null;
 
   return (
     <div className="bg-accent-soft border-b border-accent/20 px-4 py-2 flex items-center justify-center gap-2 text-xs font-medium text-text-secondary">
@@ -26,6 +36,13 @@ function EmailVerifyBanner() {
           {t("verify.bannerLink" as any)}
         </button>
       )}
+      <button
+        onClick={dismiss}
+        aria-label={t("verify.bannerClose" as any)}
+        className="ml-2 p-0.5 rounded hover:bg-accent/10 text-text-tertiary hover:text-text-secondary transition-colors"
+      >
+        <X size={14} />
+      </button>
     </div>
   );
 }
