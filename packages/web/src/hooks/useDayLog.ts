@@ -150,12 +150,15 @@ export function useDayLog(date: string) {
       await qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
       if (prev) {
+        const idSet = new Set(ids);
         const planMap = new Map(prev.plan.map((p) => [p.id, p]));
         const reordered = ids.map((id, i) => {
           const item = planMap.get(id)!;
           return { ...item, order: i };
         });
-        qc.setQueryData<DayLog>(key, { ...prev, plan: reordered });
+        // Preserve items not in the reorder list (reminders, filtered-out items)
+        const rest = prev.plan.filter((p) => !idSet.has(p.id));
+        qc.setQueryData<DayLog>(key, { ...prev, plan: [...reordered, ...rest] });
       }
       return { prev };
     },

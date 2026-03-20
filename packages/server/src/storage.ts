@@ -387,10 +387,13 @@ export async function reorderPlanItems(
     client.release();
   }
 
+  await invalidateDayLog(userId, date);
+
   const { rows } = await pool.query(
     `SELECT id, description, category, estimated_duration AS "duration",
             completed, sort_order AS "order", scheduled_time AS "scheduledTime",
-            actual_duration AS "actualDuration", item_type AS "itemType"
+            actual_duration AS "actualDuration", item_type AS "itemType",
+            notification_sent AS "notificationSent", priority
      FROM plan_items WHERE user_id = $1 AND date = $2 ORDER BY sort_order`,
     [userId, date]
   );
@@ -402,6 +405,13 @@ export async function movePlanItem(
   itemId: string,
   newDate: string
 ): Promise<PlanItem | null> {
+  // Get old date before moving
+  const { rows: oldRows } = await pool.query(
+    "SELECT date FROM plan_items WHERE id = $1 AND user_id = $2",
+    [itemId, userId]
+  );
+  const oldDate = oldRows.length > 0 ? formatDate(oldRows[0].date) : null;
+
   const { rows: orderRows } = await pool.query(
     "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM plan_items WHERE user_id = $1 AND date = $2",
     [userId, newDate]
@@ -412,11 +422,16 @@ export async function movePlanItem(
      WHERE id = $3 AND user_id = $4
      RETURNING id, description, category, estimated_duration AS "duration", completed, sort_order AS "order",
                scheduled_time AS "scheduledTime", actual_duration AS "actualDuration",
-               item_type AS "itemType"`,
+               item_type AS "itemType", priority`,
     [newDate, orderRows[0].next_order, itemId, userId]
   );
 
-  return rows.length > 0 ? toPlanItem(rows[0]) : null;
+  if (rows.length > 0) {
+    if (oldDate) await invalidateDayLog(userId, oldDate);
+    await invalidateDayLog(userId, newDate);
+    return toPlanItem(rows[0]);
+  }
+  return null;
 }
 
 export async function moveTask(
@@ -424,6 +439,13 @@ export async function moveTask(
   taskId: string,
   newDate: string
 ): Promise<TaskEntry | null> {
+  // Get old date before moving
+  const { rows: oldRows } = await pool.query(
+    "SELECT date FROM tasks WHERE id = $1 AND user_id = $2",
+    [taskId, userId]
+  );
+  const oldDate = oldRows.length > 0 ? formatDate(oldRows[0].date) : null;
+
   const { rows } = await pool.query(
     `UPDATE tasks SET date = $1
      WHERE id = $2 AND user_id = $3
@@ -432,6 +454,8 @@ export async function moveTask(
   );
 
   if (rows.length === 0) return null;
+  if (oldDate) await invalidateDayLog(userId, oldDate);
+  await invalidateDayLog(userId, newDate);
   return { ...rows[0], timestamp: serializeTimestamp(rows[0].timestamp) } as TaskEntry;
 }
 

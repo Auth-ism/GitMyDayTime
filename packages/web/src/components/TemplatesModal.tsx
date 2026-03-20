@@ -50,8 +50,8 @@ export default function TemplatesModal({ date, currentPlans, onClose, onApplied 
       items: plans.map((p) => ({
         description: p.description,
         category: p.category,
-        duration: p.duration,
-        scheduledTime: p.scheduledTime,
+        duration: p.duration ?? undefined,
+        scheduledTime: p.scheduledTime ?? undefined,
         priority: p.priority ?? "normal",
       })),
     });

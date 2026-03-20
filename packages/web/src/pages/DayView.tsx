@@ -60,9 +60,15 @@ export default function DayView() {
   // Local drag state
   const planListRef = useRef<HTMLDivElement>(null);
   const [dragOrder, setDragOrder] = useState<PlanItemData[] | null>(null);
+  const dragOrderRef = useRef<PlanItemData[] | null>(null);
   const planIds = filteredPlan.map((p) => p.id).join();
-  useEffect(() => { setDragOrder(null); }, [planIds]);
+  useEffect(() => { setDragOrder(null); dragOrderRef.current = null; }, [planIds]);
   const displayPlan = dragOrder ?? filteredPlan;
+
+  const handleReorder = useCallback((newOrder: PlanItemData[]) => {
+    dragOrderRef.current = newOrder;
+    setDragOrder(newOrder);
+  }, []);
 
   // Delete handlers — delete immediately, undo re-adds the item
   const handleDeletePlan = useCallback((id: string, description: string) => {
@@ -104,6 +110,7 @@ export default function DayView() {
       showUndoToast(`"${description}" silindi`, () => {
         addReminder.mutate({
           description: item.description,
+          category: item.category,
           scheduledTime: item.scheduledTime,
           priority: item.priority ?? "normal",
         });
@@ -334,7 +341,7 @@ export default function DayView() {
               ref={planListRef}
               axis="y"
               values={displayPlan}
-              onReorder={setDragOrder}
+              onReorder={handleReorder}
               className="mt-1.5 space-y-1"
               as="div"
             >
@@ -347,7 +354,8 @@ export default function DayView() {
                   dragConstraints={planListRef}
                   dragElastic={0.1}
                   onDragEnd={() => {
-                    if (dragOrder) reorderPlan.mutate(dragOrder.map((p) => p.id));
+                    const order = dragOrderRef.current;
+                    if (order) reorderPlan.mutate(order.map((p) => p.id));
                   }}
                 >
                   <SwipeableItem
