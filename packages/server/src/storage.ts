@@ -504,15 +504,15 @@ export async function getStats(
   const [totalsResult, byCategoryResult, dailyResult, streakResult] = await Promise.all([
     pool.query(
       `SELECT
-         (SELECT COUNT(*)::int FROM plan_items WHERE user_id = $1 AND date BETWEEN $2 AND $3 AND completed = true)
+         (SELECT COUNT(*)::int FROM plan_items WHERE user_id = $1 AND date BETWEEN $2 AND $3 AND completed = true AND item_type = 'plan')
          AS total_tasks,
-         COALESCE((SELECT SUM(actual_duration) FROM plan_items WHERE user_id = $1 AND date BETWEEN $2 AND $3 AND completed = true), 0)::int
+         COALESCE((SELECT SUM(actual_duration) FROM plan_items WHERE user_id = $1 AND date BETWEEN $2 AND $3 AND completed = true AND item_type = 'plan'), 0)::int
          AS total_minutes`,
       [userId, from, to]
     ),
     pool.query(
       `SELECT category, COUNT(*)::int AS count, COALESCE(SUM(actual_duration), 0)::int AS minutes
-       FROM plan_items WHERE user_id = $1 AND date BETWEEN $2 AND $3
+       FROM plan_items WHERE user_id = $1 AND date BETWEEN $2 AND $3 AND item_type = 'plan'
        GROUP BY category`,
       [userId, from, to]
     ),
@@ -529,7 +529,7 @@ export async function getStats(
                 COUNT(*) AS plan_count,
                 COUNT(*) FILTER (WHERE completed) AS completed_count,
                 COALESCE(SUM(actual_duration) FILTER (WHERE completed), 0) AS total_minutes
-         FROM plan_items WHERE user_id = $1
+         FROM plan_items WHERE user_id = $1 AND item_type = 'plan'
          GROUP BY date
        ) p ON p.date = d.date::date
        WHERE COALESCE(p.plan_count, 0) > 0
@@ -538,7 +538,7 @@ export async function getStats(
     ),
     pool.query(
       `WITH active_dates AS (
-         SELECT DISTINCT date FROM plan_items WHERE user_id = $1 AND completed = true
+         SELECT DISTINCT date FROM plan_items WHERE user_id = $1 AND completed = true AND item_type = 'plan'
        ),
        numbered AS (
          SELECT date, date - (ROW_NUMBER() OVER (ORDER BY date))::int AS grp
@@ -1157,6 +1157,7 @@ export async function getYearlyActivity(userId: string): Promise<{ date: string;
      FROM plan_items
      WHERE user_id = $1
        AND completed = true
+       AND item_type = 'plan'
        AND date >= CURRENT_DATE - INTERVAL '365 days'
      GROUP BY date
      ORDER BY date`,
