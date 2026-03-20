@@ -97,7 +97,7 @@ export default function SwipeableItem({ children, onSwipeRight, onSwipeLeft, ...
     >
       {onSwipeRight && (
         <motion.div
-          className="absolute inset-y-0 left-0 w-20 flex items-center justify-center"
+          className="absolute inset-y-0 left-0 w-20 flex items-center justify-center pointer-events-none"
           style={{ opacity: rightOpacity }}
         >
           <motion.div style={{ scale: rightScale }}>
@@ -110,7 +110,7 @@ export default function SwipeableItem({ children, onSwipeRight, onSwipeLeft, ...
 
       {onSwipeLeft && (
         <motion.div
-          className="absolute inset-y-0 right-0 w-20 flex items-center justify-center"
+          className="absolute inset-y-0 right-0 w-20 flex items-center justify-center pointer-events-none"
           style={{ opacity: leftOpacity }}
         >
           <motion.div style={{ scale: leftScale }}>
@@ -124,6 +124,7 @@ export default function SwipeableItem({ children, onSwipeRight, onSwipeLeft, ...
       <motion.div
         ref={innerRef}
         style={{ x, touchAction: "pan-y" }}
+        className="relative z-10"
       >
         {children}
       </motion.div>
