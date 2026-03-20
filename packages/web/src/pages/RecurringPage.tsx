@@ -22,8 +22,10 @@ export default function RecurringPage() {
   const dayLabels = useDayLabels();
   const getRecLabel = useRecurrenceLabel();
   const { query, create, update, remove } = useRecurringTasks();
-  const { allCategories } = useCategories();
+  const { allCategories, createCategory } = useCategories();
   const [showForm, setShowForm] = useState(false);
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
 
   const [desc, setDesc] = useState("");
   const [cat, setCat] = useState("dev");
@@ -108,7 +110,7 @@ export default function RecurringPage() {
               autoFocus
             />
 
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 items-center">
               {allCategories.map(({ key, label, isCustom }) => (
                 <button
                   key={key}
@@ -124,6 +126,38 @@ export default function RecurringPage() {
                   {isCustom ? label : getCatLabel(key)}
                 </button>
               ))}
+              {showNewCat ? (
+                <form
+                  className="flex items-center gap-1"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (newCatName.trim()) {
+                      createCategory.mutate({ name: newCatName.trim(), color: "#6b7280" });
+                      setNewCatName("");
+                      setShowNewCat(false);
+                    }
+                  }}
+                >
+                  <input
+                    autoFocus
+                    className="input !w-24 !text-xs !py-1 !px-2"
+                    placeholder="Kategori..."
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    onBlur={() => { if (!newCatName.trim()) setShowNewCat(false); }}
+                  />
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowNewCat(true)}
+                  className="px-2 py-1.5 rounded-lg text-xs text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary border border-transparent hover:border-border transition-all"
+                  title="Yeni kategori ekle"
+                >
+                  <Plus size={14} />
+                </button>
+              )}
             </div>
 
             <div className="space-y-2">
