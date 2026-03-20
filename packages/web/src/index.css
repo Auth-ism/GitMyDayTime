@@ -169,6 +169,26 @@
     color: var(--color-text-tertiary);
   }
 
+  .input-sm {
+    width: 100%;
+    padding: 0.375rem 0.625rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    transition: border-color 150ms ease;
+  }
+  .input-sm:focus {
+    outline: none;
+    border-color: var(--color-focus);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 20%, transparent);
+  }
+  .input-sm::placeholder {
+    color: var(--color-text-tertiary);
+  }
+
   .card {
     background: var(--color-bg-elevated);
     border: 1px solid var(--color-border);

@@ -310,7 +310,7 @@ export default function DayView() {
         <AnimatePresence mode="wait">
           {showTimeline ? (
             <div className="mt-1.5">
-              <TimelineView plans={filteredPlan} />
+              <TimelineView plans={filteredPlan} date={date} />
             </div>
           ) : (
             <Reorder.Group

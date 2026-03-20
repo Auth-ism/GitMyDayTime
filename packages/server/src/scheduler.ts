@@ -26,30 +26,56 @@ interface NotificationTarget {
   description: string;
   itemType: string;
   scheduledTime: string;
+  category: string;
   userId: string;
   email: string;
   phoneNumber: string | null;
-  smsNotifications: boolean;
-  emailNotifications: boolean;
-  pushNotifications: boolean;
+  planEmailNotifications: boolean;
+  planSmsNotifications: boolean;
+  planPushNotifications: boolean;
+  reminderEmailNotifications: boolean;
+  reminderSmsNotifications: boolean;
+  reminderPushNotifications: boolean;
   pushSubscription: any;
+  checklistItems?: { description: string; completed: boolean }[];
+}
+
+async function fetchChecklist(planId: string): Promise<{ description: string; completed: boolean }[]> {
+  try {
+    const { rows } = await pool.query(
+      "SELECT description, completed FROM plan_checklist WHERE plan_id = $1 ORDER BY sort_order",
+      [planId]
+    );
+    return rows;
+  } catch { return []; }
 }
 
 async function sendNotification(item: NotificationTarget): Promise<void> {
-  const label = item.itemType === "reminder" ? "Hatırlatıcı" : "Plan";
+  const isPlan = item.itemType === "plan";
+  const emailEnabled = isPlan ? item.planEmailNotifications : item.reminderEmailNotifications;
+  const smsEnabled = isPlan ? item.planSmsNotifications : item.reminderSmsNotifications;
+  const pushEnabled = isPlan ? item.planPushNotifications : item.reminderPushNotifications;
+
+  const label = isPlan ? "Plan" : "Hatırlatıcı";
   const body = `${label}: ${item.description} (${item.scheduledTime})`;
 
   const sends: Promise<unknown>[] = [];
 
-  if (item.emailNotifications) {
+  if (emailEnabled) {
     sends.push(
-      sendReminderEmail(item.email, item.description, item.scheduledTime).catch((err) =>
+      sendReminderEmail(item.email, {
+        description: item.description,
+        scheduledTime: item.scheduledTime,
+        itemType: item.itemType as "plan" | "reminder",
+        category: item.category,
+        checklistItems: item.checklistItems,
+      }).catch((err) =>
         console.error(`[scheduler] email failed for ${item.id}:`, err)
       )
     );
   }
 
-  if (item.smsNotifications && twilioClient && TWILIO_FROM && item.phoneNumber) {
+  if (smsEnabled && twilioClient && TWILIO_FROM && item.phoneNumber) {
     sends.push(
       twilioClient.messages
         .create({ body, from: TWILIO_FROM, to: item.phoneNumber })
@@ -57,7 +83,7 @@ async function sendNotification(item: NotificationTarget): Promise<void> {
     );
   }
 
-  if (item.pushNotifications && item.pushSubscription && process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  if (pushEnabled && item.pushSubscription && process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
     const sub = typeof item.pushSubscription === "string" ? JSON.parse(item.pushSubscription) : item.pushSubscription;
     const payload = JSON.stringify({
       title: label,
@@ -89,11 +115,15 @@ async function processRedisReminders(): Promise<number> {
       const { rows } = await pool.query(
         `SELECT pi.id, pi.description, pi.item_type AS "itemType",
                 TO_CHAR(pi.scheduled_time, 'HH24:MI') AS "scheduledTime",
+                pi.category,
                 u.id AS "userId", u.email,
                 u.phone_number AS "phoneNumber",
-                u.sms_notifications AS "smsNotifications",
-                u.email_notifications AS "emailNotifications",
-                u.push_notifications AS "pushNotifications",
+                u.plan_email_notifications AS "planEmailNotifications",
+                u.plan_sms_notifications AS "planSmsNotifications",
+                u.plan_push_notifications AS "planPushNotifications",
+                u.reminder_email_notifications AS "reminderEmailNotifications",
+                u.reminder_sms_notifications AS "reminderSmsNotifications",
+                u.reminder_push_notifications AS "reminderPushNotifications",
                 u.push_subscription AS "pushSubscription"
          FROM plan_items pi
          JOIN users u ON u.id = pi.user_id
@@ -101,7 +131,11 @@ async function processRedisReminders(): Promise<number> {
         [itemId, userId]
       );
       if (rows.length > 0) {
-        await sendNotification(rows[0] as NotificationTarget);
+        const target = rows[0] as NotificationTarget;
+        if (target.itemType === "plan") {
+          target.checklistItems = await fetchChecklist(target.id);
+        }
+        await sendNotification(target);
         sent++;
       }
     } catch (err) {
@@ -122,7 +156,11 @@ async function processDbReminders(): Promise<number> {
   }
 
   for (const item of pending) {
-    await sendNotification(item as NotificationTarget);
+    const target = item as unknown as NotificationTarget;
+    if (target.itemType === "plan") {
+      target.checklistItems = await fetchChecklist(target.id);
+    }
+    await sendNotification(target);
   }
   return pending.length;
 }

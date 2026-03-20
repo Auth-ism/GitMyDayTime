@@ -29,6 +29,11 @@ function formatTime(val: string | null | undefined): string | undefined {
   return val ? val.slice(0, 5) : undefined;
 }
 
+function formatDate(val: unknown): string {
+  if (val instanceof Date) return val.toISOString().slice(0, 10);
+  return String(val);
+}
+
 function toPlanItem(r: any): PlanItem {
   return {
     ...r,
@@ -63,6 +68,12 @@ function toUserProfile(r: any): UserProfile {
     smsNotifications: r.sms_notifications ?? false,
     emailNotifications: r.email_notifications ?? false,
     pushNotifications: r.push_notifications ?? false,
+    planEmailNotifications: r.plan_email_notifications ?? true,
+    planSmsNotifications: r.plan_sms_notifications ?? false,
+    planPushNotifications: r.plan_push_notifications ?? true,
+    reminderEmailNotifications: r.reminder_email_notifications ?? true,
+    reminderSmsNotifications: r.reminder_sms_notifications ?? false,
+    reminderPushNotifications: r.reminder_push_notifications ?? true,
     createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   };
 }
@@ -76,7 +87,10 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     `SELECT id, email, username, display_name, bio, avatar_url, timezone, locale, theme,
             pomodoro_duration, break_duration, daily_goal, work_start_time, work_end_time,
             default_category, is_public, notification_enabled,
-            phone_number, sms_notifications, email_notifications, push_notifications, created_at
+            phone_number, sms_notifications, email_notifications, push_notifications,
+            plan_email_notifications, plan_sms_notifications, plan_push_notifications,
+            reminder_email_notifications, reminder_sms_notifications, reminder_push_notifications,
+            created_at
      FROM users WHERE id = $1`,
     [userId]
   );
@@ -108,6 +122,12 @@ export async function updateUserProfile(
     smsNotifications: "sms_notifications",
     emailNotifications: "email_notifications",
     pushNotifications: "push_notifications",
+    planEmailNotifications: "plan_email_notifications",
+    planSmsNotifications: "plan_sms_notifications",
+    planPushNotifications: "plan_push_notifications",
+    reminderEmailNotifications: "reminder_email_notifications",
+    reminderSmsNotifications: "reminder_sms_notifications",
+    reminderPushNotifications: "reminder_push_notifications",
     email: "email",
     username: "username",
   });
@@ -122,7 +142,10 @@ export async function updateUserProfile(
      RETURNING id, email, username, display_name, bio, avatar_url, timezone, locale, theme,
                pomodoro_duration, break_duration, daily_goal, work_start_time, work_end_time,
                default_category, is_public, notification_enabled,
-               phone_number, sms_notifications, email_notifications, push_notifications, created_at`,
+               phone_number, sms_notifications, email_notifications, push_notifications,
+               plan_email_notifications, plan_sms_notifications, plan_push_notifications,
+               reminder_email_notifications, reminder_sms_notifications, reminder_push_notifications,
+               created_at`,
     values
   );
 
@@ -253,7 +276,7 @@ export async function deleteTask(userId: string, taskId: string): Promise<boolea
     "DELETE FROM tasks WHERE id = $1 AND user_id = $2",
     [taskId, userId]
   );
-  if (dateRows[0]) await invalidateDayLog(userId, dateRows[0].date);
+  if (dateRows[0]) await invalidateDayLog(userId, formatDate(dateRows[0].date));
   return (rowCount ?? 0) > 0;
 }
 
@@ -309,7 +332,7 @@ export async function updatePlanItem(
   );
 
   if (rows.length > 0) {
-    await invalidateDayLog(userId, rows[0].date);
+    await invalidateDayLog(userId, formatDate(rows[0].date));
     if (updates.completed !== undefined || updates.actualDuration !== undefined) {
       await invalidateStats(userId);
     }
@@ -327,7 +350,7 @@ export async function deletePlanItem(userId: string, itemId: string): Promise<bo
     [itemId, userId]
   );
   if (dateRows[0]) {
-    await invalidateDayLog(userId, dateRows[0].date);
+    await invalidateDayLog(userId, formatDate(dateRows[0].date));
     await invalidateStats(userId);
   }
   await unscheduleReminder(userId, itemId);
@@ -857,12 +880,16 @@ export interface PendingNotification {
   description: string;
   itemType: string;
   scheduledTime: string;
+  category: string;
   userId: string;
   email: string;
   phoneNumber: string | null;
-  smsNotifications: boolean;
-  emailNotifications: boolean;
-  pushNotifications: boolean;
+  planEmailNotifications: boolean;
+  planSmsNotifications: boolean;
+  planPushNotifications: boolean;
+  reminderEmailNotifications: boolean;
+  reminderSmsNotifications: boolean;
+  reminderPushNotifications: boolean;
   pushSubscription: any;
   timezone: string;
 }
@@ -871,18 +898,23 @@ export async function getPendingNotifications(): Promise<PendingNotification[]> 
   const { rows } = await pool.query(
     `SELECT pi.id, pi.description, pi.item_type AS "itemType",
             TO_CHAR(pi.scheduled_time, 'HH24:MI') AS "scheduledTime",
+            pi.category,
             u.id AS "userId", u.email,
             u.phone_number AS "phoneNumber",
-            u.sms_notifications AS "smsNotifications",
-            u.email_notifications AS "emailNotifications",
-            u.push_notifications AS "pushNotifications",
+            u.plan_email_notifications AS "planEmailNotifications",
+            u.plan_sms_notifications AS "planSmsNotifications",
+            u.plan_push_notifications AS "planPushNotifications",
+            u.reminder_email_notifications AS "reminderEmailNotifications",
+            u.reminder_sms_notifications AS "reminderSmsNotifications",
+            u.reminder_push_notifications AS "reminderPushNotifications",
             u.push_subscription AS "pushSubscription",
             COALESCE(u.timezone, 'UTC') AS timezone
      FROM plan_items pi
      JOIN users u ON u.id = pi.user_id
      WHERE pi.notification_sent = FALSE
        AND pi.scheduled_time IS NOT NULL
-       AND (u.sms_notifications = TRUE OR u.email_notifications = TRUE OR u.push_notifications = TRUE)
+       AND (u.plan_email_notifications = TRUE OR u.plan_sms_notifications = TRUE OR u.plan_push_notifications = TRUE
+            OR u.reminder_email_notifications = TRUE OR u.reminder_sms_notifications = TRUE OR u.reminder_push_notifications = TRUE)
        AND pi.date = (NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC'))::date
        AND TO_CHAR(NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC'), 'HH24:MI')
            = TO_CHAR(pi.scheduled_time, 'HH24:MI')`
