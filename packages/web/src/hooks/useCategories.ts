@@ -28,8 +28,8 @@ export function useCategories() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const allCategories: MergedCategory[] = [
-    ...DEFAULT_CAT_LIST.filter((c) => !hiddenCategories.includes(c.key)),
+  const allCategoriesUnfiltered: MergedCategory[] = [
+    ...DEFAULT_CAT_LIST,
     ...userCategories.map((uc) => ({
       key: uc.id,
       label: uc.name,
@@ -37,6 +37,10 @@ export function useCategories() {
       isCustom: true,
     })),
   ];
+
+  const allCategories: MergedCategory[] = allCategoriesUnfiltered.filter(
+    (c) => c.isCustom || !hiddenCategories.includes(c.key)
+  );
 
   const createCategory = useMutation({
     mutationFn: (data: { name: string; color: string }) => api.createCategory(data),
@@ -54,12 +58,12 @@ export function useCategories() {
   });
 
   const getCategoryLabel = (key: string): string => {
-    const found = allCategories.find((c) => c.key === key);
+    const found = allCategoriesUnfiltered.find((c) => c.key === key);
     return found ? found.label : key;
   };
 
   const getCategoryColor = (key: string): string => {
-    const found = allCategories.find((c) => c.key === key);
+    const found = allCategoriesUnfiltered.find((c) => c.key === key);
     return found ? found.color : "#888";
   };
 

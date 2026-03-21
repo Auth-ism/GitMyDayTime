@@ -897,6 +897,15 @@ export async function updateUserCategory(
 }
 
 export async function deleteUserCategory(userId: string, categoryId: string): Promise<boolean> {
+  // Migrate plan items and recurring tasks with this category to "other"
+  await pool.query(
+    `UPDATE plan_items SET category = 'other' WHERE user_id = $1 AND category = $2`,
+    [userId, categoryId]
+  );
+  await pool.query(
+    `UPDATE recurring_tasks SET category = 'other' WHERE user_id = $1 AND category = $2`,
+    [userId, categoryId]
+  );
   const { rowCount } = await pool.query(
     "DELETE FROM user_categories WHERE id = $1 AND user_id = $2",
     [categoryId, userId]

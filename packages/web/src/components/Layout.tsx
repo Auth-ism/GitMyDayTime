@@ -147,16 +147,18 @@ export default function Layout() {
               aria-label={t("profile.nav" as any)}
               className={({ isActive }) =>
                 cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition-colors",
+                  "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition-colors overflow-hidden",
                   isActive
                     ? "bg-accent text-bg"
                     : "bg-accent-soft text-text-secondary hover:text-text"
                 )
               }
             >
-              {profile
-                ? (profile.displayName || profile.username).slice(0, 2).toUpperCase()
-                : <UserCircle size={16} />}
+              {profile?.avatarUrl
+                ? <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                : profile
+                  ? (profile.displayName || profile.username).slice(0, 2).toUpperCase()
+                  : <UserCircle size={16} />}
             </NavLink>
 
             <button
@@ -200,16 +202,18 @@ export default function Layout() {
               aria-label={t("profile.nav" as any)}
               className={({ isActive }) =>
                 cn(
-                  "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-semibold transition-colors",
+                  "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-semibold transition-colors overflow-hidden",
                   isActive
                     ? "bg-accent text-bg"
                     : "bg-accent-soft text-text-secondary hover:text-text"
                 )
               }
             >
-              {profile
-                ? (profile.displayName || profile.username).slice(0, 2).toUpperCase()
-                : <UserCircle size={14} />}
+              {profile?.avatarUrl
+                ? <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                : profile
+                  ? (profile.displayName || profile.username).slice(0, 2).toUpperCase()
+                  : <UserCircle size={14} />}
             </NavLink>
             <button
               onClick={logout}
