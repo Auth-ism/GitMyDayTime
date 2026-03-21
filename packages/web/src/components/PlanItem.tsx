@@ -161,7 +161,7 @@ export default function PlanItem({
                       editPriority === p ? "border-accent bg-accent-soft text-text" : "border-border text-text-tertiary"
                     )}
                   >
-                    {p === "urgent" ? "Acil" : p === "high" ? "Yuksek" : "Normal"}
+                    {t(`priority.${p}` as any)}
                   </button>
                 ))}
               </div>

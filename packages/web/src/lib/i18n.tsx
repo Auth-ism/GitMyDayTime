@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { useCategories } from "@/hooks/useCategories";
 
 export type Locale = "en" | "tr";
 
@@ -272,6 +273,11 @@ const translations = {
     "error.desc": "An unexpected error occurred",
     "error.refresh": "Refresh page",
 
+    // 404
+    "notfound.title": "We looked everywhere",
+    "notfound.desc": "Looks like this page got sucked into a black hole. It no longer exists.",
+    "notfound.home": "Go to home",
+
     // Footer
     "footer.madeBy": "Made by",
     "footer.contact": "Contact",
@@ -283,6 +289,10 @@ const translations = {
     "priority.urgent": "Urgent",
     "priority.high": "High",
     "priority.normal": "Normal",
+
+    // Category
+    "cat.placeholder": "Category...",
+    "cat.addNew": "Add new category",
 
     // Journal
     "journal.title": "Daily Journal",
@@ -619,6 +629,11 @@ const translations = {
     "error.desc": "Beklenmeyen bir hata oluştu",
     "error.refresh": "Sayfayı yenile",
 
+    // 404
+    "notfound.title": "Her yeri aradık",
+    "notfound.desc": "Bu sayfa bir kara deliğe kapılmış görünüyor. Artık mevcut değil.",
+    "notfound.home": "Ana sayfaya dön",
+
     // Footer
     "footer.madeBy": "Yapımcı",
     "footer.contact": "İletişim",
@@ -630,6 +645,10 @@ const translations = {
     "priority.urgent": "Acil",
     "priority.high": "Yüksek",
     "priority.normal": "Normal",
+
+    // Category
+    "cat.placeholder": "Kategori...",
+    "cat.addNew": "Yeni kategori ekle",
 
     // Journal
     "journal.title": "Günlük",
@@ -766,7 +785,11 @@ const CATEGORY_KEYS: Record<string, TranslationKey> = {
 
 export function useCategoryLabel() {
   const { t } = useI18n();
-  return (cat: string) => t(CATEGORY_KEYS[cat] || "cat.other");
+  const { getCategoryLabel } = useCategories();
+  return (cat: string) => {
+    if (CATEGORY_KEYS[cat]) return t(CATEGORY_KEYS[cat]);
+    return getCategoryLabel(cat);
+  };
 }
 
 const DAY_KEYS: TranslationKey[] = ["day.sun", "day.mon", "day.tue", "day.wed", "day.thu", "day.fri", "day.sat"];

@@ -1127,7 +1127,7 @@ export async function importUserData(
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
         [
           id, userId, plan.date, plan.description,
-          plan.category || "general", plan.duration || null,
+          plan.category || "other", plan.duration || null,
           plan.completed || false, sortOrder,
           plan.scheduledTime || null, plan.itemType || "plan",
           plan.priority || "normal", plan.actualDuration || null,
@@ -1144,7 +1144,7 @@ export async function importUserData(
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
           id, userId, task.date, task.description,
-          task.category || "general", task.duration || null,
+          task.category || "other", task.duration || null,
           task.completed || false, task.timestamp || new Date().toISOString(),
         ]
       );
@@ -1165,7 +1165,7 @@ export async function importUserData(
            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [
             id, userId, rt.description,
-            rt.category || "general", rt.recurrence || "daily",
+            rt.category || "other", rt.recurrence || "daily",
             rt.scheduledTime || null, rt.active !== false,
           ]
         );

@@ -39,8 +39,9 @@ app.use(helmet({
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "https://fcm.googleapis.com", "https://*.push.services.mozilla.com"],
       fontSrc: ["'self'"],
+      workerSrc: ["'self'"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
     },
@@ -48,7 +49,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ origin: process.env.CORS_ORIGIN || true, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 

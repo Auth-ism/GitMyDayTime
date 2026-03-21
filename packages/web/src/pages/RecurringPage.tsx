@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRecurringTasks } from "@/hooks/useRecurringTasks";
 import { useCategories } from "@/hooks/useCategories";
+import { useAuth } from "@/lib/auth";
 import { useI18n, useCategoryLabel, useDayLabels, useRecurrenceLabel } from "@/lib/i18n";
 import { type RecurrencePattern, type CreateRecurringTaskInput } from "@gmd/shared";
 import { cn } from "@/lib/cn";
@@ -23,12 +24,13 @@ export default function RecurringPage() {
   const getRecLabel = useRecurrenceLabel();
   const { query, create, update, remove } = useRecurringTasks();
   const { allCategories, createCategory } = useCategories();
+  const { profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
 
   const [desc, setDesc] = useState("");
-  const [cat, setCat] = useState("dev");
+  const [cat, setCat] = useState(profile?.defaultCategory || "dev");
   const [recurrence, setRecurrence] = useState<RecurrencePattern>("daily");
   const [weekDay, setWeekDay] = useState(1);
   const [customDays, setCustomDays] = useState<number[]>([]);
@@ -37,7 +39,7 @@ export default function RecurringPage() {
 
   const resetForm = () => {
     setDesc("");
-    setCat("dev");
+    setCat(profile?.defaultCategory || "dev");
     setRecurrence("daily");
     setWeekDay(1);
     setCustomDays([]);
@@ -47,7 +49,7 @@ export default function RecurringPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!desc.trim()) return;
+    if (!desc.trim() || createCategory.isPending) return;
 
     const data: CreateRecurringTaskInput = {
       description: desc.trim(),
@@ -127,33 +129,37 @@ export default function RecurringPage() {
                 </button>
               ))}
               {showNewCat ? (
-                <form
-                  className="flex items-center gap-1"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (newCatName.trim()) {
-                      createCategory.mutate({ name: newCatName.trim(), color: "#6b7280" });
-                      setNewCatName("");
-                      setShowNewCat(false);
-                    }
-                  }}
-                >
+                <div className="flex items-center gap-1">
                   <input
                     autoFocus
                     className="input !w-24 !text-xs !py-1 !px-2"
-                    placeholder="Kategori..."
+                    placeholder={t("cat.placeholder" as any)}
                     value={newCatName}
                     onChange={(e) => setNewCatName(e.target.value)}
                     onBlur={() => { if (!newCatName.trim()) setShowNewCat(false); }}
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (newCatName.trim()) {
+                          try {
+                            const created = await createCategory.mutateAsync({ name: newCatName.trim(), color: "#6b7280" });
+                            setCat(created.id);
+                          } catch {}
+                          setNewCatName("");
+                          setShowNewCat(false);
+                        }
+                      }
+                      if (e.key === "Escape") setShowNewCat(false);
+                    }}
                   />
-                </form>
+                </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => setShowNewCat(true)}
                   className="px-2 py-1.5 rounded-lg text-xs text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary border border-transparent hover:border-border transition-all"
-                  title="Yeni kategori ekle"
+                  title={t("cat.addNew" as any)}
                 >
                   <Plus size={14} />
                 </button>
@@ -256,7 +262,7 @@ export default function RecurringPage() {
             <div className="flex gap-2 pt-1">
               <button
                 type="submit"
-                disabled={!desc.trim() || create.isPending}
+                disabled={!desc.trim() || create.isPending || createCategory.isPending}
                 className="btn btn-primary"
               >
                 <Plus size={16} />

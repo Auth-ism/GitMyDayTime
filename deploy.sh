@@ -2,7 +2,18 @@
 set -e
 
 IMAGE="hub.umceko.com/byfeb/gitmydaytime"
-BUMP="${1:-patch}"  # patch | minor | major
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MAINTENANCE="${SCRIPT_DIR}/maintenance/maintenance.sh"
+
+# Parse flags
+BUMP="patch"
+USE_MAINTENANCE=false
+for arg in "$@"; do
+  case "$arg" in
+    --maintenance|-m) USE_MAINTENANCE=true ;;
+    patch|minor|major) BUMP="$arg" ;;
+  esac
+done
 
 # Bump version in root package.json
 OLD_VERSION=$(node -p "require('./package.json').version")
@@ -39,11 +50,21 @@ echo ">> Pushing image..."
 docker push "$IMAGE:$NEW_VERSION"
 docker push "$IMAGE:latest"
 
+# Enable maintenance mode if requested
+if $USE_MAINTENANCE; then
+  "$MAINTENANCE" on
+fi
+
 # Deploy to Kubernetes
 echo ">> Rolling out..."
 kubectl set image deployment/gitmydaytime gitmydaytime="$IMAGE:$NEW_VERSION" -n feb
 kubectl rollout restart deployment/gitmydaytime -n feb
 kubectl rollout status deployment/gitmydaytime -n feb
+
+# Disable maintenance mode
+if $USE_MAINTENANCE; then
+  "$MAINTENANCE" off
+fi
 
 # Push git
 git push && git push --tags

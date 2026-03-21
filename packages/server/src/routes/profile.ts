@@ -50,13 +50,12 @@ router.put("/", wrap(async (req: Request, res: Response) => {
         res.status(400).json({ error: "Current password is incorrect" });
         return;
       }
-      // Set email_verified to false and send verification
-      await pool.query("UPDATE users SET email_verified = FALSE WHERE id = $1", [req.userId]);
+      // Set email_verified to false and send verification — single atomic UPDATE
       const emailTokenRaw = crypto.randomBytes(32).toString("hex");
       const emailTokenHash = hashToken(emailTokenRaw);
       const emailTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
       const { rows: userRows } = await pool.query(
-        `UPDATE users SET email_token_hash = $1, email_token_expires_at = $2 WHERE id = $3 RETURNING username`,
+        `UPDATE users SET email_verified = FALSE, email_token_hash = $1, email_token_expires_at = $2 WHERE id = $3 RETURNING username`,
         [emailTokenHash, emailTokenExpires, req.userId]
       );
       sendVerificationEmail({ email: data.email, username: userRows[0].username }, emailTokenRaw).catch(console.error);

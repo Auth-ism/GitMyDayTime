@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { todayStr } from "@gmd/shared";
+import { todayStr, type DayLog } from "@gmd/shared";
 import { useI18n } from "@/lib/i18n";
 import { ArrowRight, AlertTriangle, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,12 +25,51 @@ export default function CarryOverBanner({ date }: Props) {
 
   const carryOver = useMutation({
     mutationFn: () => api.doCarryOver(date),
-    onSuccess: () => {
+    onMutate: async () => {
       const d = new Date(date + "T12:00:00");
       d.setDate(d.getDate() - 1);
       const yesterday = d.toISOString().split("T")[0];
+
+      await qc.cancelQueries({ queryKey: ["daylog", date] });
+      await qc.cancelQueries({ queryKey: ["daylog", yesterday] });
+
+      const prevToday = qc.getQueryData<DayLog>(["daylog", date]);
+      const prevYesterday = qc.getQueryData<DayLog>(["daylog", yesterday]);
+      const carryItems = items || [];
+
+      // Optimistic: add items to today's plan
+      if (prevToday && carryItems.length > 0) {
+        qc.setQueryData<DayLog>(["daylog", date], {
+          ...prevToday,
+          plan: [...prevToday.plan, ...carryItems.map((item, i) => ({
+            ...item,
+            order: prevToday.plan.length + i,
+          }))],
+        });
+      }
+
+      // Optimistic: remove incomplete items from yesterday
+      if (prevYesterday) {
+        const carryIds = new Set(carryItems.map((i) => i.id));
+        qc.setQueryData<DayLog>(["daylog", yesterday], {
+          ...prevYesterday,
+          plan: prevYesterday.plan.filter((p) => !carryIds.has(p.id)),
+        });
+      }
+
+      // Optimistic: clear carryover banner
+      qc.setQueryData(["carryover", date], []);
+
+      return { prevToday, prevYesterday, yesterday };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prevToday) qc.setQueryData(["daylog", date], ctx.prevToday);
+      if (ctx?.prevYesterday) qc.setQueryData(["daylog", ctx.yesterday], ctx.prevYesterday);
+      qc.invalidateQueries({ queryKey: ["carryover", date] });
+    },
+    onSettled: (_data, _err, _vars, ctx) => {
       qc.invalidateQueries({ queryKey: ["daylog", date] });
-      qc.invalidateQueries({ queryKey: ["daylog", yesterday] });
+      if (ctx?.yesterday) qc.invalidateQueries({ queryKey: ["daylog", ctx.yesterday] });
       qc.invalidateQueries({ queryKey: ["carryover", date] });
     },
   });

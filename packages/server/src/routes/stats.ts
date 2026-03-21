@@ -1,10 +1,13 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { todayStr } from "@gmd/shared";
 import { getStats, getCategoryCompletionRates, getEstimateAccuracy, getYearlyActivity } from "../storage.js";
 
 const router = Router();
 
-router.get("/", async (req, res) => {
+const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
+  (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
+
+router.get("/", wrap(async (req, res) => {
   const today = todayStr();
   const from = (req.query.from as string) || new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
   const to = (req.query.to as string) || today;
@@ -14,11 +17,11 @@ router.get("/", async (req, res) => {
     getEstimateAccuracy(req.userId!, from, to),
   ]);
   res.json({ ...stats, categoryRates, estimateAccuracy });
-});
+}));
 
-router.get("/yearly", async (req, res) => {
+router.get("/yearly", wrap(async (req, res) => {
   const activity = await getYearlyActivity(req.userId!);
   res.json(activity);
-});
+}));
 
 export default router;

@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { nanoid } from "nanoid";
 import { CreateTaskInput, TaskEntrySchema } from "@gmd/shared";
 import { zodMsg } from "../validation.js";
-import { getDayLog, addTask, updateTask, deleteTask, moveTask, getIncompleteItems, carryOverItems } from "../storage.js";
+import { getDayLog, addTask, updateTask, deleteTask, moveTask, getIncompleteItems, carryOverItems, invalidateDayLog } from "../storage.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -66,8 +66,13 @@ router.get("/:date/carryover", wrap(async (req, res) => {
 
 // Carry-over: move incomplete items from previous day to this day
 router.post("/:date/carryover", wrap(async (req, res) => {
-  const yesterday = getPreviousDate(req.params.date as string);
-  const count = await carryOverItems(req.userId!, yesterday, req.params.date as string);
+  const date = req.params.date as string;
+  const yesterday = getPreviousDate(date);
+  const count = await carryOverItems(req.userId!, yesterday, date);
+  await Promise.all([
+    invalidateDayLog(req.userId!, yesterday),
+    invalidateDayLog(req.userId!, date),
+  ]);
   res.json({ moved: count });
 }));
 

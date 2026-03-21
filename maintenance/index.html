@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GMD - Bakimdayiz</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #09090b;
+      color: #f0f0f0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .scene {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .12;
+    }
+
+    /* Crane hook swing */
+    @keyframes hookSwing {
+      0%, 100% { transform: rotate(-4deg); }
+      50% { transform: rotate(4deg); }
+    }
+
+    /* Gear spin */
+    @keyframes gearSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Subtle floating for particles */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .crane-hook { animation: hookSwing 3s ease-in-out infinite; transform-origin: 50% 0%; }
+    .gear { animation: gearSpin 6s linear infinite; transform-origin: center; }
+    .gear-reverse { animation: gearSpin 8s linear infinite reverse; transform-origin: center; }
+    .float-1 { animation: float 4s ease-in-out infinite; }
+    .float-2 { animation: float 5s ease-in-out infinite .5s; }
+    .float-3 { animation: float 3.5s ease-in-out infinite 1s; }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      max-width: 480px;
+      padding: 24px;
+    }
+
+    .icon-wrap {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 24px;
+      border-radius: 20px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: breathe 3s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .icon-wrap svg { animation: wrenchWiggle 4s ease-in-out infinite; }
+
+    @keyframes wrenchWiggle {
+      0%, 80%, 100% { transform: rotate(0deg); }
+      85% { transform: rotate(15deg); }
+      90% { transform: rotate(-8deg); }
+      95% { transform: rotate(5deg); }
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -.3px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #a1a1aa;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    .quote-box {
+      background: rgba(19,19,22,.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid #27272a;
+      border-radius: 16px;
+      padding: 28px 24px;
+      margin-bottom: 20px;
+      min-height: 90px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity .3s;
+    }
+
+    .quote-text {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #e4e4e7;
+      font-style: italic;
+    }
+
+    .quote-source {
+      font-size: 12px;
+      color: #52525b;
+      margin-top: 10px;
+    }
+
+    .quote-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .quote-nav button {
+      background: #18181b;
+      border: 1px solid #27272a;
+      color: #a1a1aa;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s;
+    }
+
+    .quote-nav button:hover {
+      background: #27272a;
+      color: #f0f0f0;
+      border-color: #3f3f46;
+    }
+
+    .quote-counter {
+      font-size: 12px;
+      color: #52525b;
+      font-variant-numeric: tabular-nums;
+    }
+
+  </style>
+</head>
+<body>
+  <!-- Construction scene background -->
+  <svg class="scene" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+    <!-- Grid floor -->
+    <line x1="0" y1="700" x2="1200" y2="700" stroke="#a1a1aa" stroke-width=".5"/>
+    <line x1="0" y1="750" x2="1200" y2="750" stroke="#a1a1aa" stroke-width=".3"/>
+    <line x1="100" y1="700" x2="100" y2="800" stroke="#a1a1aa" stroke-width=".2"/>
+    <line x1="300" y1="700" x2="300" y2="800" stroke="#a1a1aa" stroke-width=".2"/>
+    <line x1="500" y1="700" x2="500" y2="800" stroke="#a1a1aa" stroke-width=".2"/>
+    <line x1="700" y1="700" x2="700" y2="800" stroke="#a1a1aa" stroke-width=".2"/>
+    <line x1="900" y1="700" x2="900" y2="800" stroke="#a1a1aa" stroke-width=".2"/>
+    <line x1="1100" y1="700" x2="1100" y2="800" stroke="#a1a1aa" stroke-width=".2"/>
+
+    <!-- Building 1 (left) - under construction -->
+    <rect x="80" y="380" width="160" height="320" stroke="#a1a1aa" stroke-width="1" fill="none" rx="2"/>
+    <rect x="80" y="380" width="160" height="60" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+    <rect x="80" y="440" width="160" height="60" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+    <rect x="80" y="500" width="160" height="60" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+    <rect x="80" y="560" width="160" height="60" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+    <rect x="80" y="620" width="160" height="60" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+    <!-- Windows -->
+    <rect x="100" y="395" width="20" height="30" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <rect x="135" y="395" width="20" height="30" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <rect x="170" y="395" width="20" height="30" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <rect x="205" y="395" width="20" height="30" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <rect x="100" y="455" width="20" height="30" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <rect x="135" y="455" width="20" height="30" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <rect x="170" y="455" width="20" height="30" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <rect x="205" y="455" width="20" height="30" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <!-- Scaffolding -->
+    <line x1="250" y1="380" x2="250" y2="700" stroke="#a1a1aa" stroke-width=".8"/>
+    <line x1="280" y1="380" x2="280" y2="700" stroke="#a1a1aa" stroke-width=".8"/>
+    <line x1="250" y1="420" x2="280" y2="420" stroke="#a1a1aa" stroke-width=".5"/>
+    <line x1="250" y1="480" x2="280" y2="480" stroke="#a1a1aa" stroke-width=".5"/>
+    <line x1="250" y1="540" x2="280" y2="540" stroke="#a1a1aa" stroke-width=".5"/>
+    <line x1="250" y1="600" x2="280" y2="600" stroke="#a1a1aa" stroke-width=".5"/>
+    <line x1="250" y1="660" x2="280" y2="660" stroke="#a1a1aa" stroke-width=".5"/>
+    <!-- Cross bracing -->
+    <line x1="250" y1="420" x2="280" y2="480" stroke="#a1a1aa" stroke-width=".3"/>
+    <line x1="280" y1="420" x2="250" y2="480" stroke="#a1a1aa" stroke-width=".3"/>
+    <line x1="250" y1="540" x2="280" y2="600" stroke="#a1a1aa" stroke-width=".3"/>
+    <line x1="280" y1="540" x2="250" y2="600" stroke="#a1a1aa" stroke-width=".3"/>
+
+    <!-- Tower crane (center-right) -->
+    <line x1="850" y1="100" x2="850" y2="700" stroke="#a1a1aa" stroke-width="1.5"/>
+    <line x1="830" y1="700" x2="870" y2="700" stroke="#a1a1aa" stroke-width="1"/>
+    <!-- Crane base cross -->
+    <line x1="820" y1="680" x2="880" y2="680" stroke="#a1a1aa" stroke-width=".5"/>
+    <line x1="820" y1="680" x2="850" y2="650" stroke="#a1a1aa" stroke-width=".5"/>
+    <line x1="880" y1="680" x2="850" y2="650" stroke="#a1a1aa" stroke-width=".5"/>
+    <!-- Cross bracing on mast -->
+    <line x1="840" y1="200" x2="860" y2="280" stroke="#a1a1aa" stroke-width=".3"/>
+    <line x1="860" y1="200" x2="840" y2="280" stroke="#a1a1aa" stroke-width=".3"/>
+    <line x1="840" y1="350" x2="860" y2="430" stroke="#a1a1aa" stroke-width=".3"/>
+    <line x1="860" y1="350" x2="840" y2="430" stroke="#a1a1aa" stroke-width=".3"/>
+    <line x1="840" y1="500" x2="860" y2="580" stroke="#a1a1aa" stroke-width=".3"/>
+    <line x1="860" y1="500" x2="840" y2="580" stroke="#a1a1aa" stroke-width=".3"/>
+    <!-- Horizontal boom -->
+    <line x1="650" y1="120" x2="1050" y2="120" stroke="#a1a1aa" stroke-width="1"/>
+    <!-- Counter-jib -->
+    <line x1="850" y1="120" x2="1050" y2="120" stroke="#a1a1aa" stroke-width=".8"/>
+    <rect x="1020" y="105" width="30" height="30" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+    <!-- Boom support cables -->
+    <line x1="850" y1="100" x2="650" y2="120" stroke="#a1a1aa" stroke-width=".4"/>
+    <line x1="850" y1="100" x2="1050" y2="120" stroke="#a1a1aa" stroke-width=".4"/>
+    <!-- Trolley -->
+    <rect x="720" y="116" width="16" height="8" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+    <!-- Hook and cable -->
+    <g class="crane-hook">
+      <line x1="728" y1="124" x2="728" y2="280" stroke="#a1a1aa" stroke-width=".5"/>
+      <path d="M720 280 Q720 295 728 295 Q736 295 736 280" stroke="#a1a1aa" stroke-width=".7" fill="none"/>
+      <!-- Dangling block -->
+      <rect x="714" y="300" width="28" height="20" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="2" class="float-1"/>
+    </g>
+
+    <!-- Building 2 (right) - taller, partially done -->
+    <rect x="920" y="300" width="140" height="400" stroke="#a1a1aa" stroke-width="1" fill="none" rx="2"/>
+    <rect x="920" y="300" width="140" height="50" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+    <rect x="920" y="350" width="140" height="50" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+    <rect x="920" y="400" width="140" height="50" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+    <!-- Windows -->
+    <rect x="935" y="315" width="16" height="20" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <rect x="960" y="315" width="16" height="20" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <rect x="985" y="315" width="16" height="20" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <rect x="1010" y="315" width="16" height="20" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <rect x="1035" y="315" width="16" height="20" stroke="#a1a1aa" stroke-width=".5" fill="none" rx="1"/>
+    <!-- Top unfinished — dashed lines -->
+    <line x1="920" y1="300" x2="920" y2="240" stroke="#a1a1aa" stroke-width=".5" stroke-dasharray="4 4"/>
+    <line x1="1060" y1="300" x2="1060" y2="240" stroke="#a1a1aa" stroke-width=".5" stroke-dasharray="4 4"/>
+    <line x1="920" y1="240" x2="1060" y2="240" stroke="#a1a1aa" stroke-width=".5" stroke-dasharray="4 4"/>
+
+    <!-- Gears (mechanical feel) -->
+    <g class="gear" style="transform-origin: 150px 760px;">
+      <circle cx="150" cy="760" r="18" stroke="#a1a1aa" stroke-width=".7" fill="none"/>
+      <circle cx="150" cy="760" r="5" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+      <line x1="150" y1="742" x2="150" y2="748" stroke="#a1a1aa" stroke-width="1"/>
+      <line x1="150" y1="772" x2="150" y2="778" stroke="#a1a1aa" stroke-width="1"/>
+      <line x1="132" y1="760" x2="138" y2="760" stroke="#a1a1aa" stroke-width="1"/>
+      <line x1="162" y1="760" x2="168" y2="760" stroke="#a1a1aa" stroke-width="1"/>
+      <line x1="137" y1="747" x2="141" y2="751" stroke="#a1a1aa" stroke-width="1"/>
+      <line x1="159" y1="769" x2="163" y2="773" stroke="#a1a1aa" stroke-width="1"/>
+      <line x1="137" y1="773" x2="141" y2="769" stroke="#a1a1aa" stroke-width="1"/>
+      <line x1="159" y1="751" x2="163" y2="747" stroke="#a1a1aa" stroke-width="1"/>
+    </g>
+    <g class="gear-reverse" style="transform-origin: 185px 765px;">
+      <circle cx="185" cy="765" r="12" stroke="#a1a1aa" stroke-width=".6" fill="none"/>
+      <circle cx="185" cy="765" r="3" stroke="#a1a1aa" stroke-width=".4" fill="none"/>
+      <line x1="185" y1="753" x2="185" y2="757" stroke="#a1a1aa" stroke-width=".8"/>
+      <line x1="185" y1="773" x2="185" y2="777" stroke="#a1a1aa" stroke-width=".8"/>
+      <line x1="173" y1="765" x2="177" y2="765" stroke="#a1a1aa" stroke-width=".8"/>
+      <line x1="193" y1="765" x2="197" y2="765" stroke="#a1a1aa" stroke-width=".8"/>
+    </g>
+
+    <!-- Floating code blocks -->
+    <g class="float-2">
+      <rect x="380" y="180" width="80" height="14" rx="3" stroke="#a1a1aa" stroke-width=".4" fill="none"/>
+      <line x1="387" y1="187" x2="420" y2="187" stroke="#a1a1aa" stroke-width=".4"/>
+    </g>
+    <g class="float-3">
+      <rect x="440" y="210" width="60" height="14" rx="3" stroke="#a1a1aa" stroke-width=".4" fill="none"/>
+      <line x1="447" y1="217" x2="475" y2="217" stroke="#a1a1aa" stroke-width=".4"/>
+    </g>
+    <g class="float-1">
+      <rect x="360" y="240" width="100" height="14" rx="3" stroke="#a1a1aa" stroke-width=".4" fill="none"/>
+      <line x1="367" y1="247" x2="430" y2="247" stroke="#a1a1aa" stroke-width=".4"/>
+    </g>
+
+    <!-- Small construction elements -->
+    <!-- Barrier / tape -->
+    <line x1="350" y1="695" x2="550" y2="695" stroke="#a1a1aa" stroke-width=".5" stroke-dasharray="8 4"/>
+    <line x1="350" y1="680" x2="350" y2="700" stroke="#a1a1aa" stroke-width=".5"/>
+    <line x1="550" y1="680" x2="550" y2="700" stroke="#a1a1aa" stroke-width=".5"/>
+
+    <!-- Hard hat -->
+    <ellipse cx="450" cy="665" rx="12" ry="5" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+    <path d="M440 665 Q440 655 450 652 Q460 655 460 665" stroke="#a1a1aa" stroke-width=".5" fill="none"/>
+
+    <!-- Wrench on ground -->
+    <g transform="translate(600,688) rotate(-30)">
+      <rect x="0" y="-3" width="20" height="6" rx="2" stroke="#a1a1aa" stroke-width=".4" fill="none"/>
+      <circle cx="24" cy="0" r="5" stroke="#a1a1aa" stroke-width=".4" fill="none"/>
+    </g>
+
+    <!-- Stack of blocks -->
+    <rect x="1080" y="670" width="25" height="15" stroke="#a1a1aa" stroke-width=".4" fill="none" rx="1"/>
+    <rect x="1085" y="655" width="25" height="15" stroke="#a1a1aa" stroke-width=".4" fill="none" rx="1"/>
+    <rect x="1082" y="640" width="25" height="15" stroke="#a1a1aa" stroke-width=".4" fill="none" rx="1"/>
+  </svg>
+
+  <div class="container">
+    <div class="icon-wrap">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+      </svg>
+    </div>
+
+    <h1 id="title">Under Maintenance</h1>
+    <p class="subtitle" id="subtitle">We'll be back shortly.</p>
+
+    <div class="quote-box" id="quoteBox">
+      <div class="quote-text" id="quoteText"></div>
+      <div class="quote-source" id="quoteSource"></div>
+    </div>
+
+    <div class="quote-nav">
+      <button onclick="prev()" aria-label="Onceki">&#8592;</button>
+      <span class="quote-counter" id="quoteCounter"></span>
+      <button onclick="next()" aria-label="Sonraki">&#8594;</button>
+    </div>
+  </div>
+
+  <script>
+    var quotes = [
+      { text: "I'll be back.", source: "Terminator" },
+      { text: "Houston, we don't have a problem. We're just updating.", source: "Apollo 13" },
+      { text: "I have a plan, I just need some time.", source: "Red Dead Redemption 2" },
+      { text: "First rule: you wait until maintenance is over.", source: "Fight Club" },
+      { text: "Give me a reason... the server begged. So we updated it.", source: "Joker" },
+      { text: "Don't be afraid. I'm with you. Just under maintenance.", source: "Lord of the Rings" },
+      { text: "It won't last forever. Probably.", source: "Thanos" },
+      { text: "I'll think about it tomorrow. Today there's an update.", source: "Gone with the Wind" },
+      { text: "Everything has an end. But this update's end is near.", source: "The Matrix" },
+      { text: "Life is like a box of chocolates. Sometimes you get an update.", source: "Forrest Gump" },
+    ];
+
+    var idx = Math.floor(Math.random() * quotes.length);
+    var autoTimer = null;
+
+    function resetTimer() {
+      if (autoTimer) clearInterval(autoTimer);
+      autoTimer = setInterval(next, 8000);
+    }
+
+    function render() {
+      var q = quotes[idx];
+      document.getElementById("quoteText").textContent = q.text;
+      document.getElementById("quoteSource").textContent = "\u2014 " + q.source;
+      document.getElementById("quoteCounter").textContent = (idx + 1) + " / " + quotes.length;
+    }
+
+    function transition(newIdx) {
+      idx = newIdx;
+      var box = document.getElementById("quoteBox");
+      box.style.opacity = "0";
+      setTimeout(function() { render(); box.style.opacity = "1"; }, 200);
+      resetTimer();
+    }
+
+    function next() {
+      transition((idx + 1) % quotes.length);
+    }
+
+    function prev() {
+      transition((idx - 1 + quotes.length) % quotes.length);
+    }
+
+    resetTimer();
+    render();
+  </script>
+</body>
+</html>

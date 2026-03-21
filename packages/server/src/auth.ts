@@ -209,7 +209,7 @@ authRouter.post("/register", async (req: Request, res: Response) => {
       const user = rows[0];
       await createSession(user.id, user.email, res, req);
       await logAuditEvent("register", req, user.id, { email, admin: true });
-      res.status(201).json({ user: { id: user.id, email: user.email, username: user.username } as UserResponse });
+      res.status(201).json({ user: { id: user.id, email: user.email, username: user.username, emailVerified: true } as UserResponse });
       return;
     } catch (err: any) {
       if (err.code === "23505") {
@@ -240,9 +240,8 @@ authRouter.post("/register", async (req: Request, res: Response) => {
     const user = rows[0];
     await logAuditEvent("register", req, user.id, { email });
 
-    // Fire-and-forget emails — don't block response
+    // Fire-and-forget — only notify admin for approval
     sendAdminApprovalEmail({ email: user.email, username: user.username }, approvalTokenRaw).catch(console.error);
-    sendVerificationEmail({ email: user.email, username: user.username }, emailTokenRaw).catch(console.error);
 
     res.status(202).json({ pending: true });
   } catch (err: any) {
@@ -264,7 +263,7 @@ authRouter.post("/login", async (req: Request, res: Response) => {
 
   const { email, password } = parsed.data;
   const { rows } = await pool.query(
-    "SELECT id, email, username, password_hash, approved FROM users WHERE email = $1",
+    "SELECT id, email, username, password_hash, approved, email_verified FROM users WHERE email = $1",
     [email]
   );
 
@@ -291,7 +290,7 @@ authRouter.post("/login", async (req: Request, res: Response) => {
   await createSession(user.id, user.email, res, req);
   await logAuditEvent("login_success", req, user.id, { email });
   res.json({
-    user: { id: user.id, email: user.email, username: user.username } as UserResponse,
+    user: { id: user.id, email: user.email, username: user.username, emailVerified: user.email_verified ?? false } as UserResponse,
   });
 });
 

@@ -56,7 +56,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!desc.trim() || loading) return;
+    if (!desc.trim() || loading || createCategory.isPending) return;
     const parsed = dur ? parseDuration(dur) : undefined;
     const duration = isPlan ? (durMinutes ?? (parsed && parsed > 0 ? parsed : undefined)) : undefined;
     onSubmit({
@@ -126,7 +126,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
         )}
         <button
           type="submit"
-          disabled={loading || !desc.trim()}
+          disabled={loading || !desc.trim() || createCategory.isPending}
           className={cn(
             "p-1.5 rounded-lg transition-colors",
             desc.trim()
@@ -186,18 +186,19 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                     <input
                       autoFocus
                       className="input !w-20 !text-[11px] !py-0.5 !px-1.5"
-                      placeholder="Kategori..."
+                      placeholder={t("cat.placeholder" as any)}
                       value={newCatName}
                       onChange={(e) => setNewCatName(e.target.value)}
                       onBlur={() => { if (!newCatName.trim()) setShowNewCat(false); }}
-                      onKeyDown={(e) => {
+                      onKeyDown={async (e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
                           e.stopPropagation();
                           if (newCatName.trim()) {
-                            createCategory.mutate({ name: newCatName.trim(), color: "#6b7280" }, {
-                              onSuccess: (created) => { setCat(created.id); },
-                            });
+                            try {
+                              const created = await createCategory.mutateAsync({ name: newCatName.trim(), color: "#6b7280" });
+                              setCat(created.id);
+                            } catch {}
                             setNewCatName("");
                             setShowNewCat(false);
                           }
@@ -211,7 +212,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                     type="button"
                     onClick={() => setShowNewCat(true)}
                     className="px-1.5 py-1 rounded-md text-[11px] text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary transition-all"
-                    title="Yeni kategori ekle"
+                    title={t("cat.addNew" as any)}
                   >
                     <Plus size={12} />
                   </button>

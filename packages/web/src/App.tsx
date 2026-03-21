@@ -10,6 +10,7 @@ import RecurringPage from "@/pages/RecurringPage";
 import ProfilePage from "@/pages/ProfilePage";
 import LoginPage from "@/pages/LoginPage";
 import VerifyEmailPage from "@/pages/VerifyEmailPage";
+import NotFoundPage from "@/pages/NotFoundPage";
 import { Clock } from "lucide-react";
 
 function LoadingScreen() {
@@ -36,16 +37,19 @@ export default function App() {
       {!isAuthenticated ? (
         <Route path="*" element={<LoginPage />} />
       ) : (
-        <Route element={<Layout />}>
-          <Route path="/" element={<DayView />} />
-          <Route path="/day/:date" element={<DayView />} />
-          <Route path="/week" element={<WeekView />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/stats" element={<StatsPage />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/recurring" element={<RecurringPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-        </Route>
+        <>
+          <Route element={<Layout />}>
+            <Route path="/" element={<DayView />} />
+            <Route path="/day/:date" element={<DayView />} />
+            <Route path="/week" element={<WeekView />} />
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/stats" element={<StatsPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/recurring" element={<RecurringPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+          </Route>
+          <Route path="*" element={<NotFoundPage />} />
+        </>
       )}
     </Routes>
   );
