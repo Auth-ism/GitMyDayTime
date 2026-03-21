@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from "react";
 import { NavLink, useLocation, Outlet } from "react-router-dom";
-import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, Github, Mail, UserCircle, WifiOff, X } from "lucide-react";
+import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, Mail, UserCircle, WifiOff, X } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
@@ -256,8 +256,8 @@ export default function Layout() {
         <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between text-[11px] text-text-tertiary">
           <span>© {new Date().getFullYear()} GitMyDayTime</span>
           <div className="flex items-center gap-3">
-            <a href="https://github.com/firatege/GitMyDayTime" target="_blank" rel="noopener noreferrer" className="hover:text-text transition-colors">
-              <Github size={13} />
+            <a href="https://byfeb.com" target="_blank" rel="noopener noreferrer" className="hover:text-text transition-colors">
+              <Globe size={13} />
             </a>
           </div>
         </div>
