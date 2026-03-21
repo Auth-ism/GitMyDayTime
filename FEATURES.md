@@ -77,10 +77,26 @@ AI ve otomasyon ile uretkenlik artirma.
 
 ---
 
-## 6. Bildirim & Hatirlatici Gelistirmeleri
+## 6. Bildirim & Hatirlatici Gelistirmeleri ⭐ ONCELIKLI
 
-- [ ] Erteleme (snooze) — 5dk/15dk/1saat/yarin secenekleri
-- [ ] Tekrarlayan hatirlaticilar (sadece planlar degil)
+### 6a. Yaklasan Gorev Bildirimi (YAKIN VADELI)
+- [ ] Bir sonraki plana kac dakika kala bildirim gonderilsin (ornek: 5dk, 10dk, 15dk once)
+- [ ] Bu sure profilden ayarlanabilir olacak (varsayilan: 10dk)
+- [ ] Push notification ile "Sonraki gorev: X, Y dakika sonra" bildirimi
+
+### 6b. Erteleme / Snooze Sistemi (YAKIN VADELI)
+- [ ] Gorevi ertele — bildirim X gun/saat sonra tekrar gelsin (ornek: 2 gun icinde hatirlatma)
+- [ ] Erteleme suresi secenekleri: 1 saat / 3 saat / yarin / 2 gun / 1 hafta
+- [ ] Erteleme sadece tek seferlik — tekrar eden goreve donusmeyecek
+- [ ] Ertelenen gorevler ayri bir "Ertelenenler" listesinde gorunecek
+
+### 6c. Bildirim Ayarlari — Profil (YAKIN VADELI)
+- [ ] Varsayilan hatirlatma suresi (gorevden kac dk once)
+- [ ] Varsayilan erteleme suresi
+- [ ] Sessiz saatler (ornek: 22:00 - 08:00 arasi bildirim gonderme)
+- [ ] Bildirim tercihi: push / e-posta / ikisi birden
+
+### 6d. Diger Bildirim Ozellikleri
 - [ ] E-posta ile gunluk ozet (aksam saati secilerek)
 - [ ] Telegram bot entegrasyonu
 - [ ] Masaustu bildirimleri (Electron wrapper veya PWA push)
@@ -140,15 +156,24 @@ AI ve otomasyon ile uretkenlik artirma.
 
 ## Oncelik Sirasi
 
+### ⭐ Yakin Vadeli (Siradaki Sprint)
 | # | Ozellik | Etki | Zorluk |
 |---|---------|------|--------|
-| 1 | GitHub entegrasyonu | Yuksek | Orta |
-| 2 | Context menu (sag tik) | Orta | Dusuk |
-| 3 | Board/Kanban gorunumu | Yuksek | Orta |
-| 4 | Google Calendar sync | Yuksek | Yuksek |
-| 5 | Public profil & paylasim | Orta | Dusuk |
-| 6 | Slack entegrasyonu | Orta | Dusuk |
-| 7 | Offline-first PWA | Orta | Yuksek |
-| 8 | Test altyapisi | Yuksek | Orta |
-| 9 | Akilli oneriler (AI) | Orta | Yuksek |
-| 10 | Bildirim gelistirmeleri | Dusuk | Dusuk |
+| 1 | Yaklasan gorev bildirimi (6a) | Yuksek | Dusuk |
+| 2 | Erteleme / Snooze sistemi (6b) | Yuksek | Orta |
+| 3 | Bildirim ayarlari — Profil (6c) | Yuksek | Dusuk |
+
+### Sonraki Adimlar
+| # | Ozellik | Etki | Zorluk |
+|---|---------|------|--------|
+| 4 | Context menu (sag tik) | Orta | Dusuk |
+| 5 | Zaman cizelgesi surukleme & resize | Yuksek | Orta |
+| 6 | Board/Kanban gorunumu | Yuksek | Orta |
+| 7 | GitHub entegrasyonu | Yuksek | Orta |
+| 8 | Test altyapisi (Vitest + Playwright) | Yuksek | Orta |
+| 9 | Google Calendar sync | Yuksek | Yuksek |
+| 10 | Public profil & paylasim | Orta | Dusuk |
+| 11 | Slack entegrasyonu | Orta | Dusuk |
+| 12 | Offline-first PWA | Orta | Yuksek |
+| 13 | Akilli oneriler (AI) | Orta | Yuksek |
+| 14 | Diger bildirim ozellikleri (6d) | Dusuk | Orta |

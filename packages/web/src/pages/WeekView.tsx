@@ -70,15 +70,48 @@ export default function WeekView() {
 
   const moveItem = useCallback(async (info: DragInfo, toDate: string) => {
     if (info.fromDate === toDate) return;
+
+    const fromKey = ["daylog", info.fromDate];
+    const toKey = ["daylog", toDate];
+
+    await qc.cancelQueries({ queryKey: fromKey });
+    await qc.cancelQueries({ queryKey: toKey });
+    const prevFrom = qc.getQueryData<DayLog>(fromKey);
+    const prevTo = qc.getQueryData<DayLog>(toKey);
+
+    // Optimistic: remove from source, add to target
+    if (prevFrom) {
+      if (info.itemType === "plan") {
+        const item = prevFrom.plan.find((p) => p.id === info.itemId);
+        if (item) {
+          qc.setQueryData<DayLog>(fromKey, { ...prevFrom, plan: prevFrom.plan.filter((p) => p.id !== info.itemId) });
+          if (prevTo) {
+            qc.setQueryData<DayLog>(toKey, { ...prevTo, plan: [...prevTo.plan, { ...item, order: prevTo.plan.length }] });
+          }
+        }
+      } else {
+        const item = prevFrom.tasks.find((t) => t.id === info.itemId);
+        if (item) {
+          qc.setQueryData<DayLog>(fromKey, { ...prevFrom, tasks: prevFrom.tasks.filter((t) => t.id !== info.itemId) });
+          if (prevTo) {
+            qc.setQueryData<DayLog>(toKey, { ...prevTo, tasks: [...prevTo.tasks, item] });
+          }
+        }
+      }
+    }
+
     try {
       if (info.itemType === "plan") {
         await api.movePlan(info.fromDate, info.itemId, toDate);
       } else {
         await api.moveTask(info.fromDate, info.itemId, toDate);
       }
-      qc.invalidateQueries({ queryKey: ["daylog", info.fromDate] });
-      qc.invalidateQueries({ queryKey: ["daylog", toDate] });
-    } catch { /* ignore */ }
+    } catch {
+      if (prevFrom) qc.setQueryData(fromKey, prevFrom);
+      if (prevTo) qc.setQueryData(toKey, prevTo);
+    }
+    qc.invalidateQueries({ queryKey: fromKey });
+    qc.invalidateQueries({ queryKey: toKey });
   }, [qc]);
 
   const handleDragStart = (e: React.DragEvent, fromDate: string, itemId: string, itemType: "task" | "plan") => {

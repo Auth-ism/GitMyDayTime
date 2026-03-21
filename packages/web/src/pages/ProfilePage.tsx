@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { AnimatePresence, motion } from "framer-motion";
 import { CATEGORY_COLORS, type UpdateProfileInput } from "@gmd/shared";
+import { PRESET_COLORS } from "@/components/TaskForm";
 
 const TIMEZONES = [
   "Europe/Istanbul", "Europe/London", "Europe/Berlin", "Europe/Paris",
@@ -690,10 +691,6 @@ function NotifChip({ icon, label, checked, onChange }: { icon: React.ReactNode; 
   );
 }
 
-const PRESET_COLORS = [
-  "#ef4444", "#f97316", "#f59e0b", "#22c55e", "#06b6d4",
-  "#3b82f6", "#8b5cf6", "#ec4899", "#6b7280", "#78716c",
-];
 
 function CategoryManager() {
   const { t } = useI18n();
@@ -707,8 +704,9 @@ function CategoryManager() {
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [localHidden, setLocalHidden] = useState<string[] | null>(null);
 
-  const hiddenCategories: string[] = profile?.hiddenCategories ?? [];
+  const hiddenCategories: string[] = localHidden ?? profile?.hiddenCategories ?? [];
 
   const handleCreate = () => {
     if (!newName.trim()) return;
@@ -728,13 +726,15 @@ function CategoryManager() {
     deleteCategory.mutate(id, { onSuccess: () => setConfirmDeleteId(null) });
   };
 
-  const toggleDefaultCategory = async (key: string) => {
+  const toggleDefaultCategory = (key: string) => {
     const isHidden = hiddenCategories.includes(key);
     const updated = isHidden
       ? hiddenCategories.filter((c) => c !== key)
       : [...hiddenCategories, key];
-    await api.updateProfile({ hiddenCategories: updated });
-    refreshProfile();
+    setLocalHidden(updated);
+    api.updateProfile({ hiddenCategories: updated })
+      .then(() => refreshProfile())
+      .finally(() => setLocalHidden(null));
   };
 
   return (

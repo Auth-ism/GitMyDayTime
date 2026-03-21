@@ -20,6 +20,14 @@ export default function NotFoundPage() {
     [],
   );
 
+  const orbitDelays = useMemo(
+    () => ({
+      middle: Array.from({ length: 3 }, (_, i) => -(Math.random() * (12 + i * 2))),
+      inner: Array.from({ length: 3 }, (_, i) => -(Math.random() * (7 + i * 2))),
+    }),
+    [],
+  );
+
   return (
     <div className="fixed inset-0 bg-bg flex items-center justify-center overflow-hidden">
       {/* Star field */}
@@ -76,15 +84,39 @@ export default function NotFoundPage() {
                 boxShadow: "0 0 40px 15px rgba(0,0,0,.8), 0 0 80px 30px rgba(0,0,0,.4)",
               }}
             />
-            {[0, 60, 120, 180, 240, 300].map((deg, i) => (
+            {/* Middle orbit — 3 dots */}
+            {[0, 1, 2].map((i) => (
               <div
-                key={i}
-                className="absolute w-full h-full"
-                style={{ animation: `spinSlow ${10 + i * 2}s linear infinite${i % 2 ? " reverse" : ""}` }}
+                key={`m${i}`}
+                className="absolute"
+                style={{
+                  width: "80%",
+                  height: "80%",
+                  animation: `spinSlow ${12 + i * 2}s linear infinite reverse`,
+                  animationDelay: `${orbitDelays.middle[i]}s`,
+                }}
               >
                 <div
                   className="absolute w-1 h-1 rounded-full bg-text"
-                  style={{ top: "8%", left: "50%", opacity: 0.15 + (i % 3) * 0.08, transform: `rotate(${deg}deg)` }}
+                  style={{ top: "0%", left: "50%", opacity: 0.2, transform: "translateX(-50%)" }}
+                />
+              </div>
+            ))}
+            {/* Inner orbit — 3 dots */}
+            {[0, 1, 2].map((i) => (
+              <div
+                key={`i${i}`}
+                className="absolute"
+                style={{
+                  width: "60%",
+                  height: "60%",
+                  animation: `spinSlow ${7 + i * 2}s linear infinite`,
+                  animationDelay: `${orbitDelays.inner[i]}s`,
+                }}
+              >
+                <div
+                  className="absolute w-0.5 h-0.5 rounded-full bg-text"
+                  style={{ top: "0%", left: "50%", opacity: 0.28, transform: "translateX(-50%)" }}
                 />
               </div>
             ))}

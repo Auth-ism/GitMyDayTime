@@ -21,6 +21,13 @@ const QUICK_DURATIONS = [
   { label: "2h", value: 120 },
 ];
 
+export const PRESET_COLORS = [
+  "#ef4444", "#f97316", "#f59e0b", "#22c55e", "#06b6d4",
+  "#3b82f6", "#8b5cf6", "#ec4899", "#6b7280", "#78716c",
+];
+
+const randomColor = () => PRESET_COLORS[Math.floor(Math.random() * (PRESET_COLORS.length - 2))];
+
 export default function TaskForm({ onSubmit, loading, type }: Props) {
   const { t } = useI18n();
   const getCatLabel = useCategoryLabel();
@@ -30,6 +37,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
   const [cat, setCat] = useState<Category>(profile?.defaultCategory || "dev");
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+  const [newCatColor, setNewCatColor] = useState(randomColor);
   const [dur, setDur] = useState("");
   const [durMinutes, setDurMinutes] = useState<number | null>(null);
   const [time, setTime] = useState("");
@@ -54,14 +62,12 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
     return () => document.removeEventListener("mousedown", handler);
   }, [expanded, desc]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!desc.trim() || loading || createCategory.isPending) return;
+  const submitWith = (category: Category) => {
     const parsed = dur ? parseDuration(dur) : undefined;
     const duration = isPlan ? (durMinutes ?? (parsed && parsed > 0 ? parsed : undefined)) : undefined;
     onSubmit({
       description: desc.trim(),
-      category: isPlan ? cat : "other",
+      category: isPlan ? category : "other",
       duration,
       tags: [],
       ...((isPlan || isReminder) && time ? { scheduledTime: time } : {}),
@@ -73,9 +79,30 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
     setDurMinutes(null);
     setTime("");
     setPriority("normal");
+    setNewCatName("");
+    setNewCatColor(randomColor());
+    setShowNewCat(false);
     setJustAdded(true);
     setExpanded(false);
     inputRef.current?.focus();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!desc.trim() || loading || createCategory.isPending) return;
+
+    // Auto-create pending new category and use it
+    if (showNewCat && newCatName.trim() && isPlan) {
+      try {
+        const created = await createCategory.mutateAsync({ name: newCatName.trim(), color: newCatColor });
+        submitWith(created.id);
+      } catch {
+        submitWith(cat);
+      }
+      return;
+    }
+
+    submitWith(cat);
   };
 
   const selectQuickDuration = (mins: number) => {
@@ -183,6 +210,16 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                 ))}
                 {showNewCat ? (
                   <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="w-7 h-7 rounded-full shrink-0 ring-1 ring-border"
+                      style={{ backgroundColor: newCatColor }}
+                      onClick={() => {
+                        const idx = PRESET_COLORS.indexOf(newCatColor);
+                        setNewCatColor(PRESET_COLORS[(idx + 1) % PRESET_COLORS.length]);
+                      }}
+                      title={t("cat.changeColor" as any)}
+                    />
                     <input
                       autoFocus
                       className="input !w-20 !text-[11px] !py-0.5 !px-1.5"
@@ -196,10 +233,11 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                           e.stopPropagation();
                           if (newCatName.trim()) {
                             try {
-                              const created = await createCategory.mutateAsync({ name: newCatName.trim(), color: "#6b7280" });
+                              const created = await createCategory.mutateAsync({ name: newCatName.trim(), color: newCatColor });
                               setCat(created.id);
                             } catch {}
                             setNewCatName("");
+                            setNewCatColor(randomColor());
                             setShowNewCat(false);
                           }
                         }

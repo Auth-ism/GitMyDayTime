@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRecurringTasks } from "@/hooks/useRecurringTasks";
 import { useCategories } from "@/hooks/useCategories";
+import { PRESET_COLORS } from "@/components/TaskForm";
 import { useAuth } from "@/lib/auth";
 import { useI18n, useCategoryLabel, useDayLabels, useRecurrenceLabel } from "@/lib/i18n";
 import { type RecurrencePattern, type CreateRecurringTaskInput } from "@gmd/shared";
@@ -28,6 +29,7 @@ export default function RecurringPage() {
   const [showForm, setShowForm] = useState(false);
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+  const [newCatColor, setNewCatColor] = useState(() => PRESET_COLORS[Math.floor(Math.random() * (PRESET_COLORS.length - 2))]);
 
   const [desc, setDesc] = useState("");
   const [cat, setCat] = useState(profile?.defaultCategory || "dev");
@@ -47,13 +49,10 @@ export default function RecurringPage() {
     setDurMinutes(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!desc.trim() || createCategory.isPending) return;
-
+  const submitWith = (category: string) => {
     const data: CreateRecurringTaskInput = {
       description: desc.trim(),
-      category: cat,
+      category,
       recurrence,
       ...(durMinutes ? { duration: durMinutes } : {}),
       ...(time ? { scheduledTime: time } : {}),
@@ -64,9 +63,29 @@ export default function RecurringPage() {
     create.mutate(data, {
       onSuccess: () => {
         resetForm();
+        setShowNewCat(false);
+        setNewCatName("");
         setShowForm(false);
       },
     });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!desc.trim() || createCategory.isPending) return;
+
+    // Auto-create pending new category and use it
+    if (showNewCat && newCatName.trim()) {
+      try {
+        const created = await createCategory.mutateAsync({ name: newCatName.trim(), color: newCatColor });
+        submitWith(created.id);
+      } catch {
+        submitWith(cat);
+      }
+      return;
+    }
+
+    submitWith(cat);
   };
 
   const toggleDay = (day: number) => {
@@ -130,6 +149,16 @@ export default function RecurringPage() {
               ))}
               {showNewCat ? (
                 <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    className="w-7 h-7 rounded-full shrink-0 ring-1 ring-border"
+                    style={{ backgroundColor: newCatColor }}
+                    onClick={() => {
+                      const idx = PRESET_COLORS.indexOf(newCatColor);
+                      setNewCatColor(PRESET_COLORS[(idx + 1) % PRESET_COLORS.length]);
+                    }}
+                    title={t("cat.changeColor" as any)}
+                  />
                   <input
                     autoFocus
                     className="input !w-24 !text-xs !py-1 !px-2"
@@ -143,10 +172,11 @@ export default function RecurringPage() {
                         e.stopPropagation();
                         if (newCatName.trim()) {
                           try {
-                            const created = await createCategory.mutateAsync({ name: newCatName.trim(), color: "#6b7280" });
+                            const created = await createCategory.mutateAsync({ name: newCatName.trim(), color: newCatColor });
                             setCat(created.id);
                           } catch {}
                           setNewCatName("");
+                          setNewCatColor(PRESET_COLORS[Math.floor(Math.random() * (PRESET_COLORS.length - 2))]);
                           setShowNewCat(false);
                         }
                       }
