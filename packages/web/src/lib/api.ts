@@ -22,6 +22,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       window.location.href = "/login";
     }
 
+    if (res.status === 429) {
+      const retryAfter = res.headers.get("Retry-After");
+      const secs = retryAfter ? parseInt(retryAfter, 10) : 60;
+      throw new Error(`429: ${secs}s`);
+    }
+
     throw new Error(errorMessage);
   }
   if (res.status === 204) return undefined as T;

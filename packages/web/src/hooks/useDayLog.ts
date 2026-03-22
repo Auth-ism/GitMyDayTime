@@ -33,22 +33,29 @@ export function useDayLog(date: string) {
 
   const addTask = useMutation({
     mutationFn: (data: CreateTaskInput) => api.addTask(date, data),
-    onMutate: async (data) => {
-      await qc.cancelQueries({ queryKey: key });
+    onMutate: (data) => {
+      qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
-      if (prev) {
-        const optimistic: TaskEntry = {
-          id: crypto.randomUUID(),
-          timestamp: new Date().toISOString(),
-          description: data.description,
-          category: data.category ?? "other",
-          duration: data.duration,
-          tags: data.tags ?? [],
-          completed: false,
-        };
-        qc.setQueryData<DayLog>(key, { ...prev, tasks: [...prev.tasks, optimistic] });
-      }
-      return { prev };
+      const current = prev ?? { date, plan: [], tasks: [] };
+      const optimisticId = crypto.randomUUID();
+      const optimistic: TaskEntry = {
+        id: optimisticId,
+        timestamp: new Date().toISOString(),
+        description: data.description,
+        category: data.category ?? "other",
+        duration: data.duration,
+        tags: data.tags ?? [],
+        completed: false,
+      };
+      qc.setQueryData<DayLog>(key, { ...current, tasks: [...current.tasks, optimistic] });
+      return { prev, optimisticId };
+    },
+    onSuccess: (serverItem, _vars, ctx) => {
+      if (!serverItem || !ctx) return;
+      qc.setQueryData<DayLog>(key, (old) => {
+        if (!old) return old;
+        return { ...old, tasks: old.tasks.map((t) => t.id === ctx.optimisticId ? serverItem : t) };
+      });
     },
     onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
     onSettled: invalidate,
@@ -57,8 +64,8 @@ export function useDayLog(date: string) {
   const updateTask = useMutation({
     mutationFn: ({ id, ...data }: Partial<TaskEntry> & { id: string }) =>
       api.updateTask(date, id, data),
-    onMutate: async (vars) => {
-      await qc.cancelQueries({ queryKey: key });
+    onMutate: (vars) => {
+      qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
       if (prev) {
         qc.setQueryData<DayLog>(key, {
@@ -74,8 +81,8 @@ export function useDayLog(date: string) {
 
   const deleteTask = useMutation({
     mutationFn: (id: string) => api.deleteTask(date, id),
-    onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: key });
+    onMutate: (id) => {
+      qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
       if (prev) {
         qc.setQueryData<DayLog>(key, { ...prev, tasks: prev.tasks.filter((t) => t.id !== id) });
@@ -88,25 +95,32 @@ export function useDayLog(date: string) {
 
   const addPlan = useMutation({
     mutationFn: (data: CreatePlanInput) => api.addPlan(date, data),
-    onMutate: async (data) => {
-      await qc.cancelQueries({ queryKey: key });
+    onMutate: (data) => {
+      qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
-      if (prev) {
-        const optimistic: PlanItem = {
-          id: crypto.randomUUID(),
-          description: data.description,
-          category: data.category ?? "other",
-          duration: data.duration,
-          completed: false,
-          order: prev.plan.length,
-          scheduledTime: data.scheduledTime,
-          checklist: [],
-          itemType: "plan",
-          priority: (data as any).priority ?? "normal",
-        };
-        qc.setQueryData<DayLog>(key, { ...prev, plan: [...prev.plan, optimistic] });
-      }
-      return { prev };
+      const current = prev ?? { date, plan: [], tasks: [] };
+      const optimisticId = crypto.randomUUID();
+      const optimistic: PlanItem = {
+        id: optimisticId,
+        description: data.description,
+        category: data.category ?? "other",
+        duration: data.duration,
+        completed: false,
+        order: current.plan.length,
+        scheduledTime: data.scheduledTime,
+        checklist: [],
+        itemType: (data as any).itemType ?? "plan",
+        priority: (data as any).priority ?? "normal",
+      };
+      qc.setQueryData<DayLog>(key, { ...current, plan: [...current.plan, optimistic] });
+      return { prev, optimisticId };
+    },
+    onSuccess: (serverItem, _vars, ctx) => {
+      if (!serverItem || !ctx) return;
+      qc.setQueryData<DayLog>(key, (old) => {
+        if (!old) return old;
+        return { ...old, plan: old.plan.map((p) => p.id === ctx.optimisticId ? serverItem : p) };
+      });
     },
     onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
     onSettled: invalidateWithStats,
@@ -115,8 +129,8 @@ export function useDayLog(date: string) {
   const updatePlan = useMutation({
     mutationFn: ({ id, ...data }: Partial<PlanItem> & { id: string }) =>
       api.updatePlan(date, id, data),
-    onMutate: async (vars) => {
-      await qc.cancelQueries({ queryKey: key });
+    onMutate: (vars) => {
+      qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
       if (prev) {
         qc.setQueryData<DayLog>(key, {
@@ -132,8 +146,8 @@ export function useDayLog(date: string) {
 
   const deletePlan = useMutation({
     mutationFn: (id: string) => api.deletePlan(date, id),
-    onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: key });
+    onMutate: (id) => {
+      qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
       if (prev) {
         qc.setQueryData<DayLog>(key, { ...prev, plan: prev.plan.filter((p) => p.id !== id) });
@@ -146,8 +160,8 @@ export function useDayLog(date: string) {
 
   const reorderPlan = useMutation({
     mutationFn: (ids: string[]) => api.reorderPlan(date, ids),
-    onMutate: async (ids) => {
-      await qc.cancelQueries({ queryKey: key });
+    onMutate: (ids) => {
+      qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
       if (prev) {
         const idSet = new Set(ids);
@@ -169,25 +183,39 @@ export function useDayLog(date: string) {
   const addChecklist = useMutation({
     mutationFn: ({ planId, description }: { planId: string; description: string }) =>
       api.addChecklist(date, planId, { description }),
-    onMutate: async ({ planId, description }) => {
-      await qc.cancelQueries({ queryKey: key });
+    onMutate: ({ planId, description }) => {
+      qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
-      if (prev) {
-        const optimistic: ChecklistItem = {
-          id: crypto.randomUUID(),
-          planId,
-          description,
-          completed: false,
-          order: prev.plan.find((p) => p.id === planId)?.checklist?.length ?? 0,
-        };
-        qc.setQueryData<DayLog>(key, {
-          ...prev,
-          plan: prev.plan.map((p) =>
-            p.id === planId ? { ...p, checklist: [...(p.checklist || []), optimistic] } : p
+      const current = prev ?? { date, plan: [], tasks: [] };
+      const optimisticId = crypto.randomUUID();
+      const optimistic: ChecklistItem = {
+        id: optimisticId,
+        planId,
+        description,
+        completed: false,
+        order: current.plan.find((p) => p.id === planId)?.checklist?.length ?? 0,
+      };
+      qc.setQueryData<DayLog>(key, {
+        ...current,
+        plan: current.plan.map((p) =>
+          p.id === planId ? { ...p, checklist: [...(p.checklist || []), optimistic] } : p
+        ),
+      });
+      return { prev, optimisticId, planId };
+    },
+    onSuccess: (serverItem, _vars, ctx) => {
+      if (!serverItem || !ctx) return;
+      qc.setQueryData<DayLog>(key, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          plan: old.plan.map((p) =>
+            p.id === ctx.planId
+              ? { ...p, checklist: (p.checklist || []).map((c) => c.id === ctx.optimisticId ? serverItem : c) }
+              : p
           ),
-        });
-      }
-      return { prev };
+        };
+      });
     },
     onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
     onSettled: invalidate,
@@ -196,8 +224,8 @@ export function useDayLog(date: string) {
   const updateChecklist = useMutation({
     mutationFn: ({ planId, clId, ...data }: { planId: string; clId: string } & Partial<ChecklistItem>) =>
       api.updateChecklist(date, planId, clId, data),
-    onMutate: async ({ planId, clId, ...data }) => {
-      await qc.cancelQueries({ queryKey: key });
+    onMutate: ({ planId, clId, ...data }) => {
+      qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
       if (prev) {
         qc.setQueryData<DayLog>(key, {
@@ -218,8 +246,8 @@ export function useDayLog(date: string) {
   const deleteChecklist = useMutation({
     mutationFn: ({ planId, clId }: { planId: string; clId: string }) =>
       api.deleteChecklist(date, planId, clId),
-    onMutate: async ({ planId, clId }) => {
-      await qc.cancelQueries({ queryKey: key });
+    onMutate: ({ planId, clId }) => {
+      qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
       if (prev) {
         qc.setQueryData<DayLog>(key, {
@@ -239,23 +267,22 @@ export function useDayLog(date: string) {
 
   const addReminder = useMutation({
     mutationFn: (data: Omit<CreatePlanInput, "itemType">) => api.addPlan(date, { ...data, itemType: "reminder" }),
-    onMutate: async (data) => {
-      await qc.cancelQueries({ queryKey: key });
+    onMutate: (data) => {
+      qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<DayLog>(key);
-      if (prev) {
-        const optimistic: PlanItem = {
-          id: crypto.randomUUID(),
-          description: data.description,
-          category: "other",
-          completed: false,
-          order: prev.plan.length,
-          scheduledTime: data.scheduledTime,
-          checklist: [],
-          itemType: "reminder",
-          priority: "normal",
-        };
-        qc.setQueryData<DayLog>(key, { ...prev, plan: [...prev.plan, optimistic] });
-      }
+      const current = prev ?? { date, plan: [], tasks: [] };
+      const optimistic: PlanItem = {
+        id: crypto.randomUUID(),
+        description: data.description,
+        category: "other",
+        completed: false,
+        order: current.plan.length,
+        scheduledTime: data.scheduledTime,
+        checklist: [],
+        itemType: "reminder",
+        priority: "normal",
+      };
+      qc.setQueryData<DayLog>(key, { ...current, plan: [...current.plan, optimistic] });
       return { prev };
     },
     onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },

@@ -307,7 +307,7 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
                     </button>
                   ))}
                   <input
-                    className="input !w-16 !text-[11px] !py-1"
+                    className="input !w-20 !text-[11px] !py-1"
                     placeholder={t("form.custom")}
                     value={dur}
                     onChange={(e) => { setDur(e.target.value); setDurMinutes(null); }}

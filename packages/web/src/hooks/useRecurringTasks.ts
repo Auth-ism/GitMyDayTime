@@ -17,6 +17,12 @@ export function useRecurringTasks() {
     onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: KEY });
+    qc.invalidateQueries({ queryKey: ["daylog"] });
+    qc.invalidateQueries({ queryKey: ["stats"] });
+  };
+
   const update = useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Partial<CreateRecurringTaskInput> & { active?: boolean }) =>
       api.updateRecurringTask(id, data),
@@ -31,7 +37,7 @@ export function useRecurringTasks() {
       return { prev };
     },
     onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(KEY, ctx.prev); },
-    onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSettled: invalidateAll,
   });
 
   const remove = useMutation({
@@ -45,7 +51,7 @@ export function useRecurringTasks() {
       return { prev };
     },
     onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(KEY, ctx.prev); },
-    onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSettled: invalidateAll,
   });
 
   return { query, create, update, remove };

@@ -74,13 +74,40 @@ router.put("/", wrap(async (req: Request, res: Response) => {
     res.json(profile);
   } catch (err: any) {
     if (err.code === "23505") {
-      const field = err.constraint?.includes("email") ? "email" : "username";
-      res.status(409).json({ error: `This ${field} is already taken` });
+      res.status(409).json({ error: "Bu bilgiler kullanılamaz" });
       return;
     }
     throw err;
   }
 }));
+
+// Allowed image MIME types and their magic bytes (after base64 decode)
+const ALLOWED_AVATAR_TYPES: { mime: string; magic: number[] }[] = [
+  { mime: "image/jpeg", magic: [0xff, 0xd8, 0xff] },
+  { mime: "image/png", magic: [0x89, 0x50, 0x4e, 0x47] },
+  { mime: "image/webp", magic: [0x52, 0x49, 0x46, 0x46] }, // RIFF
+  { mime: "image/gif", magic: [0x47, 0x49, 0x46, 0x38] },  // GIF8
+];
+
+function isValidImageBase64(dataUri: string): boolean {
+  // Must be a data URI
+  const match = dataUri.match(/^data:(image\/\w+);base64,(.+)$/);
+  if (!match) return false;
+
+  const [, mime, b64] = match;
+
+  // Check MIME is allowed
+  const allowed = ALLOWED_AVATAR_TYPES.find((t) => t.mime === mime);
+  if (!allowed) return false;
+
+  // Validate magic bytes
+  try {
+    const buf = Buffer.from(b64.slice(0, 16), "base64");
+    return allowed.magic.every((byte, i) => buf[i] === byte);
+  } catch {
+    return false;
+  }
+}
 
 // PUT /api/profile/avatar — upload avatar (base64)
 router.put("/avatar", wrap(async (req: Request, res: Response) => {
@@ -89,9 +116,13 @@ router.put("/avatar", wrap(async (req: Request, res: Response) => {
     res.status(400).json({ error: "Invalid avatar data" });
     return;
   }
-  // Max ~150KB base64
-  if (avatar.length > 200_000) {
+  // Max ~150KB base64 (150KB binary ≈ 205K base64 chars + data URI prefix)
+  if (avatar.length > 205_000) {
     res.status(400).json({ error: "Avatar too large (max 150KB)" });
+    return;
+  }
+  if (!isValidImageBase64(avatar)) {
+    res.status(400).json({ error: "Invalid image format. Allowed: JPEG, PNG, WebP, GIF" });
     return;
   }
   await pool.query("UPDATE users SET avatar_url = $1 WHERE id = $2", [avatar, req.userId]);

@@ -9,7 +9,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
-import { authMiddleware, authRouter, getAuthLimiter, getGlobalLimiter, IS_PROD } from "./auth.js";
+import { authMiddleware, authRouter, getAuthLimiter, getGlobalLimiter, createRateLimiter, IS_PROD } from "./auth.js";
 import { pool, runMigrations } from "./db.js";
 import { connectRedis, redis, isRedisConnected, rebuildReminderIndex } from "./redis.js";
 import taskRoutes from "./routes/tasks.js";
@@ -49,9 +49,20 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || true, credentials: true }));
-app.use(express.json({ limit: "1mb" }));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || (IS_PROD ? "https://gmd.byfeb.com" : true),
+  credentials: true,
+}));
+// Default body limit — tighter than before (was 1mb)
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 app.use(cookieParser());
+
+// Disable caching for API routes — prevents 304 with stale data
+app.use("/api", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
 
 app.use((req, res, next) => {
   const startedAt = Date.now();
@@ -76,8 +87,8 @@ app.get("/api/health", async (_req, res) => {
   res.status(healthy ? 200 : 503).json({ status: healthy ? "ok" : "degraded", checks });
 });
 
-// Auth routes with auth-specific rate limiter
-app.use("/api/auth", getAuthLimiter(), authRouter);
+// Auth routes with auth-specific rate limiter (skip /check — read-only, no brute-force risk)
+app.use("/api/auth", getAuthLimiter({ skip: (req) => req.path === "/check" }), authRouter);
 
 // Global rate limiter for all API routes
 app.use("/api", getGlobalLimiter());
@@ -85,17 +96,39 @@ app.use("/api", getGlobalLimiter());
 // Protect all API routes
 app.use(authMiddleware);
 
+// ── Route-specific rate limiters (per-user, after auth) ──────────
+const rl = (max: number, windowMs = 60_000, prefix?: string) =>
+  createRateLimiter(windowMs, max, { perUser: true, prefix });
+
+// days: read-heavy (WeekView fires 7 reqs)
+app.use("/api/days", (req, _res, next) => {
+  if (req.method === "GET") return rl(120, 60_000, "days-r")(req, _res, next);
+  return rl(60, 60_000, "days-w")(req, _res, next);
+});
 app.use("/api/days", taskRoutes);
 app.use("/api/days", planRoutes);
 app.use("/api/days", journalRoutes);
-app.use("/api/stats", statsRoutes);
-app.use("/api/search", searchRoutes);
-app.use("/api/recurring", recurringRoutes);
+
+app.use("/api/stats", rl(30, 60_000, "stats"), statsRoutes);
+app.use("/api/search", rl(20, 60_000, "search"), searchRoutes);
+app.use("/api/recurring", rl(30, 60_000, "recurring"), recurringRoutes);
+
+// profile: separate limits for write vs avatar (large payload)
+app.use("/api/profile/avatar", express.json({ limit: "250kb" }), rl(5, 60_000, "avatar"));
+app.use("/api/profile", (req, _res, next) => {
+  if (req.method === "PUT" || req.method === "POST") return rl(10, 60_000, "profile-w")(req, _res, next);
+  next();
+});
 app.use("/api/profile", profileRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/templates", templateRoutes);
-app.use("/api/export", exportRoutes);
-app.use("/api/push", pushRoutes);
+
+app.use("/api/categories", rl(30, 60_000, "categories"), categoryRoutes);
+app.use("/api/templates", rl(30, 60_000, "templates"), templateRoutes);
+
+// export: heavy DB queries — import needs larger body for bulk data
+app.use("/api/export/import", express.json({ limit: "1mb" }), rl(3, 60_000, "import"));
+app.use("/api/export", rl(5, 60_000, "export"), exportRoutes);
+
+app.use("/api/push", rl(20, 60_000, "push"), pushRoutes);
 
 // Global async error handler — Express 4 doesn't catch async errors
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -121,6 +154,17 @@ const cleanupInterval = setInterval(async () => {
     await pool.query("DELETE FROM sessions WHERE expires_at < NOW()");
     // Clean old audit logs (90 days)
     await pool.query("DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL '90 days'");
+    // Clean expired email verification & approval tokens (48h past expiry)
+    await pool.query(
+      `UPDATE users SET email_token_hash = NULL, email_token_expires_at = NULL
+       WHERE email_token_expires_at < NOW() - INTERVAL '48 hours'`
+    );
+    // Clean stale approval tokens for unapproved users older than 30 days
+    await pool.query(
+      `UPDATE users SET approval_token_hash = NULL
+       WHERE approved = FALSE AND approval_token_hash IS NOT NULL
+         AND created_at < NOW() - INTERVAL '30 days'`
+    );
   } catch {
     // ignore cleanup errors
   }

@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { nanoid } from "nanoid";
 import { CreatePlanInput, CreateChecklistInput, PlanItemSchema } from "@gmd/shared";
 import { zodMsg } from "../validation.js";
-import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem, copyDayPlans } from "../storage.js";
+import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem, copyDayPlans, invalidateDayLog } from "../storage.js";
 import { pool } from "../db.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -83,17 +83,20 @@ router.post("/:date/plan/:planId/checklist", wrap(async (req, res) => {
   const input = CreateChecklistInput.safeParse(req.body);
   if (!input.success) { res.status(400).json({ error: zodMsg(input.error) }); return; }
   const item = await addChecklistItem(req.userId!, req.params.planId as string, input.data.description);
+  await invalidateDayLog(req.userId!, req.params.date as string);
   res.status(201).json(item);
 }));
 
 router.put("/:date/plan/:planId/checklist/:clId", wrap(async (req, res) => {
   const updated = await updateChecklistItem(req.userId!, req.params.clId as string, req.body);
   if (!updated) { res.status(404).json({ error: "Checklist item not found" }); return; }
+  await invalidateDayLog(req.userId!, req.params.date as string);
   res.json(updated);
 }));
 
 router.delete("/:date/plan/:planId/checklist/:clId", wrap(async (req, res) => {
   await deleteChecklistItem(req.userId!, req.params.clId as string);
+  await invalidateDayLog(req.userId!, req.params.date as string);
   res.status(204).end();
 }));
 

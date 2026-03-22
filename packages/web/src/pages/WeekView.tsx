@@ -4,8 +4,9 @@ import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
-import { ChevronLeft, ChevronRight, CalendarDays, Clock, Target, Check, MessageSquare } from "lucide-react";
-import { CATEGORY_COLORS, formatDuration, todayStr, type DayLog } from "@gmd/shared";
+import { ChevronLeft, ChevronRight, CalendarDays, Clock, Target, Check, MessageSquare, Bell } from "lucide-react";
+import { formatDuration, todayStr, type DayLog } from "@gmd/shared";
+import { useCategories } from "@/hooks/useCategories";
 import { motion } from "framer-motion";
 import { useSwipe } from "@/hooks/useSwipe";
 
@@ -28,6 +29,7 @@ interface DragInfo {
 
 export default function WeekView() {
   const { t, locale } = useI18n();
+  const { getCategoryColor } = useCategories();
   const [weekRef, setWeekRef] = useState(() => new Date());
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -243,14 +245,20 @@ export default function WeekView() {
           const isFuture = date > today;
           const isDragOver = dragOverDate === date;
 
-          const sortedPlans = dayLog ? [...dayLog.plan].sort((a, b) => {
-            if (a.scheduledTime && b.scheduledTime) return a.scheduledTime.localeCompare(b.scheduledTime);
-            if (a.scheduledTime) return -1;
-            if (b.scheduledTime) return 1;
-            return a.order - b.order;
-          }) : [];
+          const allPlans = dayLog?.plan || [];
+          const sortedPlans = allPlans
+            .filter((p) => p.itemType !== "reminder")
+            .sort((a, b) => {
+              if (a.scheduledTime && b.scheduledTime) return a.scheduledTime.localeCompare(b.scheduledTime);
+              if (a.scheduledTime) return -1;
+              if (b.scheduledTime) return 1;
+              return a.order - b.order;
+            });
+          const reminders = allPlans
+            .filter((p) => p.itemType === "reminder")
+            .sort((a, b) => (a.scheduledTime ?? "").localeCompare(b.scheduledTime ?? ""));
           const tasks = dayLog?.tasks || [];
-          const isEmpty = sortedPlans.length === 0 && tasks.length === 0;
+          const isEmpty = sortedPlans.length === 0 && reminders.length === 0 && tasks.length === 0;
 
           return (
             <div
@@ -317,7 +325,7 @@ export default function WeekView() {
                       "hover:opacity-80 transition-opacity border-l-2 select-none touch-manipulation",
                       item.completed && "opacity-40"
                     )}
-                    style={{ borderLeftColor: CATEGORY_COLORS[item.category] }}
+                    style={{ borderLeftColor: getCategoryColor(item.category) }}
                   >
                     {item.scheduledTime && (
                       <div className="flex items-center gap-0.5 text-text-tertiary mb-0.5">
@@ -346,7 +354,21 @@ export default function WeekView() {
                   </motion.div>
                 ))}
 
-                {tasks.length > 0 && sortedPlans.length > 0 && (
+                {reminders.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => navigate(`/day/${date}`)}
+                    className="px-1.5 py-1 rounded-md text-[10px] leading-tight border-l-2 border-accent/60 bg-accent-soft/20 cursor-pointer hover:opacity-80 transition-opacity"
+                  >
+                    <div className="flex items-center gap-0.5 text-accent">
+                      <Bell size={7} />
+                      {item.scheduledTime && <span className="font-medium">{item.scheduledTime}</span>}
+                    </div>
+                    <span className="truncate block text-text-secondary">{item.description}</span>
+                  </div>
+                ))}
+
+                {tasks.length > 0 && (sortedPlans.length > 0 || reminders.length > 0) && (
                   <div className="border-t border-border/50 my-1" />
                 )}
                 {tasks.map((task) => (

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Check, Trash2, Clock, Timer, Play, Pencil, Plus, ListChecks, ChevronDown, Bell } from "lucide-react";
 import { type PlanItem as PlanItemType, type ChecklistItem, type PriorityType, formatDuration, parseDuration } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
+import { useCategories } from "@/hooks/useCategories";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
 
@@ -34,6 +35,7 @@ export default function PlanItem({
 }: Props) {
   const { t } = useI18n();
   const getCatLabel = useCategoryLabel();
+  const { getCategoryColor } = useCategories();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showDuration, setShowDuration] = useState(false);
   const [actualDur, setActualDur] = useState("");
@@ -180,7 +182,8 @@ export default function PlanItem({
             </div>
           )}
           <div className="flex items-center gap-2.5 mt-0.5">
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-bg-secondary text-text-secondary">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-bg-secondary text-text-secondary">
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getCategoryColor(item.category) }} />
               {getCatLabel(item.category)}
             </span>
             {item.scheduledTime && (

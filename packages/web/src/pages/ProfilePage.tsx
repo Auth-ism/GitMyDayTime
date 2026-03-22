@@ -309,7 +309,7 @@ export default function ProfilePage() {
           )}
           <button
             onClick={() => avatarInputRef.current?.click()}
-            className="absolute inset-0 rounded-xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+            className="absolute inset-0 rounded-xl bg-black/30 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center"
           >
             <Camera size={14} className="text-white" />
           </button>
@@ -357,7 +357,7 @@ export default function ProfilePage() {
           </Section>
 
           <Section>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label={t("profile.timezone" as any)}>
                 <div className="relative">
                   <select className="input-sm appearance-none pr-7" value={form.timezone ?? "Europe/Istanbul"} onChange={(e) => setForm({ ...form, timezone: e.target.value })}>
@@ -568,17 +568,17 @@ export default function ProfilePage() {
           <Section icon={<Shield size={14} className="text-text-secondary" />} title={t("profile.changePassword" as any)}>
             <Field label={t("profile.currentPassword" as any)}>
               <div className="relative">
-                <input type={showCurrentPw ? "text" : "password"} className="input-sm pr-8" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-                <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary">
-                  {showCurrentPw ? <EyeOff size={13} /> : <Eye size={13} />}
+                <input type={showCurrentPw ? "text" : "password"} className="input-sm pr-10" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+                <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-text-tertiary hover:text-text-secondary">
+                  {showCurrentPw ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
             </Field>
             <Field label={t("profile.newPassword" as any)}>
               <div className="relative">
-                <input type={showNewPw ? "text" : "password"} className="input-sm pr-8" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                <button type="button" onClick={() => setShowNewPw(!showNewPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary">
-                  {showNewPw ? <EyeOff size={13} /> : <Eye size={13} />}
+                <input type={showNewPw ? "text" : "password"} className="input-sm pr-10" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                <button type="button" onClick={() => setShowNewPw(!showNewPw)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-text-tertiary hover:text-text-secondary">
+                  {showNewPw ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
             </Field>
@@ -783,9 +783,9 @@ function CategoryManager() {
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
             <div className="flex items-center gap-2 p-2 rounded-lg bg-bg-secondary">
               <input autoFocus className="input-sm flex-1" placeholder={t("profile.categoryName" as any)} value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); handleCreate(); } }} />
-              <div className="flex gap-0.5 flex-wrap">
+              <div className="flex gap-1 flex-wrap">
                 {PRESET_COLORS.map((c) => (
-                  <button key={c} type="button" onClick={() => setNewColor(c)} className={cn("w-4 h-4 rounded-full transition-all shrink-0", newColor === c ? "ring-2 ring-offset-1 ring-accent scale-110" : "hover:scale-110")} style={{ backgroundColor: c }} />
+                  <button key={c} type="button" onClick={() => setNewColor(c)} className={cn("w-6 h-6 rounded-full transition-all shrink-0", newColor === c ? "ring-2 ring-offset-1 ring-accent scale-110" : "hover:scale-110")} style={{ backgroundColor: c }} />
                 ))}
               </div>
               <button onClick={handleCreate} disabled={!newName.trim() || createCategory.isPending} className="btn btn-primary !py-1 !px-2.5 !text-[11px]">
@@ -802,9 +802,9 @@ function CategoryManager() {
             <motion.div key={cat.id} layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-bg-secondary transition-colors group">
               {editId === cat.id ? (
                 <>
-                  <div className="flex gap-0.5 shrink-0 flex-wrap">
+                  <div className="flex gap-1 shrink-0 flex-wrap">
                     {PRESET_COLORS.map((c) => (
-                      <button key={c} type="button" onClick={() => setEditColor(c)} className={cn("w-3.5 h-3.5 rounded-full transition-all", editColor === c ? "ring-2 ring-offset-1 ring-accent scale-110" : "hover:scale-110")} style={{ backgroundColor: c }} />
+                      <button key={c} type="button" onClick={() => setEditColor(c)} className={cn("w-5 h-5 rounded-full transition-all", editColor === c ? "ring-2 ring-offset-1 ring-accent scale-110" : "hover:scale-110")} style={{ backgroundColor: c }} />
                     ))}
                   </div>
                   <input autoFocus className="input-sm flex-1" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); handleUpdate(); } if (e.key === "Escape") setEditId(null); }} />

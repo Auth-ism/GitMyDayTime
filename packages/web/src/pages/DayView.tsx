@@ -49,7 +49,7 @@ export default function DayView() {
   const today = todayStr();
   const isToday = date === today;
 
-  const filteredTasks = dayLog?.tasks.filter((t) => filterCat === "all" || t.category === filterCat) || [];
+  const filteredTasks = dayLog?.tasks || [];
   const filteredPlan = dayLog?.plan
     .filter((p) => p.itemType !== "reminder" && (filterCat === "all" || p.category === filterCat))
     .sort((a, b) => a.order - b.order) || [];
@@ -241,7 +241,7 @@ export default function DayView() {
       )}
 
       {/* Category filter — compact pills */}
-      {(taskCount > 0 || totalPlan > 0) && (
+      {totalPlan > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1" role="radiogroup">
           <button
             type="button"
@@ -258,8 +258,7 @@ export default function DayView() {
             {t("day.all")}
           </button>
           {allCategories.map(({ key, label, isCustom }) => {
-            const count = (dayLog?.tasks.filter((t) => t.category === key).length || 0) +
-              (dayLog?.plan.filter((p) => p.itemType !== "reminder" && p.category === key).length || 0);
+            const count = dayLog?.plan.filter((p) => p.itemType !== "reminder" && p.category === key).length || 0;
             if (count === 0) return null;
             return (
               <button
@@ -333,11 +332,12 @@ export default function DayView() {
 
         <AnimatePresence mode="wait">
           {showTimeline ? (
-            <div className="mt-1.5">
+            <div key="timeline" className="mt-1.5">
               <TimelineView plans={filteredPlan} date={date} />
             </div>
           ) : (
             <Reorder.Group
+              key="planlist"
               ref={planListRef}
               axis="y"
               values={displayPlan}

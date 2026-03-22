@@ -11,7 +11,14 @@ import "./index.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1 },
+    queries: {
+      staleTime: 30_000,
+      retry: (failureCount, error) => {
+        if (error instanceof Error && /429|401/.test(error.message)) return false;
+        return failureCount < 1;
+      },
+    },
+    mutations: { retry: false },
   },
 });
 

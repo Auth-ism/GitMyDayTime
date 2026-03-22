@@ -584,7 +584,7 @@ export async function getStats(
                 COUNT(*) AS plan_count,
                 COUNT(*) FILTER (WHERE completed) AS completed_count,
                 COALESCE(SUM(actual_duration) FILTER (WHERE completed), 0) AS total_minutes
-         FROM plan_items WHERE user_id = $1 AND item_type = 'plan'
+         FROM plan_items WHERE user_id = $1
          GROUP BY date
        ) p ON p.date = d.date::date
        WHERE COALESCE(p.plan_count, 0) > 0
@@ -705,6 +705,20 @@ export async function updateRecurringTask(
   );
 
   if (rows.length > 0) {
+    // When deactivating, remove uncompleted injected plan items
+    if (updates.active === false) {
+      await pool.query(
+        `DELETE FROM plan_items WHERE recurring_task_id = $1 AND user_id = $2 AND completed = FALSE`,
+        [taskId, userId]
+      );
+      // Also clean dedup records so re-activation can re-inject
+      await pool.query(
+        `DELETE FROM recurring_task_instances WHERE recurring_task_id = $1 AND date >= CURRENT_DATE`,
+        [taskId]
+      );
+      await cacheDelPattern(`daylog:${userId}:*`);
+      await cacheDelPattern(`stats:${userId}:*`);
+    }
     await cacheDel(`recurring:${userId}`);
     return toRecurringTask(rows[0]);
   }
@@ -712,11 +726,16 @@ export async function updateRecurringTask(
 }
 
 export async function deleteRecurringTask(userId: string, taskId: string): Promise<boolean> {
+  // CASCADE on recurring_task_id FK will delete associated plan_items
   const { rowCount } = await pool.query(
     "DELETE FROM recurring_tasks WHERE id = $1 AND user_id = $2",
     [taskId, userId]
   );
-  if ((rowCount ?? 0) > 0) await cacheDel(`recurring:${userId}`);
+  if ((rowCount ?? 0) > 0) {
+    await cacheDel(`recurring:${userId}`);
+    await cacheDelPattern(`daylog:${userId}:*`);
+    await cacheDelPattern(`stats:${userId}:*`);
+  }
   return (rowCount ?? 0) > 0;
 }
 
@@ -765,11 +784,11 @@ export async function injectRecurringTasks(userId: string, date: string): Promis
 
       const planId = nanoid(8);
       const { rows } = await pool.query(
-        `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, scheduled_time, completed, sort_order, item_type, priority)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, 'plan', 'normal')
+        `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, scheduled_time, completed, sort_order, item_type, priority, recurring_task_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, 'plan', 'normal', $9)
          RETURNING id, description, category, estimated_duration AS duration, completed, sort_order AS "order",
                    scheduled_time AS "scheduledTime", item_type AS "itemType", priority`,
-        [planId, userId, date, task.description, task.category, task.estimated_duration, task.scheduled_time, nextOrder++]
+        [planId, userId, date, task.description, task.category, task.estimated_duration, task.scheduled_time, nextOrder++, task.id]
       );
 
       // Mark as injected
@@ -779,6 +798,10 @@ export async function injectRecurringTasks(userId: string, date: string): Promis
       );
 
       created.push({ ...rows[0], checklist: [], tags: [] } as PlanItem);
+    }
+
+    if (created.length > 0) {
+      await invalidateDayLog(userId, date);
     }
 
     return created;

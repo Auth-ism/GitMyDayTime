@@ -282,7 +282,7 @@ export const UpdateProfileInput = z.object({
   defaultCategory: z.string().optional(),
   isPublic: z.boolean().optional(),
   notificationEnabled: z.boolean().optional(),
-  phoneNumber: z.string().max(20).nullable().optional(),
+  phoneNumber: z.string().regex(/^5\d{9}$/, "Invalid phone number (5XXXXXXXXX)").nullable().optional(),
   smsNotifications: z.boolean().optional(),
   emailNotifications: z.boolean().optional(),
   pushNotifications: z.boolean().optional(),

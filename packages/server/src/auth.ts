@@ -16,6 +16,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const JWT_EXPIRES = "15m";
 const SESSION_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const MAX_SESSIONS_PER_USER = 5;
 
 export const IS_PROD = process.env.NODE_ENV === "production";
 
@@ -104,36 +105,53 @@ async function createSession(
     [userId, tokenHash, expiresAt, req.headers["user-agent"] || null, getClientIp(req)]
   );
 
+  // Enforce max sessions per user — delete oldest beyond limit
+  await pool.query(
+    `DELETE FROM sessions WHERE id IN (
+       SELECT id FROM sessions WHERE user_id = $1
+       ORDER BY created_at DESC OFFSET $2
+     )`,
+    [userId, MAX_SESSIONS_PER_USER]
+  );
+
   await cacheSession(tokenHash, userId, email);
   setCookies(res, signJwt(userId, email), sessionToken);
 }
 
 // Rate limiter — Redis-backed if available
-function createRateLimiter(windowMs: number, max: number) {
-  const opts: Parameters<typeof rateLimit>[0] = {
+export function createRateLimiter(
+  windowMs: number,
+  max: number,
+  opts?: { skip?: (req: Request) => boolean; perUser?: boolean; prefix?: string }
+) {
+  const limiterOpts: Parameters<typeof rateLimit>[0] = {
     windowMs,
     max,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => getClientIp(req),
+    keyGenerator: opts?.perUser
+      ? (req) => req.userId || getClientIp(req)
+      : (req) => getClientIp(req),
     message: { error: "Too many attempts, try again later" },
+    ...(opts?.skip && { skip: opts.skip }),
   };
 
   if (isRedisConnected()) {
-    opts.store = new RedisStore({
+    limiterOpts.store = new RedisStore({
       sendCommand: (...args: string[]) => redis.call(args[0], ...args.slice(1)) as any,
+      prefix: opts?.prefix ? `rl:${opts.prefix}:` : undefined,
     });
   }
 
-  return rateLimit(opts);
+  return rateLimit(limiterOpts);
 }
 
-export function getAuthLimiter() {
-  return createRateLimiter(15 * 60 * 1000, 10);
+export function getAuthLimiter(opts?: { skip?: (req: Request) => boolean }) {
+  return createRateLimiter(15 * 60 * 1000, 10, { skip: opts?.skip, prefix: "auth" });
 }
 
 export function getGlobalLimiter() {
-  return createRateLimiter(60 * 1000, 100);
+  return createRateLimiter(60 * 1000, 300, { prefix: "global" });
 }
 
 // Verify JWT and return userId, or null
@@ -213,7 +231,7 @@ authRouter.post("/register", async (req: Request, res: Response) => {
       return;
     } catch (err: any) {
       if (err.code === "23505") {
-        res.status(409).json({ error: "Email or username already taken" });
+        res.status(409).json({ error: "Bu bilgiler kullanılamaz" });
         return;
       }
       throw err;
@@ -246,8 +264,7 @@ authRouter.post("/register", async (req: Request, res: Response) => {
     res.status(202).json({ pending: true });
   } catch (err: any) {
     if (err.code === "23505") {
-      const field = err.constraint?.includes("email") ? "email" : "username";
-      res.status(409).json({ error: `This ${field} is already taken` });
+      res.status(409).json({ error: "Bu bilgiler kullanılamaz" });
       return;
     }
     throw err;
@@ -361,12 +378,28 @@ authRouter.get("/approve", async (req: Request, res: Response) => {
 </body></html>`);
 });
 
-authRouter.get("/auto-login", async (req: Request, res: Response) => {
+// GET renders an auto-submitting form so the token moves from URL to POST body
+authRouter.get("/auto-login", (req: Request, res: Response) => {
   const { token } = req.query as { token?: string };
-  if (!token) {
-    res.redirect("/");
-    return;
-  }
+  if (!token) { res.redirect("/"); return; }
+
+  // Sanitize token — only hex chars allowed
+  if (!/^[0-9a-f]+$/i.test(token)) { res.redirect("/"); return; }
+
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Giriş yapılıyor…</title></head>
+<body><p>Giriş yapılıyor…</p>
+<form id="f" method="POST" action="/api/auth/auto-login">
+<input type="hidden" name="token" value="${token}"/>
+</form><script>document.getElementById("f").submit();</script>
+</body></html>`);
+});
+
+// POST actually performs the login — token in body, not URL
+authRouter.post("/auto-login", async (req: Request, res: Response) => {
+  const token = req.body?.token as string | undefined;
+  if (!token) { res.redirect("/"); return; }
 
   const tokenHash = hashSessionToken(token);
   const { rows } = await pool.query(
@@ -376,10 +409,7 @@ authRouter.get("/auto-login", async (req: Request, res: Response) => {
     [tokenHash]
   );
 
-  if (rows.length === 0) {
-    res.redirect("/");
-    return;
-  }
+  if (rows.length === 0) { res.redirect("/"); return; }
 
   const user = rows[0];
   await createSession(user.id, user.email, res, req);

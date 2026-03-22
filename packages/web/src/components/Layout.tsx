@@ -173,8 +173,8 @@ export default function Layout() {
       </header>
 
       {/* Mobile header */}
-      <header className="border-b border-border sticky top-0 z-50 bg-bg/90 backdrop-blur-md sm:hidden">
-        <div className="px-4 h-12 flex items-center justify-between">
+      <header className="border-b border-border sticky top-0 z-50 bg-bg/90 backdrop-blur-md sm:hidden safe-top">
+        <div className="px-3 h-12 flex items-center justify-between overflow-hidden">
           <NavLink to="/" className="flex items-center gap-2 font-semibold text-text tracking-tight">
             <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
               <Clock size={13} className="text-bg" />
@@ -237,7 +237,7 @@ export default function Layout() {
         <EmailVerifyBanner />
       )}
 
-      <main className="flex-1 pb-20 sm:pb-0" id="main-content">
+      <main className="flex-1 pb-16 sm:pb-0 safe-main-bottom" id="main-content">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}

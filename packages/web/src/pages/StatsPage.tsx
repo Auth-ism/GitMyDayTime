@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { CATEGORY_COLORS, formatDuration, type Category } from "@gmd/shared";
+import { formatDuration } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
+import { useCategories } from "@/hooks/useCategories";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { motion } from "framer-motion";
 import { Flame, Clock, CheckCircle, TrendingUp, BarChart3, Target, Gauge } from "lucide-react";
@@ -10,6 +11,7 @@ import { cn } from "@/lib/cn";
 export default function StatsPage() {
   const { t, locale } = useI18n();
   const getCatLabel = useCategoryLabel();
+  const { getCategoryColor } = useCategories();
   const dateLoc = locale === "tr" ? "tr-TR" : "en-US";
   const { data: stats, isLoading } = useQuery({
     queryKey: ["stats", "30d"],
@@ -46,7 +48,7 @@ export default function StatsPage() {
       name: getCatLabel(key),
       count: v.count,
       minutes: v.minutes,
-      fill: CATEGORY_COLORS[key as Category],
+      fill: getCategoryColor(key),
     }));
 
   const activityData = stats.dailyActivity.map((d) => {
@@ -117,7 +119,7 @@ export default function StatsPage() {
     .map(([key, v]) => ({
       name: getCatLabel(key),
       rate: Math.round((v.completed / v.total) * 100),
-      fill: CATEGORY_COLORS[key as Category] || "#6b7280",
+      fill: getCategoryColor(key),
     }))
     .sort((a, b) => b.rate - a.rate);
 
