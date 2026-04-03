@@ -10,14 +10,19 @@ import { useCategories } from "@/hooks/useCategories";
 import { motion } from "framer-motion";
 import { useSwipe } from "@/hooks/useSwipe";
 
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function getWeekDates(ref: Date): string[] {
   const d = new Date(ref);
   const day = d.getDay();
-  d.setDate(d.getDate() - day + 1); // Monday
+  // ISO week: Mon–Sun. Sunday (0) is treated as day 7 so it falls at end of week.
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(d);
     date.setDate(d.getDate() + i);
-    return date.toISOString().split("T")[0];
+    return localDateStr(date);
   });
 }
 
@@ -234,7 +239,9 @@ export default function WeekView() {
       </div>
 
       {/* Week grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2" {...swipeHandlers}>
+      <div {...swipeHandlers}>
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
+      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, minmax(110px, 1fr))" }}>
         {dates.map((date, i) => {
           const dayLog = dayQueries[i].data;
           const isLoading = dayQueries[i].isLoading;
@@ -398,6 +405,8 @@ export default function WeekView() {
             </div>
           );
         })}
+      </div>
+      </div>
       </div>
     </div>
   );

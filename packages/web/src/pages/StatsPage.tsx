@@ -51,6 +51,10 @@ export default function StatsPage() {
       fill: getCategoryColor(key),
     }));
 
+  const yAxisWidth = categoryData.length > 0
+    ? Math.min(Math.max(...categoryData.map((c) => c.name.length * 6 + 8), 40), 120)
+    : 60;
+
   const activityData = stats.dailyActivity.map((d) => {
     const dt = new Date(d.date + "T12:00:00");
     return {
@@ -306,7 +310,7 @@ export default function StatsPage() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={categoryData} layout="vertical">
                 <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--color-border)" />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={80} stroke="var(--color-border)" />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={yAxisWidth} stroke="var(--color-border)" />
                 <Tooltip
                   formatter={(v: number) => formatDuration(v)}
                   contentStyle={tooltipStyle}

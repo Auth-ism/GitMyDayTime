@@ -179,6 +179,29 @@ export async function sendReminderEmail(
   });
 }
 
+export async function sendProjectInvitationEmail(
+  toEmail: string,
+  projectName: string,
+  rawToken: string
+): Promise<void> {
+  const APP_URL_LOCAL = process.env.APP_URL || "https://gmd.byfeb.com";
+  const joinUrl = `${APP_URL_LOCAL}/projects/join/${rawToken}`;
+  const body = `
+    <p style="margin:0 0 6px;font-size:18px;font-weight:600;color:#f0f0f0;">Projeye Davet Edildiniz</p>
+    <p style="margin:0 0 20px;font-size:14px;color:#a1a1aa;line-height:1.6;">
+      <strong>${projectName}</strong> projesine katılmaya davet edildiniz.
+      Daveti kabul etmek için aşağıdaki butona tıklayın. Davet 7 gün geçerlidir.
+    </p>
+    ${button(joinUrl, "Daveti Kabul Et")}
+  `;
+  await resend.emails.send({
+    from: FROM,
+    to: toEmail,
+    subject: `${projectName} — Projeye davet edildiniz`,
+    html: baseTemplate(body, `${projectName} projesine katılma daveti`),
+  });
+}
+
 export async function sendVerificationEmail(
   user: { email: string; username: string },
   token: string

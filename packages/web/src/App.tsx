@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import Layout from "@/components/Layout";
 import DayView from "@/pages/DayView";
@@ -11,6 +11,8 @@ import ProfilePage from "@/pages/ProfilePage";
 import LoginPage from "@/pages/LoginPage";
 import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import NotFoundPage from "@/pages/NotFoundPage";
+import ProjectsPage from "@/pages/ProjectsPage";
+import BoardPage from "@/pages/BoardPage";
 import { Clock } from "lucide-react";
 
 function LoadingScreen() {
@@ -47,6 +49,10 @@ export default function App() {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/recurring" element={<RecurringPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/projects/:projectId" element={<Navigate to="board" replace />} />
+            <Route path="/projects/:projectId/board" element={<BoardPage />} />
+            <Route path="/projects/join/:token" element={<ProjectsPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </>

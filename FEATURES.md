@@ -1,9 +1,52 @@
-Not: Kullanici email verfy etmeden uyg girecek email send dsadece uyg girdikten sonra kullasnici sen de basarsa atiolcak ilk kayitta email atilmiyacak !!!  \
-NOT: Kaydirma da sitenin sonuna kadar kayiyior
-NOT: Check boxlari isaretliyemiyuorum
+Not: Kullanici email verify etmeden uyg girecek. Email send sadece uyg girdikten sonra kullanici "gonder" basarsa atilacak, ilk kayitta email atilmayacak.
+
 # Feature Planlari
 
 Yapilabilecek gelistirmeler ve yeni ozellikler. Oncelik sirasina gore gruplanmistir.
+
+---
+
+## 🚀 GRUPlar / TAKIM CALISMA ALANLARI — SONRAKI FEATURE
+
+> Detayli teknik plan: `GROUPS_PLAN.md`
+
+### Sprint 1 — Temel Altyapi (DB + Backend)
+- [ ] `020_groups.sql` migration — `groups`, `group_members`, `group_invitations`, `group_tasks` tablolari
+- [ ] `storage/groups.ts` — group CRUD sorgu fonksiyonlari
+- [ ] `routes/groups.ts` — grup yonetim API'leri
+- [ ] `requireGroupMembership(minRole)` middleware
+- [ ] `@gmd/shared` — Group tipleri ve Zod schemalari
+
+### Sprint 2 — Grup Yonetimi UI
+- [ ] `GroupsPage` — grup listesi, yeni grup olusturma
+- [ ] `GroupPage` — grup dashboard (uye listesi, ayarlar linki)
+- [ ] `GroupSettingsPage` — uye yonetimi, davet gonderi, rol degistirme
+- [ ] `useGroups`, `useGroup` hooks
+- [ ] `InviteMemberModal` component
+- [ ] Navigasyon: Layout'a Gruplar linki ekleme
+
+### Sprint 3 — Grup Gorev Panosu
+- [ ] Grup icin tarih bazli ortak gorev panosu (`/group/:id?date=...`)
+- [ ] `MemberTaskColumn` — her uye icin sutun
+- [ ] `GroupTaskCard` — gorev karti (kategori, sure, tamamlanma, atanan kisi)
+- [ ] `AssignTaskModal` — gruba yeni gorev olustur ve uye ata
+- [ ] `AddToPlanModal` — grup gorevini kisisel plana ekle ("Planıma Ekle")
+- [ ] `useGroupTasks` hook
+
+### Sprint 4 — Bildirimler ve Cilalama
+- [ ] Gorev atama push + email bildirimi (alan kisi)
+- [ ] Gorev tamamlaninca grup panelinde sync
+- [ ] Davet email entegrasyonu (Resend)
+- [ ] `plan_items` completion → `group_tasks` sync (`syncTaskCompletion`)
+- [ ] i18n TR/EN grup key'leri
+- [ ] Rate limiting: grup endpoint'leri icin
+
+### Tasarim Kararlari
+- "groups" → "projects" olarak yeniden adlandırıldı (proje_key: "ALPHA", "GMD")
+- Issue tablosu (`issues`) plan_items'dan tamamen ayrı — mevcut sorgular değişmez
+- Kullanıcı atanmış issue'yu kişisel planına ekleyebilir (`plan_item_id` FK)
+- Roller: owner > admin > developer > reporter > viewer
+- Detaylı mimari: `plans/groups/` dizininde modüller halinde
 
 ---
 
@@ -77,12 +120,12 @@ AI ve otomasyon ile uretkenlik artirma.
 
 ---
 
-## 6. Bildirim & Hatirlatici Gelistirmeleri ⭐ ONCELIKLI
+## 6. Bildirim & Hatirlatici Gelistirmeleri
 
-### 6a. Yaklasan Gorev Bildirimi (YAKIN VADELI)
-- [ ] Bir sonraki plana kac dakika kala bildirim gonderilsin (ornek: 5dk, 10dk, 15dk once)
-- [ ] Bu sure profilden ayarlanabilir olacak (varsayilan: 10dk)
-- [ ] Push notification ile "Sonraki gorev: X, Y dakika sonra" bildirimi
+### 6a. Yaklasan Gorev Bildirimi ✅ TAMAMLANDI
+- [x] Bir sonraki plana kac dakika kala bildirim gonderilsin (5/10/15/30dk)
+- [x] Bu sure profilden ayarlanabilir (varsayilan: Kapali)
+- [x] Push notification ile "Yaklasan Gorev: X — HH:MM" bildirimi
 
 ### 6b. Erteleme / Snooze Sistemi (YAKIN VADELI)
 - [ ] Gorevi ertele — bildirim X gun/saat sonra tekrar gelsin (ornek: 2 gun icinde hatirlatma)
@@ -90,11 +133,11 @@ AI ve otomasyon ile uretkenlik artirma.
 - [ ] Erteleme sadece tek seferlik — tekrar eden goreve donusmeyecek
 - [ ] Ertelenen gorevler ayri bir "Ertelenenler" listesinde gorunecek
 
-### 6c. Bildirim Ayarlari — Profil (YAKIN VADELI)
-- [ ] Varsayilan hatirlatma suresi (gorevden kac dk once)
+### 6c. Bildirim Ayarlari — Profil ✅ TAMAMLANDI
+- [x] Varsayilan hatirlatma suresi (gorevden kac dk once): Off/5/10/15/30dk
 - [ ] Varsayilan erteleme suresi
-- [ ] Sessiz saatler (ornek: 22:00 - 08:00 arasi bildirim gonderme)
-- [ ] Bildirim tercihi: push / e-posta / ikisi birden
+- [x] Sessiz saatler (bas/bitis saat profil sayfasindan)
+- [x] Bildirim tercihi: push / e-posta / SMS (zaten mevcuttu)
 
 ### 6d. Diger Bildirim Ozellikleri
 - [ ] E-posta ile gunluk ozet (aksam saati secilerek)
@@ -124,7 +167,7 @@ AI ve otomasyon ile uretkenlik artirma.
 - [ ] Offline-first — service worker ile tam offline destek, sync queue
 - [ ] Drag-to-select (fare ile birden fazla item sec)
 - [ ] Klavye navigasyon — J/K ile planlar arasinda gez, Enter ile toggle
-- [ ] Mobil'de swipe-to-complete ve swipe-to-delete
+- [x] Mobil'de swipe-to-complete ve swipe-to-delete
 - [ ] Widget — mobil ana ekranda gunun ozeti
 
 ---
@@ -146,34 +189,116 @@ AI ve otomasyon ile uretkenlik artirma.
 - [ ] Test altyapisi (Vitest + Playwright)
 - [ ] CI/CD pipeline (GitHub Actions)
 - [ ] Rate limiting dashboard
-- [ ] Health check endpoint (`/api/health`)
+- [x] Health check endpoint (`/api/health`)
 - [ ] Veritabani yedekleme otomasyonu (pg_dump cron)
 - [ ] Hata izleme (Sentry entegrasyonu)
-- [ ] Performans izleme (response time logging)
+- [x] Performans izleme (response time logging)
 - [ ] Multi-tenant — birden fazla organizasyon destegi
+
+---
+
+## 🐛 UI / Mobil Hata Duzeltmeleri
+
+Bilinen hatalar ve layout sorunlari.
+
+### Kritik
+
+- [x] **Ust navigasyon tasiyor (mobil)** — `overflow-hidden` eklendi, header content tasmasini engelliyor. `Layout.tsx`
+- [x] **Alt tab bar padding uyumsuz** — `pb-20` → `pb-16` + `safe-main-bottom` ile tab bar yuksekligine hizalandi. `Layout.tsx`
+- [x] **Recurring duzgun calismiyor** — `recurring_task_id` FK ile plan_items baglandi. Deaktif = uncompleted silinir. Sil = CASCADE ile tum plan_items temizlenir. `storage.ts`, `017_recurring_task_link.sql`
+- [x] **Profil sayfasi mobilde sigmiyor** — Timezone/locale grid `grid-cols-1 sm:grid-cols-2` yapildi. `ProfilePage.tsx`
+
+### Yuksek
+
+- [x] **WeekView mobilde cok sikisik** — Yatay scroll + `minmax(110px,1fr)` ile 7-sutun grid. `WeekView.tsx`
+- [x] **Profil avatar hover-only** — Kamera ikonu mobilde her zaman gorunuyor (`sm:opacity-0 sm:group-hover:opacity-100`). `ProfilePage.tsx`
+- [x] **Profil renk seciciler cok kucuk** — `w-4 h-4` → `w-6 h-6` (create), `w-3.5 h-3.5` → `w-5 h-5` (edit). `ProfilePage.tsx`
+- [x] **Safe area** — `safe-top` mobil header'a, `safe-main-bottom` main content'e eklendi. `Layout.tsx`, `index.css`
+- [x] **Sifre alani ikon cakismasi** — `pr-8`→`pr-10`, `right-2`→`right-3`, buton `p-1` ile touch target buyutuldu. `ProfilePage.tsx`
+
+### Orta
+
+- [x] **RecurringPage form uzun** — `max-h-[calc(100dvh-12rem)] overflow-y-auto` ile form icerigi scroll ediliyor.
+- [x] **DayView kategori filtresi** — Notlar artik filtreden cikarildi, filtre sadece plan itemleri icin calisiyor.
+- [x] **TaskForm custom sure alani** — `!w-16` → `!w-20` ile genisletildi, "Custom"/"Özel" yazisi artik sigiyor.
+- [x] **StatsPage grafik tasmasi** — YAxis genisligi label uzunlugundan dinamik hesaplaniyor.
+- [x] **Swipe hassasiyeti** — Threshold 80px → 60px. `SwipeableItem.tsx`
+
+### Dusuk
+
+- [x] **Input alanlari kucuk** — `.input-sm` min-height 2.5rem, padding artirildi. `index.css`
+- [x] **Buton touch target** — `.btn-icon` min 2.75rem. `index.css`
+- [x] **Z-index catismasi** — Header/nav z-40, modal/overlay z-50. `Layout.tsx`, `index.css`
+
+---
+
+## 🔒 Guvenlik Duzeltmeleri
+
+### Tamamlanan (v2.7)
+
+- [x] **Avatar base64 icerik dogrulamasi** — Magic bytes kontrolu (JPEG, PNG, WebP, GIF) + MIME type dogrulama. `profile.ts`
+- [x] **Import endpoint Zod validation** — Her item type icin ayri schema, max 5000 item limiti, field bounds. `export.ts`
+- [x] **CORS fallback** — Production fallback `https://gmd.byfeb.com`, `origin: true` sadece dev'de. `index.ts`
+- [x] **Auto-login token** — GET sadece auto-submit form render, login POST body ile. `Referrer-Policy: no-referrer`. `auth.ts`
+- [x] **Journal icerik validation** — Zod schema `z.string().max(10000)`. `journal.ts`
+- [x] **Avatar boyut limiti hizalama** — Backend 205K base64 chars (= 150KB binary + prefix). `profile.ts`
+- [x] **Hata mesajlari** — Email/username enumeration engeli: genel "Bu bilgiler kullanilamaz" mesaji. `auth.ts`, `profile.ts`
+- [x] **Telefon numarasi validation** — `.regex(/^5\d{9}$/)` Turk formati zorunlulugu. `shared/index.ts`
+- [x] **Token temizligi** — Hourly cleanup: email token (48h), approval token (30 gun). `index.ts`
+- [x] **Kategori renkleri kartlarda** — Default ve custom kategorilerin rengi plan kartlarinda gorunuyor. `PlanItem.tsx`
+- [x] **Optimistic update iyilestirmesi** — `onMutate` sync yapildi, `onSuccess` ile server data swap. Plan/not/reminder ekleme aninda gorunuyor. `useDayLog.ts`
+
+### Tamamlanan (v2.8)
+
+- [x] **Route bazli rate limiting** — Per-user, Redis-backed. days-read 120/dk, days-write 60/dk, search 20/dk, stats 30/dk, profile 10/dk, avatar 5/dk, export 5/dk, import 3/dk. `index.ts`, `auth.ts`
+- [x] **Concurrent session limiti** — Kullanici basina max 5 session. Yeni session olusturulurken eski oturum silinir. `auth.ts`
+- [x] **Route bazli body size** — Default 100kb, avatar 250kb, import 1mb. `index.ts`
+- [x] **Checklist cache invalidation** — Checklist CRUD sonrasi Redis daylog cache invalidate ediliyor. `plan.ts`
+- [x] **Checklist optimistic UUID → nanoid** — `addChecklist.onSuccess` ile server ID'si aninda swap ediliyor. `useDayLog.ts`
+- [x] **Stats custom kategori renkleri** — `getCategoryColor()` ile custom kategoriler dogru renk alıyor. `StatsPage.tsx`
+- [x] **WeekView reminder ayirimi** — Reminder'lar plan kartlarindan ayrildi, bell ikonu ile gosteriliyor. `WeekView.tsx`
+- [x] **WeekView custom kategori renkleri** — `getCategoryColor()` kullaniliyor. `WeekView.tsx`
+- [x] **Reminder takvimde gorunme** — `dailyActivity` sorgusu `item_type` filtresi kaldirildi. `storage.ts`
+- [x] **Recurring task link** — `plan_items.recurring_task_id` FK ile injection izleme. Deaktif/silme cleanup. `storage.ts`, `017_recurring_task_link.sql`
+
+### Kalan
+
+- [x] **Dev ortamda Helmet/CSP kapatilmis** — Dev'de gevsetilmis CSP (unsafe-eval/ws izni), prod'da strict. `index.ts`
 
 ---
 
 ## Oncelik Sirasi
 
-### ⭐ Yakin Vadeli (Siradaki Sprint)
-| # | Ozellik | Etki | Zorluk |
-|---|---------|------|--------|
-| 1 | Yaklasan gorev bildirimi (6a) | Yuksek | Dusuk |
-| 2 | Erteleme / Snooze sistemi (6b) | Yuksek | Orta |
-| 3 | Bildirim ayarlari — Profil (6c) | Yuksek | Dusuk |
+### 🔒 Oncelik 0a — Guvenlik ✅ TAMAMLANDI
+Kritik + Yuksek + Orta guvenlik duzeltmeleri tamamlandi.
 
-### Sonraki Adimlar
+### 🐛 Oncelik 0b — Bug Fix ✅ TAMAMLANDI
+| # | Ozellik | Durum |
+|---|---------|-------|
+| 0b-1 | UI/Mobil hata duzeltmeleri (Kritik + Yuksek + Orta + Dusuk) | ✅ Tamamlandi |
+| 0b-2 | Recurring task carry-over fix | ✅ Tamamlandi |
+| 0b-3 | Bildirim (6a + 6c): advance notification + sessiz saatler | ✅ Tamamlandi |
+
+### 🚀 Oncelik 1 — SIMDI: Grup Calisma Alanlari
+| Sprint | Kapsam | Durum |
+|--------|--------|-------|
+| Sprint 1 | DB migration + backend API (storage/groups.ts, routes/groups.ts) | Bekliyor |
+| Sprint 2 | Grup yonetimi UI (GroupsPage, GroupPage, GroupSettingsPage) | Bekliyor |
+| Sprint 3 | Grup gorev panosu (MemberTaskColumn, GroupTaskCard, AssignTaskModal) | Bekliyor |
+| Sprint 4 | Bildirimler + cilalama + i18n | Bekliyor |
+
+### Oncelik 2 — Sonraki Adimlar
 | # | Ozellik | Etki | Zorluk |
 |---|---------|------|--------|
-| 4 | Context menu (sag tik) | Orta | Dusuk |
-| 5 | Zaman cizelgesi surukleme & resize | Yuksek | Orta |
-| 6 | Board/Kanban gorunumu | Yuksek | Orta |
-| 7 | GitHub entegrasyonu | Yuksek | Orta |
-| 8 | Test altyapisi (Vitest + Playwright) | Yuksek | Orta |
-| 9 | Google Calendar sync | Yuksek | Yuksek |
-| 10 | Public profil & paylasim | Orta | Dusuk |
-| 11 | Slack entegrasyonu | Orta | Dusuk |
-| 12 | Offline-first PWA | Orta | Yuksek |
-| 13 | Akilli oneriler (AI) | Orta | Yuksek |
-| 14 | Diger bildirim ozellikleri (6d) | Dusuk | Orta |
+| 1 | Erteleme / Snooze sistemi (6b) | Yuksek | Orta |
+| 2 | Context menu (sag tik) | Orta | Dusuk |
+| 3 | Zaman cizelgesi surukleme & resize | Yuksek | Orta |
+| 4 | Board/Kanban gorunumu | Yuksek | Orta |
+| 5 | GitHub entegrasyonu | Yuksek | Yuksek |
+| 6 | Test altyapisi (Vitest + Playwright) | Yuksek | Orta |
+| 7 | Google Calendar sync | Yuksek | Yuksek |
+| 8 | Public profil & paylasim | Orta | Dusuk |
+| 9 | Slack entegrasyonu | Orta | Dusuk |
+| 10 | Offline-first PWA | Orta | Yuksek |
+| 11 | Akilli oneriler (AI) | Orta | Yuksek |
+| 12 | Diger bildirim ozellikleri (6d) | Dusuk | Orta |

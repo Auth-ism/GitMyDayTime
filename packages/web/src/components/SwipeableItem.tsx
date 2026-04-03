@@ -8,7 +8,7 @@ interface Props extends HTMLMotionProps<"div"> {
   onSwipeLeft?: () => void;
 }
 
-const THRESHOLD = 80;
+const THRESHOLD = 60;
 const MAX_SWIPE = 120;
 const SPRING = { type: "spring" as const, stiffness: 500, damping: 30 };
 

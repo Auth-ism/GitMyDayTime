@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from "react";
 import { NavLink, useLocation, Outlet } from "react-router-dom";
-import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, Mail, UserCircle, WifiOff, X } from "lucide-react";
+import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, Mail, UserCircle, WifiOff, X, Layers } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
@@ -61,9 +61,14 @@ const navIcons = {
   "/stats": BarChart3,
   "/search": Search,
   "/recurring": Repeat,
+  "/projects": Layers,
 } as const;
 
-const navKeys = ["/", "/week", "/calendar", "/stats", "/search", "/recurring"] as const;
+// Desktop nav: all items
+const navKeys = ["/", "/week", "/calendar", "/stats", "/search", "/recurring", "/projects"] as const;
+// Mobile tab bar: Home / Week / Cal / Projects / Stats (5 items)
+const mobileNavKeys = ["/", "/week", "/calendar", "/projects", "/stats"] as const;
+
 const navLabelKeys = {
   "/": "nav.today",
   "/week": "nav.week",
@@ -71,6 +76,7 @@ const navLabelKeys = {
   "/stats": "nav.stats",
   "/search": "nav.search",
   "/recurring": "nav.recurring",
+  "/projects": "nav.projects",
 } as const;
 
 export default function Layout() {
@@ -85,7 +91,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col bg-bg-secondary">
       {/* Desktop header */}
-      <header className="border-b border-border sticky top-0 z-50 bg-bg/90 backdrop-blur-md hidden sm:block">
+      <header className="border-b border-border sticky top-0 z-40 bg-bg/90 backdrop-blur-md hidden sm:block">
         <div className="px-4 sm:px-6 h-14 flex items-center">
           <NavLink
             to="/"
@@ -173,7 +179,7 @@ export default function Layout() {
       </header>
 
       {/* Mobile header */}
-      <header className="border-b border-border sticky top-0 z-50 bg-bg/90 backdrop-blur-md sm:hidden safe-top">
+      <header className="border-b border-border sticky top-0 z-40 bg-bg/90 backdrop-blur-md sm:hidden safe-top">
         <div className="px-3 h-12 flex items-center justify-between overflow-hidden">
           <NavLink to="/" className="flex items-center gap-2 font-semibold text-text tracking-tight">
             <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
@@ -243,7 +249,9 @@ export default function Layout() {
             key={location.pathname}
             className={cn(
               "mx-auto px-4 sm:px-6 py-4 sm:py-6",
-              location.pathname === "/week" ? "max-w-6xl" : "max-w-3xl"
+              location.pathname === "/week" || location.pathname.includes("/board")
+                ? "max-w-7xl"
+                : "max-w-3xl"
             )}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -270,10 +278,10 @@ export default function Layout() {
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Mobile navigation"
-        className="fixed bottom-0 left-0 right-0 z-50 bg-bg/95 backdrop-blur-md border-t border-border sm:hidden safe-bottom"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-bg/95 backdrop-blur-md border-t border-border sm:hidden safe-bottom"
       >
         <div className="flex items-center justify-around h-16 px-2">
-          {navKeys.map((to) => {
+          {mobileNavKeys.map((to) => {
             const Icon = navIcons[to];
             const label = t(navLabelKeys[to] as any);
             return (

@@ -5,12 +5,14 @@ import { api } from "@/lib/api";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { Search, Target, MessageSquare, Check, Clock } from "lucide-react";
-import { CATEGORY_COLORS, formatDuration, type Category } from "@gmd/shared";
+import { formatDuration } from "@gmd/shared";
+import { useCategories } from "@/hooks/useCategories";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function SearchPage() {
   const { t } = useI18n();
   const getCatLabel = useCategoryLabel();
+  const { getCategoryColor } = useCategories();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -95,7 +97,7 @@ export default function SearchPage() {
                   <div className="flex items-center gap-2 mt-0.5">
                     <span
                       className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"
-                      style={{ backgroundColor: CATEGORY_COLORS[item.data.category as Category] + "20", color: CATEGORY_COLORS[item.data.category as Category] }}
+                      style={{ backgroundColor: getCategoryColor(item.data.category) + "20", color: getCategoryColor(item.data.category) }}
                     >
                       {getCatLabel(item.data.category)}
                     </span>
@@ -123,7 +125,21 @@ export default function SearchPage() {
                 <MessageSquare size={14} className="text-text-tertiary flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm">{item.data.description}</p>
-                  <span className="text-[10px] text-text-tertiary">{item.date}</span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"
+                      style={{ backgroundColor: getCategoryColor(item.data.category) + "20", color: getCategoryColor(item.data.category) }}
+                    >
+                      {getCatLabel(item.data.category)}
+                    </span>
+                    <span className="text-[10px] text-text-tertiary">{item.date}</span>
+                    {item.data.duration && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-text-tertiary">
+                        <Clock size={9} />
+                        {formatDuration(item.data.duration)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </motion.button>

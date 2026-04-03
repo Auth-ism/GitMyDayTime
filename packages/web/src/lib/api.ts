@@ -1,4 +1,4 @@
-import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput } from "@gmd/shared";
+import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput, Project, ProjectMember, WorkflowStatus, Issue, IssueComment, IssueDetail, BoardData, CreateProjectInput, UpdateProjectInput, CreateIssueInput, UpdateIssueInput, CreateCommentInput, InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput, AddToPlanInput } from "@gmd/shared";
 
 const BASE = "/api";
 
@@ -238,4 +238,104 @@ export const api = {
 
   deleteCategory: (id: string) =>
     request<void>(`/categories/${id}`, { method: "DELETE" }),
+
+  // ── Projects ────────────────────────────────────────────────────
+  getProjects: () => request<Project[]>("/projects"),
+
+  getProject: (id: string) =>
+    request<Project & { members: ProjectMember[]; statuses: WorkflowStatus[] }>(`/projects/${id}`),
+
+  createProject: (data: CreateProjectInput) =>
+    request<Project>("/projects", { method: "POST", body: JSON.stringify(data) }),
+
+  updateProject: (id: string, data: UpdateProjectInput) =>
+    request<Project>(`/projects/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  deleteProject: (id: string) =>
+    request<{ ok: boolean }>(`/projects/${id}`, { method: "DELETE" }),
+
+  inviteMember: (id: string, data: InviteMemberInput) =>
+    request<{ ok: boolean; invitationId: string; expiresAt: string }>(`/projects/${id}/invitations`, {
+      method: "POST", body: JSON.stringify(data),
+    }),
+
+  joinProject: (token: string) =>
+    request<{ projectId: string; projectName: string }>(`/projects/join/${token}`),
+
+  leaveProject: (id: string) =>
+    request<{ ok: boolean }>(`/projects/${id}/leave`, { method: "DELETE" }),
+
+  removeMember: (id: string, userId: string) =>
+    request<{ ok: boolean }>(`/projects/${id}/members/${userId}`, { method: "DELETE" }),
+
+  updateMemberRole: (id: string, userId: string, data: UpdateMemberRoleInput) =>
+    request<ProjectMember>(`/projects/${id}/members/${userId}`, {
+      method: "PATCH", body: JSON.stringify(data),
+    }),
+
+  transferOwnership: (id: string, data: TransferOwnerInput) =>
+    request<{ ok: boolean }>(`/projects/${id}/transfer`, {
+      method: "POST", body: JSON.stringify(data),
+    }),
+
+  getWorkflowStatuses: (id: string) =>
+    request<WorkflowStatus[]>(`/projects/${id}/statuses`),
+
+  getBoard: (id: string, sprintId?: string | null) =>
+    request<BoardData>(`/projects/${id}/board${sprintId ? `?sprintId=${sprintId}` : ""}`),
+
+  getIssues: (id: string, params?: Record<string, string | number | undefined>) => {
+    const qs = params
+      ? "?" + Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&")
+      : "";
+    return request<{ issues: Issue[]; total: number }>(`/projects/${id}/issues${qs}`);
+  },
+
+  getIssue: (id: string, issueId: string) =>
+    request<IssueDetail>(`/projects/${id}/issues/${issueId}`),
+
+  createIssue: (id: string, data: CreateIssueInput) =>
+    request<Issue>(`/projects/${id}/issues`, { method: "POST", body: JSON.stringify(data) }),
+
+  updateIssue: (id: string, issueId: string, data: UpdateIssueInput) =>
+    request<Issue>(`/projects/${id}/issues/${issueId}`, { method: "PATCH", body: JSON.stringify(data) }),
+
+  deleteIssue: (id: string, issueId: string) =>
+    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}`, { method: "DELETE" }),
+
+  restoreIssue: (id: string, issueId: string) =>
+    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/restore`, { method: "PATCH" }),
+
+  updateIssueStatus: (id: string, issueId: string, statusId: string) =>
+    request<Issue>(`/projects/${id}/issues/${issueId}/status`, {
+      method: "PATCH", body: JSON.stringify({ statusId }),
+    }),
+
+  addComment: (id: string, issueId: string, data: CreateCommentInput) =>
+    request<IssueComment>(`/projects/${id}/issues/${issueId}/comments`, {
+      method: "POST", body: JSON.stringify(data),
+    }),
+
+  updateComment: (id: string, issueId: string, commentId: string, data: CreateCommentInput) =>
+    request<IssueComment>(`/projects/${id}/issues/${issueId}/comments/${commentId}`, {
+      method: "PUT", body: JSON.stringify(data),
+    }),
+
+  deleteComment: (id: string, issueId: string, commentId: string) =>
+    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/comments/${commentId}`, {
+      method: "DELETE",
+    }),
+
+  addIssueToPlan: (id: string, issueId: string, data: AddToPlanInput) =>
+    request<{ planItemId: string; ok: boolean }>(`/projects/${id}/issues/${issueId}/add-to-plan`, {
+      method: "POST", body: JSON.stringify(data),
+    }),
+
+  removeIssueFromPlan: (id: string, issueId: string) =>
+    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/add-to-plan`, { method: "DELETE" }),
+
+  getMyAssignments: (date?: string) =>
+    request<Array<{ issueId: string; projectId: string; planItemId: string | null; issueKey: string; title: string }>>(
+      `/projects/my-assignments${date ? `?date=${date}` : ""}`
+    ),
 };

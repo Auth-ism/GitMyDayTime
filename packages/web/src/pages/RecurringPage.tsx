@@ -121,8 +121,9 @@ export default function RecurringPage() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="card space-y-3 overflow-hidden"
+            className="card overflow-hidden"
           >
+          <div className="overflow-y-auto max-h-[calc(100dvh-12rem)] sm:max-h-none space-y-3">
             <input
               className="input"
               placeholder={t("recurring.taskDesc")}
@@ -306,6 +307,7 @@ export default function RecurringPage() {
                 {t("recurring.cancel")}
               </button>
             </div>
+          </div>
           </motion.form>
         )}
       </AnimatePresence>

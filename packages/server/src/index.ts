@@ -23,6 +23,7 @@ import journalRoutes from "./routes/journal.js";
 import templateRoutes from "./routes/templates.js";
 import exportRoutes from "./routes/export.js";
 import pushRoutes from "./routes/push.js";
+import projectRoutes from "./routes/projects.js";
 import { startScheduler } from "./scheduler.js";
 
 const app = express();
@@ -45,7 +46,19 @@ app.use(helmet({
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
     },
-  } : false,
+  } : {
+    // Relaxed CSP for dev — Vite HMR needs unsafe-eval and ws connections
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'", "ws://localhost:*", "wss://localhost:*"],
+      fontSrc: ["'self'", "data:"],
+      workerSrc: ["'self'", "blob:"],
+      objectSrc: ["'none'"],
+    },
+  },
   crossOriginEmbedderPolicy: false,
 }));
 
@@ -129,6 +142,13 @@ app.use("/api/export/import", express.json({ limit: "1mb" }), rl(3, 60_000, "imp
 app.use("/api/export", rl(5, 60_000, "export"), exportRoutes);
 
 app.use("/api/push", rl(20, 60_000, "push"), pushRoutes);
+
+// Projects — higher read limit (board polling), moderate write limit
+app.use("/api/projects", (req, _res, next) => {
+  if (req.method === "GET") return rl(120, 60_000, "projects-r")(req, _res, next);
+  return rl(40, 60_000, "projects-w")(req, _res, next);
+});
+app.use("/api/projects", projectRoutes);
 
 // Global async error handler — Express 4 doesn't catch async errors
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

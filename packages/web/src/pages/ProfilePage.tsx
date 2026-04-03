@@ -130,6 +130,9 @@ export default function ProfilePage() {
         reminderEmailNotifications: profile.reminderEmailNotifications,
         reminderSmsNotifications: profile.reminderSmsNotifications,
         reminderPushNotifications: profile.reminderPushNotifications,
+        notifyBeforeMinutes: profile.notifyBeforeMinutes ?? 0,
+        silentHoursStart: profile.silentHoursStart ?? null,
+        silentHoursEnd: profile.silentHoursEnd ?? null,
       });
       setPhoneDisplay(profile.phoneNumber ? formatPhoneInput(profile.phoneNumber) : "");
       if (profile.avatarUrl) setAvatarPreview(profile.avatarUrl);
@@ -491,6 +494,51 @@ export default function ProfilePage() {
               <NotifChip icon={<Mail size={12} />} label={t("profile.viaEmail" as any)} checked={form.reminderEmailNotifications ?? true} onChange={(v) => setForm({ ...form, reminderEmailNotifications: v })} />
               <NotifChip icon={<Smartphone size={12} />} label={t("profile.viaSms" as any)} checked={form.reminderSmsNotifications ?? false} onChange={(v) => setForm({ ...form, reminderSmsNotifications: v })} />
               <NotifChip icon={<Bell size={12} />} label={t("profile.viaPush" as any)} checked={form.reminderPushNotifications ?? true} onChange={(v) => setForm({ ...form, reminderPushNotifications: v })} />
+            </div>
+          </Section>
+
+          {/* Advance notification */}
+          <Section icon={<Clock size={14} className="text-text-secondary" />} title={t("profile.notifyBefore" as any)}>
+            <p className="text-[10px] text-text-tertiary -mt-1 mb-2">{t("profile.notifyBeforeDesc" as any)}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {[0, 5, 10, 15, 30].map((mins) => (
+                <button
+                  key={mins}
+                  type="button"
+                  onClick={() => setForm({ ...form, notifyBeforeMinutes: mins })}
+                  className={cn(
+                    "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all",
+                    (form.notifyBeforeMinutes ?? 0) === mins
+                      ? "bg-accent text-bg shadow-sm"
+                      : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary border border-transparent hover:border-border"
+                  )}
+                >
+                  {mins === 0 ? t("profile.notifyBeforeOff" as any) : `${mins} dk`}
+                </button>
+              ))}
+            </div>
+          </Section>
+
+          {/* Silent hours */}
+          <Section icon={<Bell size={14} className="text-text-secondary" />} title={t("profile.silentHours" as any)}>
+            <p className="text-[10px] text-text-tertiary -mt-1 mb-2">{t("profile.silentHoursDesc" as any)}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t("profile.silentFrom" as any)}>
+                <input
+                  type="time"
+                  className="input-sm"
+                  value={form.silentHoursStart ?? ""}
+                  onChange={(e) => setForm({ ...form, silentHoursStart: e.target.value || null })}
+                />
+              </Field>
+              <Field label={t("profile.silentTo" as any)}>
+                <input
+                  type="time"
+                  className="input-sm"
+                  value={form.silentHoursEnd ?? ""}
+                  onChange={(e) => setForm({ ...form, silentHoursEnd: e.target.value || null })}
+                />
+              </Field>
             </div>
           </Section>
 

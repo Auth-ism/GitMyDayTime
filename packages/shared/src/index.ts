@@ -165,7 +165,8 @@ export function dateToPath(date: string): string {
 }
 
 export function todayStr(): string {
-  return new Date().toISOString().split("T")[0];
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // Recurring tasks
@@ -263,6 +264,9 @@ export const UserProfileSchema = z.object({
   reminderSmsNotifications: z.boolean(),
   reminderPushNotifications: z.boolean(),
   hiddenCategories: z.array(z.string()),
+  notifyBeforeMinutes: z.number(),
+  silentHoursStart: z.string().nullable(),
+  silentHoursEnd: z.string().nullable(),
   createdAt: z.string(),
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;
@@ -293,8 +297,214 @@ export const UpdateProfileInput = z.object({
   reminderSmsNotifications: z.boolean().optional(),
   reminderPushNotifications: z.boolean().optional(),
   hiddenCategories: z.array(z.string()).optional(),
+  notifyBeforeMinutes: z.number().min(0).max(60).optional(),
+  silentHoursStart: z.string().nullable().optional(),
+  silentHoursEnd: z.string().nullable().optional(),
   email: z.string().email().optional(),
   username: z.string().min(2).max(32).optional(),
   currentPassword: z.string().min(1).optional(),
 });
 export type UpdateProfileInput = z.infer<typeof UpdateProfileInput>;
+
+// ─────────────────────────────────────────────────────────────────
+// Project Management
+// ─────────────────────────────────────────────────────────────────
+
+export const ProjectRole = z.enum(["owner", "admin", "developer", "reporter", "viewer"]);
+export type ProjectRole = z.infer<typeof ProjectRole>;
+
+export const ProjectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  projectKey: z.string(),
+  boardType: z.enum(["kanban", "scrum"]),
+  createdBy: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  memberCount: z.number().optional(),
+  myRole: ProjectRole.optional(),
+});
+export type Project = z.infer<typeof ProjectSchema>;
+
+export const CreateProjectInput = z.object({
+  name: z.string().min(1).max(64),
+  projectKey: z.string().regex(/^[A-Z][A-Z0-9]{1,9}$/, "2-10 uppercase letters/digits, start with letter"),
+  description: z.string().max(256).optional(),
+  boardType: z.enum(["kanban", "scrum"]).default("kanban"),
+});
+export type CreateProjectInput = z.infer<typeof CreateProjectInput>;
+
+export const UpdateProjectInput = z.object({
+  name: z.string().min(1).max(64).optional(),
+  description: z.string().max(256).nullable().optional(),
+  boardType: z.enum(["kanban", "scrum"]).optional(),
+});
+export type UpdateProjectInput = z.infer<typeof UpdateProjectInput>;
+
+export const ProjectMemberSchema = z.object({
+  projectId: z.string(),
+  userId: z.string(),
+  role: ProjectRole,
+  joinedAt: z.string(),
+  username: z.string().optional(),
+  displayName: z.string().nullable().optional(),
+  avatarUrl: z.string().nullable().optional(),
+  email: z.string().optional(),
+});
+export type ProjectMember = z.infer<typeof ProjectMemberSchema>;
+
+export const InviteMemberInput = z.object({
+  email: z.string().email(),
+  role: z.enum(["admin", "developer", "reporter", "viewer"]).default("developer"),
+});
+export type InviteMemberInput = z.infer<typeof InviteMemberInput>;
+
+export const UpdateMemberRoleInput = z.object({
+  role: z.enum(["admin", "developer", "reporter", "viewer"]),
+});
+export type UpdateMemberRoleInput = z.infer<typeof UpdateMemberRoleInput>;
+
+export const TransferOwnerInput = z.object({
+  newOwnerId: z.string().uuid(),
+});
+export type TransferOwnerInput = z.infer<typeof TransferOwnerInput>;
+
+export const WorkflowStatusSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  name: z.string(),
+  color: z.string(),
+  category: z.enum(["todo", "in_progress", "done"]),
+  sortOrder: z.number(),
+  isDefault: z.boolean(),
+  createdAt: z.string(),
+});
+export type WorkflowStatus = z.infer<typeof WorkflowStatusSchema>;
+
+export const IssuePriority = z.enum(["critical", "high", "medium", "low", "none"]);
+export type IssuePriority = z.infer<typeof IssuePriority>;
+
+export const IssueType = z.enum(["epic", "story", "task", "bug", "sub_task"]);
+export type IssueType = z.infer<typeof IssueType>;
+
+export const IssueSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  issueNumber: z.number(),
+  issueKey: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  issueType: IssueType,
+  statusId: z.string(),
+  priority: IssuePriority,
+  labels: z.array(z.string()),
+  parentId: z.string().nullable(),
+  epicId: z.string().nullable(),
+  assigneeId: z.string().nullable(),
+  reporterId: z.string(),
+  dueDate: z.string().nullable(),
+  estimatedHours: z.number().nullable(),
+  loggedHours: z.number(),
+  sprintId: z.string().nullable(),
+  customFields: z.record(z.unknown()),
+  sortOrder: z.number(),
+  planItemId: z.string().nullable(),
+  notificationSent: z.boolean(),
+  resolvedAt: z.string().nullable(),
+  archived: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  // Joined fields
+  statusName: z.string().optional(),
+  statusColor: z.string().optional(),
+  statusCategory: z.enum(["todo", "in_progress", "done"]).optional(),
+  assigneeUsername: z.string().nullable().optional(),
+  assigneeDisplayName: z.string().nullable().optional(),
+  assigneeAvatarUrl: z.string().nullable().optional(),
+  reporterUsername: z.string().optional(),
+});
+export type Issue = z.infer<typeof IssueSchema>;
+
+export const CreateIssueInput = z.object({
+  title: z.string().min(1).max(500),
+  description: z.string().max(51200).optional(),
+  issueType: IssueType.default("task"),
+  priority: IssuePriority.default("medium"),
+  labels: z.array(z.string()).default([]),
+  assigneeId: z.string().uuid().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
+  estimatedHours: z.number().min(0).nullable().optional(),
+  sprintId: z.string().uuid().nullable().optional(),
+});
+export type CreateIssueInput = z.infer<typeof CreateIssueInput>;
+
+export const UpdateIssueInput = z.object({
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().max(51200).nullable().optional(),
+  issueType: IssueType.optional(),
+  statusId: z.string().uuid().optional(),
+  priority: IssuePriority.optional(),
+  labels: z.array(z.string()).optional(),
+  assigneeId: z.string().uuid().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
+  estimatedHours: z.number().min(0).nullable().optional(),
+  loggedHours: z.number().min(0).optional(),
+  sprintId: z.string().uuid().nullable().optional(),
+  sortOrder: z.number().optional(),
+});
+export type UpdateIssueInput = z.infer<typeof UpdateIssueInput>;
+
+export const IssueCommentSchema = z.object({
+  id: z.string(),
+  issueId: z.string(),
+  authorId: z.string(),
+  content: z.string(),
+  mentions: z.array(z.string()),
+  editedAt: z.string().nullable(),
+  createdAt: z.string(),
+  authorUsername: z.string().optional(),
+  authorDisplayName: z.string().nullable().optional(),
+  authorAvatarUrl: z.string().nullable().optional(),
+});
+export type IssueComment = z.infer<typeof IssueCommentSchema>;
+
+export const CreateCommentInput = z.object({
+  content: z.string().min(1).max(10000),
+});
+export type CreateCommentInput = z.infer<typeof CreateCommentInput>;
+
+export const IssueHistorySchema = z.object({
+  id: z.string(),
+  issueId: z.string(),
+  changedBy: z.string(),
+  fieldName: z.string(),
+  oldValue: z.string().nullable(),
+  newValue: z.string().nullable(),
+  changedAt: z.string(),
+  changedByUsername: z.string().optional(),
+});
+export type IssueHistory = z.infer<typeof IssueHistorySchema>;
+
+export const AddToPlanInput = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  scheduledTime: z.string().optional(),
+});
+export type AddToPlanInput = z.infer<typeof AddToPlanInput>;
+
+export interface BoardColumn {
+  status: WorkflowStatus;
+  issues: Issue[];
+}
+
+export interface BoardData {
+  statuses: WorkflowStatus[];
+  columns: Record<string, BoardColumn>;
+  members: ProjectMember[];
+  project: Project;
+}
+
+export interface IssueDetail extends Issue {
+  comments: IssueComment[];
+  history: IssueHistory[];
+}

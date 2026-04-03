@@ -88,7 +88,8 @@
     height: env(safe-area-inset-bottom, 0px);
     background: var(--color-bg);
     opacity: 0.95;
-    z-index: 51;
+    z-index: 39;
+    pointer-events: none;
   }
 
   /* Main content needs extra bottom padding on notch devices */
@@ -150,6 +151,8 @@
 
   .btn-icon {
     padding: 0.375rem;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
     background: transparent;
     color: var(--color-text-tertiary);
     border: 1px solid transparent;
@@ -182,7 +185,8 @@
 
   .input-sm {
     width: 100%;
-    padding: 0.375rem 0.625rem;
+    padding: 0.5rem 0.75rem;
+    min-height: 2.5rem;
     border-radius: 0.375rem;
     border: 1px solid var(--color-border);
     background: var(--color-bg);

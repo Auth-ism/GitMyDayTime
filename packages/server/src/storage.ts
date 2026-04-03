@@ -75,6 +75,9 @@ function toUserProfile(r: any): UserProfile {
     reminderSmsNotifications: r.reminder_sms_notifications ?? false,
     reminderPushNotifications: r.reminder_push_notifications ?? true,
     hiddenCategories: r.hidden_categories ?? [],
+    notifyBeforeMinutes: r.notify_before_minutes ?? 0,
+    silentHoursStart: r.silent_hours_start ? r.silent_hours_start.slice(0, 5) : null,
+    silentHoursEnd: r.silent_hours_end ? r.silent_hours_end.slice(0, 5) : null,
     createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   };
 }
@@ -91,7 +94,8 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
             phone_number, sms_notifications, email_notifications, push_notifications,
             plan_email_notifications, plan_sms_notifications, plan_push_notifications,
             reminder_email_notifications, reminder_sms_notifications, reminder_push_notifications,
-            hidden_categories, created_at
+            hidden_categories, notify_before_minutes, silent_hours_start, silent_hours_end,
+            created_at
      FROM users WHERE id = $1`,
     [userId]
   );
@@ -136,6 +140,9 @@ export async function updateUserProfile(
     reminderSmsNotifications: "reminder_sms_notifications",
     reminderPushNotifications: "reminder_push_notifications",
     hiddenCategories: "hidden_categories",
+    notifyBeforeMinutes: "notify_before_minutes",
+    silentHoursStart: "silent_hours_start",
+    silentHoursEnd: "silent_hours_end",
     email: "email",
     username: "username",
   });
@@ -153,7 +160,8 @@ export async function updateUserProfile(
                phone_number, sms_notifications, email_notifications, push_notifications,
                plan_email_notifications, plan_sms_notifications, plan_push_notifications,
                reminder_email_notifications, reminder_sms_notifications, reminder_push_notifications,
-               hidden_categories, created_at`,
+               hidden_categories, notify_before_minutes, silent_hours_start, silent_hours_end,
+               created_at`,
     values
   );
 
@@ -467,6 +475,7 @@ export async function getIncompleteItems(userId: string, date: string): Promise<
             actual_duration AS "actualDuration",
             item_type AS "itemType"
      FROM plan_items WHERE user_id = $1 AND date = $2 AND completed = false
+       AND carried_over = FALSE AND recurring_task_id IS NULL
      ORDER BY sort_order`,
     [userId, date]
   );
@@ -486,10 +495,11 @@ export async function carryOverItems(userId: string, fromDate: string, toDate: s
 
     const { rowCount } = await client.query(
       `UPDATE plan_items
-       SET date = $1, sort_order = sort_order - (
-         SELECT MIN(sort_order) FROM plan_items WHERE user_id = $3 AND date = $4 AND completed = false
+       SET date = $1, carried_over = TRUE, sort_order = sort_order - (
+         SELECT MIN(sort_order) FROM plan_items WHERE user_id = $3 AND date = $4
+           AND completed = false AND carried_over = FALSE AND recurring_task_id IS NULL
        ) + $2
-       WHERE user_id = $3 AND date = $4 AND completed = false`,
+       WHERE user_id = $3 AND date = $4 AND completed = false AND carried_over = FALSE AND recurring_task_id IS NULL`,
       [toDate, nextOrder, userId, fromDate]
     );
 
@@ -511,22 +521,23 @@ export async function searchItems(
   plans: (PlanItem & { date: string })[];
   tasks: (TaskEntry & { date: string })[];
 }> {
-  const pattern = `%${query}%`;
+  const normalizedQuery = query.toLowerCase();
+  const pattern = `%${normalizedQuery}%`;
 
   const [planResult, taskResult] = await Promise.all([
     pool.query(
       `SELECT id, description, category, estimated_duration AS "duration",
               completed, sort_order AS "order", scheduled_time AS "scheduledTime",
               actual_duration AS "actualDuration", item_type AS "itemType", date::text
-       FROM plan_items WHERE user_id = $1 AND (description ILIKE $3 OR similarity(description, $2) > 0.15)
-       ORDER BY similarity(description, $2) DESC, date DESC LIMIT $4`,
-      [userId, query, pattern, limit]
+       FROM plan_items WHERE user_id = $1 AND (LOWER(description) ILIKE $3 OR similarity(LOWER(description), $2) > 0.15)
+       ORDER BY similarity(LOWER(description), $2) DESC, date DESC LIMIT $4`,
+      [userId, normalizedQuery, pattern, limit]
     ),
     pool.query(
       `SELECT id, timestamp, description, category, duration, tags, completed, date::text
-       FROM tasks WHERE user_id = $1 AND (description ILIKE $3 OR similarity(description, $2) > 0.15)
-       ORDER BY similarity(description, $2) DESC, date DESC LIMIT $4`,
-      [userId, query, pattern, limit]
+       FROM tasks WHERE user_id = $1 AND (LOWER(description) ILIKE $3 OR similarity(LOWER(description), $2) > 0.15)
+       ORDER BY similarity(LOWER(description), $2) DESC, date DESC LIMIT $4`,
+      [userId, normalizedQuery, pattern, limit]
     ),
   ]);
 
@@ -741,6 +752,10 @@ export async function deleteRecurringTask(userId: string, taskId: string): Promi
 
 export async function injectRecurringTasks(userId: string, date: string): Promise<PlanItem[]> {
   try {
+    // Only inject for today and future dates
+    const today = new Date().toISOString().slice(0, 10);
+    if (date < today) return [];
+
     // Get active recurring tasks
     const { rows: tasks } = await pool.query(
       `SELECT * FROM recurring_tasks WHERE user_id = $1 AND active = TRUE`,
@@ -990,6 +1005,60 @@ export async function markNotificationSent(id: string): Promise<void> {
     "UPDATE plan_items SET notification_sent = TRUE WHERE id = $1",
     [id]
   );
+}
+
+export async function markAdvanceNotificationSent(id: string): Promise<void> {
+  await pool.query(
+    "UPDATE plan_items SET advance_notification_sent = TRUE WHERE id = $1",
+    [id]
+  );
+}
+
+// Returns plan items due within the user's configured notify_before_minutes window.
+// Only push-enabled users with notify_before_minutes > 0 are considered.
+// Silent hours are respected: if now falls within [silent_hours_start, silent_hours_end], skip.
+export async function getUpcomingPlanNotifications(): Promise<PendingNotification[]> {
+  const { rows } = await pool.query(
+    `SELECT pi.id, pi.description, pi.item_type AS "itemType",
+            TO_CHAR(pi.scheduled_time, 'HH24:MI') AS "scheduledTime",
+            pi.category,
+            u.id AS "userId", u.email,
+            u.phone_number AS "phoneNumber",
+            u.plan_email_notifications AS "planEmailNotifications",
+            u.plan_sms_notifications AS "planSmsNotifications",
+            u.plan_push_notifications AS "planPushNotifications",
+            u.reminder_email_notifications AS "reminderEmailNotifications",
+            u.reminder_sms_notifications AS "reminderSmsNotifications",
+            u.reminder_push_notifications AS "reminderPushNotifications",
+            u.push_subscription AS "pushSubscription",
+            COALESCE(u.timezone, 'UTC') AS timezone
+     FROM plan_items pi
+     JOIN users u ON u.id = pi.user_id
+     WHERE pi.advance_notification_sent = FALSE
+       AND pi.notification_sent = FALSE
+       AND pi.completed = FALSE
+       AND pi.scheduled_time IS NOT NULL
+       AND pi.item_type = 'plan'
+       AND u.notify_before_minutes > 0
+       AND u.plan_push_notifications = TRUE
+       AND u.push_subscription IS NOT NULL
+       -- item is due within the notify_before_minutes window from now
+       AND (pi.date + pi.scheduled_time) > (NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC'))
+       AND (pi.date + pi.scheduled_time) <= ((NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC')) + (u.notify_before_minutes || ' minutes')::INTERVAL)
+       -- respect silent hours: skip if current local time is in [silent_hours_start, silent_hours_end]
+       AND NOT (
+         u.silent_hours_start IS NOT NULL
+         AND u.silent_hours_end IS NOT NULL
+         AND (
+           CASE WHEN u.silent_hours_start <= u.silent_hours_end
+             THEN (NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC'))::TIME BETWEEN u.silent_hours_start AND u.silent_hours_end
+             ELSE (NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC'))::TIME >= u.silent_hours_start
+                  OR (NOW() AT TIME ZONE COALESCE(u.timezone, 'UTC'))::TIME <= u.silent_hours_end
+           END
+         )
+       )`
+  );
+  return rows as PendingNotification[];
 }
 
 // ── Daily Journal ─────────────────────────────────────────────────

@@ -271,7 +271,7 @@ export default function PlanItem({
           >
             <div className="px-3.5 pb-2.5 pt-1 border-t border-border/50 space-y-1">
               {checklist.map((cl) => (
-                <div key={cl.id} className="flex items-center gap-2 group/cl py-0.5">
+                <div key={cl.id} className="flex items-start gap-2 group/cl py-0.5">
                   <button
                     onClick={() => onUpdateChecklist?.(cl.id, { completed: !cl.completed })}
                     className={cn(
