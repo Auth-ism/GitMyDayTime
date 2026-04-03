@@ -1,4 +1,4 @@
-import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput, Project, ProjectMember, WorkflowStatus, Issue, IssueComment, IssueDetail, BoardData, CreateProjectInput, UpdateProjectInput, CreateIssueInput, UpdateIssueInput, CreateCommentInput, InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput, AddToPlanInput } from "@gmd/shared";
+import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput, Project, ProjectMember, WorkflowStatus, Issue, IssueComment, IssueDetail, IssueLink, BoardData, CreateProjectInput, UpdateProjectInput, CreateIssueInput, UpdateIssueInput, CreateCommentInput, InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput, AddToPlanInput } from "@gmd/shared";
 
 const BASE = "/api";
 
@@ -111,6 +111,7 @@ export const api = {
     request<{
       plans: (PlanItem & { date: string })[];
       tasks: (TaskEntry & { date: string })[];
+      issues: Array<{ id: string; issueKey: string; title: string; projectId: string; projectName: string; priority: string; issueType: string; statusName: string; statusColor: string }>;
     }>(`/search?q=${encodeURIComponent(q)}`),
 
   getStats: (from?: string, to?: string) => {
@@ -306,6 +307,9 @@ export const api = {
   restoreIssue: (id: string, issueId: string) =>
     request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/restore`, { method: "PATCH" }),
 
+  getArchivedIssues: (id: string) =>
+    request<{ issues: Issue[]; total: number }>(`/projects/${id}/issues/archived`),
+
   updateIssueStatus: (id: string, issueId: string, statusId: string) =>
     request<Issue>(`/projects/${id}/issues/${issueId}/status`, {
       method: "PATCH", body: JSON.stringify({ statusId }),
@@ -338,4 +342,22 @@ export const api = {
     request<Array<{ issueId: string; projectId: string; planItemId: string | null; issueKey: string; title: string }>>(
       `/projects/my-assignments${date ? `?date=${date}` : ""}`
     ),
+
+  getIssueLinks: (id: string, issueId: string) =>
+    request<IssueLink[]>(`/projects/${id}/issues/${issueId}/links`),
+
+  createIssueLink: (id: string, issueId: string, data: { targetId: string; linkType: string }) =>
+    request<IssueLink>(`/projects/${id}/issues/${issueId}/links`, { method: "POST", body: JSON.stringify(data) }),
+
+  deleteIssueLink: (id: string, issueId: string, linkId: string) =>
+    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/links/${linkId}`, { method: "DELETE" }),
+
+  createStatus: (id: string, data: { name: string; color: string; category: string }) =>
+    request<WorkflowStatus>(`/projects/${id}/statuses`, { method: "POST", body: JSON.stringify(data) }),
+
+  updateStatus: (id: string, sid: string, data: { name?: string; color?: string; category?: string; isDefault?: boolean }) =>
+    request<WorkflowStatus>(`/projects/${id}/statuses/${sid}`, { method: "PATCH", body: JSON.stringify(data) }),
+
+  deleteStatus: (id: string, sid: string) =>
+    request<{ ok: boolean }>(`/projects/${id}/statuses/${sid}`, { method: "DELETE" }),
 };

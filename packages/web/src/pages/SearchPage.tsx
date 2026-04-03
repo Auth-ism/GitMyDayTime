@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
-import { Search, Target, MessageSquare, Check, Clock } from "lucide-react";
+import { Search, Target, MessageSquare, Check, Clock, Bug, Zap, BookOpen, CheckSquare, Minus, Layers } from "lucide-react";
 import { formatDuration } from "@gmd/shared";
 import { useCategories } from "@/hooks/useCategories";
 import { motion, AnimatePresence } from "framer-motion";
@@ -44,7 +44,20 @@ export default function SearchPage() {
     return items;
   }, [data]);
 
-  const totalResults = results.length;
+  const issueResults = data?.issues ?? [];
+  const totalResults = results.length + issueResults.length;
+
+  const ISSUE_TYPE_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> = {
+    epic: Zap, story: BookOpen, task: CheckSquare, bug: Bug, sub_task: Minus,
+  };
+  const ISSUE_TYPE_COLORS: Record<string, string> = {
+    epic: "text-purple-400", story: "text-blue-400", task: "text-green-400",
+    bug: "text-red-400", sub_task: "text-text-tertiary",
+  };
+  const PRIORITY_COLORS: Record<string, string> = {
+    critical: "text-red-400", high: "text-orange-400", medium: "text-yellow-400",
+    low: "text-blue-400", none: "text-text-tertiary",
+  };
 
   return (
     <div className="space-y-5">
@@ -69,6 +82,46 @@ export default function SearchPage() {
         <p className="text-xs text-text-tertiary">
           {t("search.results", { count: totalResults, s: totalResults !== 1 ? "s" : "", query: debouncedQuery })}
         </p>
+      )}
+
+      {/* Issue results */}
+      {issueResults.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wide flex items-center gap-1.5">
+            <Layers size={10} />
+            Proje Görevleri ({issueResults.length})
+          </p>
+          {issueResults.map(issue => {
+            const TypeIcon = ISSUE_TYPE_ICONS[issue.issueType] ?? CheckSquare;
+            return (
+              <Link
+                key={issue.id}
+                to={`/projects/${issue.projectId}/issues/${issue.id}`}
+                className="block card text-left hover:border-border-hover transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <TypeIcon size={14} className={cn("flex-shrink-0", ISSUE_TYPE_COLORS[issue.issueType])} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-text truncate">{issue.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-mono text-[10px] text-text-tertiary">{issue.issueKey}</span>
+                      <span className="flex items-center gap-1 text-[10px] text-text-tertiary">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: issue.statusColor }} />
+                        {issue.statusName}
+                      </span>
+                      <span className={cn("text-[10px] font-medium", PRIORITY_COLORS[issue.priority])}>
+                        {t(`issue.priority.${issue.priority}` as any)}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-text-tertiary bg-accent-soft px-1.5 py-0.5 rounded flex-shrink-0">
+                    {issue.projectName}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       )}
 
       <AnimatePresence mode="popLayout">

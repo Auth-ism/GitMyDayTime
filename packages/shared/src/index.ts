@@ -423,6 +423,8 @@ export const IssueSchema = z.object({
   assigneeDisplayName: z.string().nullable().optional(),
   assigneeAvatarUrl: z.string().nullable().optional(),
   reporterUsername: z.string().optional(),
+  parentIssueKey: z.string().nullable().optional(),
+  parentTitle: z.string().nullable().optional(),
 });
 export type Issue = z.infer<typeof IssueSchema>;
 
@@ -436,6 +438,7 @@ export const CreateIssueInput = z.object({
   dueDate: z.string().nullable().optional(),
   estimatedHours: z.number().min(0).nullable().optional(),
   sprintId: z.string().uuid().nullable().optional(),
+  parentId: z.string().uuid().nullable().optional(),
 });
 export type CreateIssueInput = z.infer<typeof CreateIssueInput>;
 
@@ -452,6 +455,7 @@ export const UpdateIssueInput = z.object({
   loggedHours: z.number().min(0).optional(),
   sprintId: z.string().uuid().nullable().optional(),
   sortOrder: z.number().optional(),
+  parentId: z.string().uuid().nullable().optional(),
 });
 export type UpdateIssueInput = z.infer<typeof UpdateIssueInput>;
 
@@ -507,4 +511,24 @@ export interface BoardData {
 export interface IssueDetail extends Issue {
   comments: IssueComment[];
   history: IssueHistory[];
+  links?: IssueLink[];
 }
+
+export const IssueLinkType = z.enum(["relates_to", "blocks", "is_blocked_by", "duplicates", "is_duplicated_by"]);
+export type IssueLinkType = z.infer<typeof IssueLinkType>;
+
+export const IssueLinkSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  sourceId: z.string(),
+  targetId: z.string(),
+  linkType: IssueLinkType,
+  createdAt: z.string(),
+  // Joined fields
+  targetIssueKey: z.string().optional(),
+  targetTitle: z.string().optional(),
+  targetStatusName: z.string().optional(),
+  targetStatusColor: z.string().optional(),
+  targetPriority: z.string().optional(),
+});
+export type IssueLink = z.infer<typeof IssueLinkSchema>;
