@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { useTheme } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
 
-type Mode = "login" | "register";
+type Mode = "login" | "register" | "forgot";
 
 export default function LoginPage() {
   const { login, register } = useAuth();
@@ -20,12 +20,31 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingApproval, setPendingApproval] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   const toggleLocale = () => setLocale(locale === "en" ? "tr" : "en" as Locale);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
+
+    if (mode === "forgot") {
+      setError("");
+      setLoading(true);
+      try {
+        await fetch("/api/auth/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        setForgotSent(true);
+      } catch {
+        setError(t("login.error"));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
     if (mode === "register" && password !== confirmPassword) {
       setError(t("login.passwordsMismatch"));
@@ -56,9 +75,11 @@ export default function LoginPage() {
   };
 
   const isValid =
-    mode === "login"
-      ? email && password
-      : email && username && password && confirmPassword;
+    mode === "forgot"
+      ? !!email
+      : mode === "login"
+      ? !!(email && password)
+      : !!(email && username && password && confirmPassword);
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4">
@@ -93,6 +114,25 @@ export default function LoginPage() {
           <h1 className="text-xl font-bold tracking-tight mb-2">{t("login.pendingTitle" as any)}</h1>
           <p className="text-sm text-text-secondary leading-relaxed">{t("login.pendingDesc" as any)}</p>
         </motion.div>
+      ) : forgotSent ? (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full max-w-sm text-center"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-accent-soft flex items-center justify-center mx-auto mb-4">
+            <CheckCircle size={24} className="text-accent" />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight mb-2">{t("login.forgotSentTitle" as any)}</h1>
+          <p className="text-sm text-text-secondary leading-relaxed mb-6">{t("login.forgotSentDesc" as any)}</p>
+          <button
+            onClick={() => { setMode("login"); setForgotSent(false); setEmail(""); }}
+            className="text-sm text-text-secondary hover:text-text transition-colors"
+          >
+            {t("login.backToLogin" as any)}
+          </button>
+        </motion.div>
       ) : (
 
       <motion.div
@@ -108,31 +148,37 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight">GitMyDayTime</h1>
           <p className="text-sm text-text-secondary mt-1">
-            {mode === "login" ? t("login.signInDesc") : t("login.registerDesc")}
+            {mode === "forgot"
+              ? t("login.forgotDesc" as any)
+              : mode === "login"
+              ? t("login.signInDesc")
+              : t("login.registerDesc")}
           </p>
         </div>
 
-        {/* Mode toggle */}
-        <div className="flex rounded-lg bg-surface border border-border mb-6 p-1">
-          <button
-            type="button"
-            onClick={() => { setMode("login"); setError(""); }}
-            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-              mode === "login" ? "bg-bg text-text shadow-sm" : "text-text-secondary"
-            }`}
-          >
-            {t("login.signIn")}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode("register"); setError(""); }}
-            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-              mode === "register" ? "bg-bg text-text shadow-sm" : "text-text-secondary"
-            }`}
-          >
-            {t("login.register")}
-          </button>
-        </div>
+        {/* Mode toggle — hidden in forgot mode */}
+        {mode !== "forgot" && (
+          <div className="flex rounded-lg bg-surface border border-border mb-6 p-1">
+            <button
+              type="button"
+              onClick={() => { setMode("login"); setError(""); }}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+                mode === "login" ? "bg-bg text-text shadow-sm" : "text-text-secondary"
+              }`}
+            >
+              {t("login.signIn")}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode("register"); setError(""); }}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+                mode === "register" ? "bg-bg text-text shadow-sm" : "text-text-secondary"
+              }`}
+            >
+              {t("login.register")}
+            </button>
+          </div>
+        )}
 
         <form key={mode} onSubmit={handleSubmit} className="space-y-4" autoComplete={mode === "register" ? "off" : "on"}>
           <div>
@@ -170,21 +216,34 @@ export default function LoginPage() {
             </div>
           )}
 
-          <div>
-            <label htmlFor={`${mode}-password`} className="block text-sm font-medium text-text-secondary mb-1.5">
-              {t("login.password")}
-            </label>
-            <input
-              id={`${mode}-password`}
-              name="password"
-              type="password"
-              className="input !text-base !py-3"
-              placeholder={mode === "register" ? t("login.passwordPlaceNew") : t("login.passwordPlace")}
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(""); }}
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-            />
-          </div>
+          {mode !== "forgot" && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor={`${mode}-password`} className="block text-sm font-medium text-text-secondary">
+                  {t("login.password")}
+                </label>
+                {mode === "login" && (
+                  <button
+                    type="button"
+                    onClick={() => { setMode("forgot"); setError(""); }}
+                    className="text-xs text-text-secondary hover:text-text transition-colors"
+                  >
+                    {t("login.forgotPassword" as any)}
+                  </button>
+                )}
+              </div>
+              <input
+                id={`${mode}-password`}
+                name="password"
+                type="password"
+                className="input !text-base !py-3"
+                placeholder={mode === "register" ? t("login.passwordPlaceNew") : t("login.passwordPlace")}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+              />
+            </div>
+          )}
 
           {mode === "register" && (
             <div>
@@ -223,15 +282,33 @@ export default function LoginPage() {
           >
             {loading ? (
               <span className="animate-pulse">
-                {mode === "login" ? t("login.signingIn") : t("login.creatingAccount")}
+                {mode === "forgot"
+                  ? t("login.forgotSending" as any)
+                  : mode === "login"
+                  ? t("login.signingIn")
+                  : t("login.creatingAccount")}
               </span>
             ) : (
               <>
-                {mode === "login" ? t("login.signIn") : t("login.createAccount")}
+                {mode === "forgot"
+                  ? t("login.forgotSend" as any)
+                  : mode === "login"
+                  ? t("login.signIn")
+                  : t("login.createAccount")}
                 <ArrowRight size={16} />
               </>
             )}
           </button>
+
+          {mode === "forgot" && (
+            <button
+              type="button"
+              onClick={() => { setMode("login"); setError(""); }}
+              className="w-full text-sm text-text-secondary hover:text-text transition-colors text-center py-1"
+            >
+              {t("login.backToLogin" as any)}
+            </button>
+          )}
         </form>
       </motion.div>
 

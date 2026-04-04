@@ -3,6 +3,6 @@ dist/
 *.tsbuildinfo
 .env
 .DS_Store
-storage/
 .claude/
+.idea/
 CLAUDE.md

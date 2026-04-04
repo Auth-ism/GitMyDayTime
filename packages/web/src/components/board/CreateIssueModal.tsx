@@ -8,20 +8,21 @@ import DatePicker from "@/components/DatePicker";
 interface Props {
   projectId: string;
   defaultStatusId?: string;
+  parentId?: string;
   onClose: () => void;
 }
 
 const PRIORITIES: IssuePriority[] = ["critical", "high", "medium", "low", "none"];
-const TYPES: IssueType[] = ["task", "bug", "story", "epic"];
+const TYPES: IssueType[] = ["task", "bug", "story", "epic", "sub_task"];
 
-export default function CreateIssueModal({ projectId, defaultStatusId, onClose }: Props) {
+export default function CreateIssueModal({ projectId, defaultStatusId, parentId, onClose }: Props) {
   const { t } = useI18n();
   const { data: project } = useProject(projectId);
   const { createIssue } = useIssueMutations(projectId);
   const { data: projectLabels = [] } = useProjectLabels(projectId);
 
   const [title, setTitle] = useState("");
-  const [issueType, setIssueType] = useState<IssueType>("task");
+  const [issueType, setIssueType] = useState<IssueType>(parentId ? "sub_task" : "task");
   const [priority, setPriority] = useState<IssuePriority>("medium");
   const [assigneeId, setAssigneeId] = useState<string>("");
   const [dueDate, setDueDate] = useState("");
@@ -41,6 +42,7 @@ export default function CreateIssueModal({ projectId, defaultStatusId, onClose }
         assigneeId: assigneeId || undefined,
         dueDate: dueDate || undefined,
         labels,
+        parentId: parentId ?? undefined,
       } as CreateIssueInput);
       onClose();
     } catch (err: any) {

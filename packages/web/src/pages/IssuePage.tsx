@@ -7,7 +7,7 @@ import {
 import type { IssueLinkType } from "@gmd/shared";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
-import { useIssue, useIssueMutations, useCommentMutations, useProject, useIssueLinkMutations, useIssues, useProjectLabels } from "@/hooks/useProjects";
+import { useIssue, useIssueMutations, useCommentMutations, useProject, useIssueLinkMutations, useIssues, useProjectLabels, useSprints, useSprintMutations } from "@/hooks/useProjects";
 import DatePicker from "@/components/DatePicker";
 import MentionTextarea, { CommentText } from "@/components/MentionTextarea";
 import { cn } from "@/lib/cn";
@@ -74,6 +74,105 @@ const LINK_TYPE_OPTIONS: { value: IssueLinkType; label: string }[] = [
   { value: "duplicates",       label: "Kopyalayan" },
   { value: "is_duplicated_by", label: "Kopyası" },
 ];
+
+function ChildIssuesSection({
+  projectId, issue, canEdit, statuses,
+}: {
+  projectId: string;
+  issue: import("@gmd/shared").IssueDetail;
+  canEdit: boolean;
+  statuses: import("@gmd/shared").WorkflowStatus[];
+}) {
+  const { createIssue } = useIssueMutations(projectId);
+  const [adding, setAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+
+  const children = issue.children ?? [];
+
+  const handleAdd = async () => {
+    const t = newTitle.trim();
+    if (!t) return;
+    await createIssue.mutateAsync({
+      title: t,
+      issueType: "sub_task",
+      priority: "medium",
+      parentId: issue.id,
+    } as any);
+    setNewTitle("");
+    setAdding(false);
+  };
+
+  if (children.length === 0 && !canEdit) return null;
+
+  const defaultStatus = statuses.find(s => s.isDefault) ?? statuses[0];
+
+  return (
+    <div className="card p-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
+          <Minus size={12} className="text-text-tertiary" />
+          Alt Görevler {children.length > 0 && <span className="text-text-tertiary">({children.length})</span>}
+        </span>
+        {canEdit && !adding && (
+          <button onClick={() => setAdding(true)} className="btn-icon p-1 rounded text-text-tertiary hover:text-text">
+            <Plus size={13} />
+          </button>
+        )}
+      </div>
+
+      {children.length > 0 && (
+        <div className="space-y-0.5">
+          {children.map(child => {
+            const ChildIcon = TYPE_ICONS[child.issueType] ?? CheckSquare;
+            const status = statuses.find(s => s.id === child.statusId);
+            const isDone = status?.category === "done";
+            return (
+              <Link
+                key={child.id}
+                to={`/projects/${projectId}/issues/${child.id}`}
+                className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-bg-subtle transition-colors group"
+              >
+                <ChildIcon size={11} className={cn("flex-shrink-0", TYPE_COLORS[child.issueType])} />
+                <span className="font-mono text-[10px] text-text-tertiary flex-shrink-0">{child.issueKey}</span>
+                <span className={cn("text-xs flex-1 truncate", isDone && "line-through text-text-tertiary")}>
+                  {child.title}
+                </span>
+                {status && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: `${status.color}20`, color: status.color }}>
+                    {status.name}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {adding && (
+        <div className="flex gap-2 items-center">
+          <input
+            autoFocus
+            className="input flex-1 text-sm py-1.5"
+            placeholder="Alt görev başlığı..."
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter") handleAdd();
+              if (e.key === "Escape") { setAdding(false); setNewTitle(""); }
+            }}
+          />
+          <button onClick={handleAdd} disabled={!newTitle.trim() || createIssue.isPending} className="btn-primary px-3 py-1.5 text-xs disabled:opacity-50">
+            {createIssue.isPending ? "..." : "Ekle"}
+          </button>
+          <button onClick={() => { setAdding(false); setNewTitle(""); }} className="btn-secondary px-2 py-1.5 text-xs">
+            <X size={12} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function IssueLinkSection({
   projectId, issueId, links, canEdit,
@@ -223,6 +322,8 @@ export default function IssuePage() {
   const { data: issue, isLoading } = useIssue(projectId, issueId);
   const { updateIssue, deleteIssue, addIssueToPlan, removeIssueFromPlan } = useIssueMutations(projectId!);
   const { addComment, updateComment, deleteComment } = useCommentMutations(projectId!, issueId!);
+  const { data: sprints = [] } = useSprints(projectId);
+  const { setIssueSprint } = useSprintMutations(projectId!);
 
   // Title edit
   const [editingTitle, setEditingTitle] = useState(false);
@@ -341,6 +442,20 @@ export default function IssuePage() {
         <span className="font-mono text-text-secondary">{issue.issueKey}</span>
       </div>
 
+      {/* Parent link */}
+      {issue.parentId && (
+        <div className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
+          <span>Alt görev:</span>
+          <Link
+            to={`/projects/${projectId}/issues/${issue.parentId}`}
+            className="flex items-center gap-1 text-accent hover:underline"
+          >
+            <span className="font-mono">{issue.parentIssueKey}</span>
+            <span className="truncate max-w-[120px] sm:max-w-[200px]">{issue.parentTitle}</span>
+          </Link>
+        </div>
+      )}
+
       {/* Title */}
       <div className="flex items-start gap-2">
         <TypeIcon size={16} className={cn("mt-1 flex-shrink-0", TYPE_COLORS[issue.issueType])} />
@@ -372,7 +487,7 @@ export default function IssuePage() {
       </div>
 
       {/* Main layout */}
-      <div className="flex flex-col lg:flex-row gap-5">
+      <div className="flex flex-col md:flex-row gap-5">
 
         {/* ── Left: Description + Comments + History ── */}
         <div className="flex-1 min-w-0 space-y-4">
@@ -422,6 +537,16 @@ export default function IssuePage() {
             links={issue.links ?? []}
             canEdit={!!canEdit}
           />
+
+          {/* Sub-tasks (children) */}
+          {issue.issueType !== "sub_task" && (
+            <ChildIssuesSection
+              projectId={projectId!}
+              issue={issue}
+              canEdit={!!canEdit}
+              statuses={statuses}
+            />
+          )}
 
           {/* Tabs: Comments | Activity */}
           <div className="card p-4 space-y-3">
@@ -550,7 +675,7 @@ export default function IssuePage() {
         </div>
 
         {/* ── Right sidebar ── */}
-        <div className="lg:w-56 flex-shrink-0 space-y-3">
+        <div className="md:w-56 flex-shrink-0 space-y-3">
 
           {/* Status */}
           <div className="card p-3 space-y-1.5">
@@ -570,7 +695,7 @@ export default function IssuePage() {
                   <ChevronDown size={12} className="text-text-tertiary flex-shrink-0" />
                 </button>
                 {statusOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-bg-elevated border border-border rounded-xl shadow-lg z-20 overflow-hidden">
+                  <div className="absolute top-full left-0 right-0 sm:left-0 sm:right-0 mt-1 bg-bg-elevated border border-border rounded-xl shadow-lg z-20 overflow-hidden min-w-[180px]">
                     {statuses.map(s => (
                       <button
                         key={s.id}
@@ -607,7 +732,7 @@ export default function IssuePage() {
                   <ChevronDown size={12} className="text-text-tertiary flex-shrink-0" />
                 </button>
                 {priorityOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-bg-elevated border border-border rounded-xl shadow-lg z-20 overflow-hidden">
+                  <div className="absolute top-full left-0 right-0 sm:left-0 sm:right-0 mt-1 bg-bg-elevated border border-border rounded-xl shadow-lg z-20 overflow-hidden min-w-[180px]">
                     {priorities.map(p => (
                       <button
                         key={p}
@@ -649,7 +774,7 @@ export default function IssuePage() {
                   <ChevronDown size={12} className="text-text-tertiary flex-shrink-0" />
                 </button>
                 {assigneeOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-bg-elevated border border-border rounded-xl shadow-lg z-20 overflow-hidden max-h-48 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 sm:left-0 sm:right-0 mt-1 bg-bg-elevated border border-border rounded-xl shadow-lg z-20 overflow-hidden min-w-[180px] max-h-48 overflow-y-auto">
                     <button
                       onClick={() => { updateIssue.mutate({ issueId: issue.id, data: { assigneeId: null } }); setAssigneeOpen(false); }}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent/10 transition-colors text-xs text-text-tertiary italic"
@@ -813,17 +938,49 @@ export default function IssuePage() {
             </div>
           )}
 
+          {/* Sprint */}
+          {sprints.length > 0 && (
+            <div className="card p-3 space-y-1.5">
+              <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wide">Sprint</span>
+              {canEdit ? (
+                <select
+                  className="input w-full text-xs"
+                  value={issue.sprintId ?? ""}
+                  onChange={e => setIssueSprint.mutate({ issueId: issue.id, sprintId: e.target.value || null })}
+                >
+                  <option value="">Backlog</option>
+                  {sprints.filter(s => s.status !== "completed").map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <span className="text-xs text-text px-1">
+                  {sprints.find(s => s.id === issue.sprintId)?.name ?? "Backlog"}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Plan bridge */}
           <div className="card p-3 space-y-1.5">
             <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wide">Plan</span>
             {issue.planItemId ? (
-              <button
-                onClick={() => removeIssueFromPlan.mutateAsync(issue.id)}
-                disabled={removeIssueFromPlan.isPending}
-                className="w-full text-xs text-green-400 hover:text-danger transition-colors py-1 text-left px-1 disabled:opacity-50"
-              >
-                ✓ {t("projects.inPlan")} — Kaldır
-              </button>
+              <div className="space-y-1.5">
+                <Link
+                  to={`/day/${planDate}`}
+                  className="flex items-center gap-1.5 text-xs text-green-400 hover:text-green-300 px-1 transition-colors"
+                >
+                  <CalendarDays size={11} />
+                  ✓ {planDate} — {t("projects.inPlan")}
+                </Link>
+                <button
+                  onClick={() => removeIssueFromPlan.mutateAsync(issue.id)}
+                  disabled={removeIssueFromPlan.isPending}
+                  className="w-full text-[10px] text-text-tertiary hover:text-danger transition-colors py-0.5 px-1 text-left disabled:opacity-50"
+                >
+                  Plandan kaldır
+                </button>
+              </div>
             ) : issue.assigneeId === user?.id ? (
               <button
                 onClick={() => setShowPlanModal(true)}

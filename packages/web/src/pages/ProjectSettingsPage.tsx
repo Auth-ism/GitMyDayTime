@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Plus, Trash2, Star, Pencil, X } from "lucide-react";
+import { ArrowLeft, Check, Plus, Trash2, Star, Pencil, X, Play, StopCircle } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { useProject, useProjectMutations, useStatusMutations } from "@/hooks/useProjects";
+import { useProject, useProjectMutations, useStatusMutations, useSprints, useSprintMutations } from "@/hooks/useProjects";
+import DatePicker from "@/components/DatePicker";
 import { cn } from "@/lib/cn";
-import type { WorkflowStatus } from "@gmd/shared";
+import type { WorkflowStatus, Sprint } from "@gmd/shared";
 
 const STATUS_COLORS = [
   "#6b7280", "#94a3b8", "#60a5fa", "#34d399", "#fbbf24",
@@ -60,7 +61,7 @@ function StatusRow({
             onKeyDown={e => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setEditing(false); }}
           />
           <select
-            className="input text-xs py-1.5 w-36"
+            className="input text-xs py-1.5 w-full sm:w-36"
             value={category}
             onChange={e => setCategory(e.target.value as typeof category)}
           >
@@ -174,7 +175,7 @@ function AddStatusForm({ projectId, onClose }: { projectId: string; onClose: () 
           onKeyDown={e => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") onClose(); }}
         />
         <select
-          className="input text-xs py-1.5 w-36"
+          className="input text-xs py-1.5 w-full sm:w-36"
           value={category}
           onChange={e => setCategory(e.target.value as typeof category)}
         >
@@ -208,6 +209,129 @@ function AddStatusForm({ projectId, onClose }: { projectId: string; onClose: () 
   );
 }
 
+function SprintRow({ sprint, projectId, hasActiveSprint }: { sprint: Sprint; projectId: string; hasActiveSprint: boolean }) {
+  const { updateSprint, deleteSprint } = useSprintMutations(projectId);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(sprint.name);
+  const [goal, setGoal] = useState(sprint.goal ?? "");
+  const [startDate, setStartDate] = useState(sprint.startDate ?? "");
+  const [endDate, setEndDate] = useState(sprint.endDate ?? "");
+
+  const STATUS_LABEL: Record<string, string> = { planning: "Planlama", active: "Aktif", completed: "Tamamlandı" };
+  const STATUS_COLOR: Record<string, string> = {
+    planning: "text-text-tertiary bg-bg-subtle",
+    active: "text-green-400 bg-green-400/10",
+    completed: "text-text-tertiary bg-bg-subtle line-through",
+  };
+
+  const handleSave = async () => {
+    await updateSprint.mutateAsync({ sprintId: sprint.id, data: { name, goal: goal || undefined, startDate: startDate || undefined, endDate: endDate || undefined } });
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="p-3 bg-accent/5 rounded-lg border border-accent/20 space-y-2">
+        <input autoFocus className="input w-full text-sm" value={name} onChange={e => setName(e.target.value)} placeholder="Sprint adı" />
+        <input className="input w-full text-sm" value={goal} onChange={e => setGoal(e.target.value)} placeholder="Hedef (opsiyonel)" />
+        <div className="grid grid-cols-2 gap-2">
+          <DatePicker value={startDate} onChange={v => setStartDate(v ?? "")} placeholder="Başlangıç" clearable />
+          <DatePicker value={endDate} onChange={v => setEndDate(v ?? "")} placeholder="Bitiş" clearable />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={handleSave} disabled={!name.trim() || updateSprint.isPending} className="btn-primary px-3 py-1.5 text-xs disabled:opacity-50">
+            {updateSprint.isPending ? "..." : "Kaydet"}
+          </button>
+          <button onClick={() => setEditing(false)} className="btn-secondary px-3 py-1.5 text-xs">İptal</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3 py-2 px-1 group hover:bg-bg-subtle/50 rounded-lg transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-text">{sprint.name}</span>
+          <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium", STATUS_COLOR[sprint.status])}>
+            {STATUS_LABEL[sprint.status]}
+          </span>
+          {sprint.issueCount !== undefined && (
+            <span className="text-[10px] text-text-tertiary">{sprint.issueCount} issue</span>
+          )}
+        </div>
+        {sprint.goal && <p className="text-[11px] text-text-tertiary mt-0.5 truncate">{sprint.goal}</p>}
+        {(sprint.startDate || sprint.endDate) && (
+          <p className="text-[10px] text-text-tertiary">
+            {sprint.startDate ?? "?"} → {sprint.endDate ?? "?"}
+          </p>
+        )}
+      </div>
+      <div className="hidden group-hover:flex items-center gap-1">
+        {sprint.status === "planning" && !hasActiveSprint && (
+          <button
+            onClick={() => updateSprint.mutateAsync({ sprintId: sprint.id, data: { status: "active" } })}
+            className="flex items-center gap-1 text-[10px] text-green-400 hover:text-green-300 px-1.5 py-0.5 rounded"
+            title="Başlat"
+          >
+            <Play size={10} /> Başlat
+          </button>
+        )}
+        {sprint.status === "active" && (
+          <button
+            onClick={() => updateSprint.mutateAsync({ sprintId: sprint.id, data: { status: "completed" } })}
+            className="flex items-center gap-1 text-[10px] text-text-tertiary hover:text-text px-1.5 py-0.5 rounded"
+            title="Tamamla"
+          >
+            <StopCircle size={10} /> Bitir
+          </button>
+        )}
+        {sprint.status !== "active" && (
+          <button onClick={() => setEditing(true)} className="p-1 text-text-tertiary hover:text-text rounded">
+            <Pencil size={11} />
+          </button>
+        )}
+        <button
+          onClick={() => deleteSprint.mutateAsync(sprint.id)}
+          className="p-1 text-text-tertiary hover:text-danger rounded"
+          title="Sil"
+        >
+          <Trash2 size={11} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AddSprintForm({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+  const { createSprint } = useSprintMutations(projectId);
+  const [name, setName] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const handleCreate = async () => {
+    if (!name.trim()) return;
+    await createSprint.mutateAsync({ name: name.trim(), startDate: startDate || undefined, endDate: endDate || undefined });
+    onClose();
+  };
+
+  return (
+    <div className="p-3 bg-accent/5 rounded-lg border border-accent/20 space-y-2">
+      <input autoFocus className="input w-full text-sm" placeholder="Sprint adı (ör. Sprint 1)" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") onClose(); }} />
+      <div className="grid grid-cols-2 gap-2">
+        <DatePicker value={startDate} onChange={v => setStartDate(v ?? "")} placeholder="Başlangıç" clearable />
+        <DatePicker value={endDate} onChange={v => setEndDate(v ?? "")} placeholder="Bitiş" clearable />
+      </div>
+      <div className="flex gap-2">
+        <button onClick={handleCreate} disabled={!name.trim() || createSprint.isPending} className="btn-primary px-3 py-1.5 text-xs disabled:opacity-50">
+          {createSprint.isPending ? "..." : "Oluştur"}
+        </button>
+        <button onClick={onClose} className="btn-secondary px-3 py-1.5 text-xs"><X size={12} /></button>
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectSettingsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -215,12 +339,14 @@ export default function ProjectSettingsPage() {
 
   const { data: project, isLoading } = useProject(projectId);
   const { updateProject, deleteProject } = useProjectMutations();
+  const { data: sprints = [] } = useSprints(projectId);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [boardType, setBoardType] = useState<"kanban" | "scrum">("kanban");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [showAddStatus, setShowAddStatus] = useState(false);
+  const [showAddSprint, setShowAddSprint] = useState(false);
 
   // Danger zone
   const [deleteConfirmKey, setDeleteConfirmKey] = useState("");
@@ -387,6 +513,29 @@ export default function ProjectSettingsPage() {
 
         {showAddStatus && (
           <AddStatusForm projectId={projectId!} onClose={() => setShowAddStatus(false)} />
+        )}
+      </div>
+
+      {/* Sprints */}
+      <div className="card p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-text">Sprintler</h2>
+          {isAdmin && (
+            <button onClick={() => setShowAddSprint(true)} className="btn-icon p-1.5 rounded-lg text-text-tertiary hover:text-text">
+              <Plus size={14} />
+            </button>
+          )}
+        </div>
+        {sprints.length === 0 && !showAddSprint && (
+          <p className="text-xs text-text-tertiary italic">Henüz sprint yok</p>
+        )}
+        <div className="space-y-0.5">
+          {sprints.map(s => (
+            <SprintRow key={s.id} sprint={s} projectId={projectId!} hasActiveSprint={sprints.some(x => x.status === "active" && x.id !== s.id)} />
+          ))}
+        </div>
+        {showAddSprint && (
+          <AddSprintForm projectId={projectId!} onClose={() => setShowAddSprint(false)} />
         )}
       </div>
 

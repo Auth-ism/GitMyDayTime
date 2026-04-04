@@ -667,6 +667,7 @@ export async function updateIssue(
     assigneeId: "assignee_id", dueDate: "due_date",
     estimatedHours: "estimated_hours", loggedHours: "logged_hours",
     sprintId: "sprint_id", sortOrder: "sort_order",
+    parentId: "parent_id",
   };
 
   const sets: string[] = ["updated_at = NOW()"];
@@ -754,7 +755,9 @@ export async function getBoardData(projectId: string, sprintId?: string | null):
   // Fetch issues grouped by status
   const conditions: string[] = ["i.project_id = $1", "i.archived = FALSE"];
   const vals: unknown[] = [projectId];
-  if (sprintId) {
+  if (sprintId === "backlog") {
+    conditions.push("i.sprint_id IS NULL");
+  } else if (sprintId) {
     conditions.push("i.sprint_id = $2");
     vals.push(sprintId);
   }
@@ -797,13 +800,15 @@ export async function getIssueDetail(issueId: string): Promise<IssueDetail | nul
   const issue = await getIssueById(issueId);
   if (!issue) return null;
 
-  const [comments, history, links] = await Promise.all([
+  const [comments, history, links, childRows] = await Promise.all([
     getIssueComments(issueId),
     getIssueHistory(issueId),
     getIssueLinks(issueId),
+    pool.query(`SELECT ${ISSUE_SELECT} WHERE i.parent_id = $1 AND i.archived = FALSE ORDER BY i.sort_order, i.created_at`, [issueId]),
   ]);
 
-  const detail: IssueDetail = { ...issue, comments, history, links };
+  const children = childRows.rows.map(rowToIssue);
+  const detail: IssueDetail = { ...issue, comments, history, links, children };
   await cacheSet(cacheKey, detail, ISSUE_TTL);
   return detail;
 }
@@ -927,15 +932,14 @@ export async function addIssueToPlan(
   try {
     await client.query("BEGIN");
 
-    // Fetch issue category from status (use "other" as default category)
     const { rows: piRows } = await client.query(
       `INSERT INTO plan_items
          (id, user_id, date, description, category, scheduled_time, sort_order, item_type)
-       VALUES ($1, $2, $3, $4, 'other', $5,
+       VALUES ($1, $2, $3, $4, 'dev', $5,
                COALESCE((SELECT MAX(sort_order)+1 FROM plan_items WHERE user_id=$2 AND date=$3), 0),
                'plan')
        RETURNING id`,
-      [nanoid(8), userId, date, issue.title, scheduledTime ?? null]
+      [nanoid(8), userId, date, `[${issue.issueKey}] ${issue.title}`, scheduledTime ?? null]
     );
     const planItemId = piRows[0].id;
 
@@ -1198,6 +1202,106 @@ export async function searchIssues(
     [userId, query.toLowerCase(), pattern, limit]
   );
   return rows;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Issue reorder
+// ─────────────────────────────────────────────────────────────────
+
+export async function reorderIssues(orders: Array<{ issueId: string; sortOrder: number }>): Promise<void> {
+  if (orders.length === 0) return;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (const { issueId, sortOrder } of orders) {
+      await client.query("UPDATE issues SET sort_order = $2 WHERE id = $1", [issueId, sortOrder]);
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Sprints
+// ─────────────────────────────────────────────────────────────────
+
+function mapSprint(r: any) {
+  return {
+    id: r.id as string,
+    projectId: r.project_id as string,
+    name: r.name as string,
+    goal: r.goal ?? null,
+    startDate: r.start_date ?? null,
+    endDate: r.end_date ?? null,
+    status: r.status as string,
+    createdAt: r.created_at as string,
+    completedAt: r.completed_at ?? null,
+    issueCount: r.issue_count !== undefined ? Number(r.issue_count) : undefined,
+  };
+}
+
+export async function getProjectSprints(projectId: string) {
+  const { rows } = await pool.query(
+    `SELECT s.*,
+       (SELECT COUNT(*) FROM issues WHERE sprint_id = s.id AND archived = FALSE) AS issue_count
+     FROM sprints s
+     WHERE s.project_id = $1
+     ORDER BY s.created_at`,
+    [projectId]
+  );
+  return rows.map(mapSprint);
+}
+
+export async function getSprint(sprintId: string) {
+  const { rows } = await pool.query("SELECT * FROM sprints WHERE id = $1", [sprintId]);
+  return rows[0] ? mapSprint(rows[0]) : null;
+}
+
+export async function createSprint(projectId: string, data: { name: string; goal?: string; startDate?: string; endDate?: string }) {
+  const { rows } = await pool.query(
+    `INSERT INTO sprints (project_id, name, goal, start_date, end_date)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [projectId, data.name, data.goal ?? null, data.startDate ?? null, data.endDate ?? null]
+  );
+  return mapSprint(rows[0]);
+}
+
+export async function updateSprint(sprintId: string, data: { name?: string; goal?: string | null; startDate?: string | null; endDate?: string | null; status?: string }) {
+  const sets: string[] = [];
+  const vals: any[] = [];
+  let i = 1;
+  if (data.name !== undefined)      { sets.push(`name = $${i++}`);       vals.push(data.name); }
+  if (data.goal !== undefined)      { sets.push(`goal = $${i++}`);       vals.push(data.goal); }
+  if (data.startDate !== undefined) { sets.push(`start_date = $${i++}`); vals.push(data.startDate); }
+  if (data.endDate !== undefined)   { sets.push(`end_date = $${i++}`);   vals.push(data.endDate); }
+  if (data.status !== undefined) {
+    sets.push(`status = $${i++}`);
+    vals.push(data.status);
+    if (data.status === "completed") sets.push(`completed_at = NOW()`);
+  }
+  if (sets.length === 0) return getSprint(sprintId);
+  vals.push(sprintId);
+  const { rows } = await pool.query(
+    `UPDATE sprints SET ${sets.join(", ")} WHERE id = $${i} RETURNING *`,
+    vals
+  );
+  return rows[0] ? mapSprint(rows[0]) : null;
+}
+
+export async function deleteSprint(sprintId: string) {
+  // Issues go to backlog via FK ON DELETE SET NULL
+  await pool.query("DELETE FROM sprints WHERE id = $1", [sprintId]);
+}
+
+export async function setIssueSprint(issueId: string, sprintId: string | null) {
+  await pool.query(
+    "UPDATE issues SET sprint_id = $2, updated_at = NOW() WHERE id = $1",
+    [issueId, sprintId]
+  );
 }
 
 export async function getProjectLabels(projectId: string): Promise<string[]> {

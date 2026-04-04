@@ -512,6 +512,7 @@ export interface IssueDetail extends Issue {
   comments: IssueComment[];
   history: IssueHistory[];
   links?: IssueLink[];
+  children?: Issue[];
 }
 
 export const IssueLinkType = z.enum(["relates_to", "blocks", "is_blocked_by", "duplicates", "is_duplicated_by"]);
@@ -532,6 +533,40 @@ export const IssueLinkSchema = z.object({
   targetPriority: z.string().optional(),
 });
 export type IssueLink = z.infer<typeof IssueLinkSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// Sprints
+// ─────────────────────────────────────────────────────────────────
+
+export const SprintStatus = z.enum(["planning", "active", "completed"]);
+export type SprintStatus = z.infer<typeof SprintStatus>;
+
+export const SprintSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  name: z.string(),
+  goal: z.string().nullable(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  status: SprintStatus,
+  createdAt: z.string(),
+  completedAt: z.string().nullable(),
+  issueCount: z.number().optional(),
+});
+export type Sprint = z.infer<typeof SprintSchema>;
+
+export const CreateSprintInput = z.object({
+  name: z.string().min(1).max(100),
+  goal: z.string().max(500).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+export type CreateSprintInput = z.infer<typeof CreateSprintInput>;
+
+export const UpdateSprintInput = CreateSprintInput.partial().extend({
+  status: SprintStatus.optional(),
+});
+export type UpdateSprintInput = z.infer<typeof UpdateSprintInput>;
 
 // ─────────────────────────────────────────────────────────────────
 // Spaces  (UI deferred — schema/types ready for future wiring)

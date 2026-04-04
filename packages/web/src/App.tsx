@@ -10,12 +10,14 @@ import RecurringPage from "@/pages/RecurringPage";
 import ProfilePage from "@/pages/ProfilePage";
 import LoginPage from "@/pages/LoginPage";
 import VerifyEmailPage from "@/pages/VerifyEmailPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import ProjectsPage from "@/pages/ProjectsPage";
 import BoardPage from "@/pages/BoardPage";
 import IssuePage from "@/pages/IssuePage";
 import ProjectMembersPage from "@/pages/ProjectMembersPage";
 import ProjectSettingsPage from "@/pages/ProjectSettingsPage";
+import ProjectInsightsPage from "@/pages/ProjectInsightsPage";
 import { Clock } from "lucide-react";
 
 function LoadingScreen() {
@@ -39,6 +41,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       {!isAuthenticated ? (
         <Route path="*" element={<LoginPage />} />
       ) : (
@@ -58,6 +61,7 @@ export default function App() {
             <Route path="/projects/:projectId/issues/:issueId" element={<IssuePage />} />
             <Route path="/projects/:projectId/members" element={<ProjectMembersPage />} />
             <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
+            <Route path="/projects/:projectId/insights" element={<ProjectInsightsPage />} />
             <Route path="/projects/join/:token" element={<ProjectsPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />

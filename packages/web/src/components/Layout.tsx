@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { AnimatePresence, motion } from "framer-motion";
+import NotificationBell from "@/components/NotificationBell";
 
 function EmailVerifyBanner() {
   const { t } = useI18n();
@@ -132,6 +133,8 @@ export default function Layout() {
 
             <div className="w-px h-5 bg-border mx-1.5" role="separator" />
 
+            <NotificationBell />
+
             <button
               onClick={toggleLocale}
               aria-label={locale === "en" ? "Turkce" : "English"}
@@ -189,6 +192,7 @@ export default function Layout() {
             <span className="text-[9px] text-text-tertiary font-normal -ml-1">v{__APP_VERSION__}</span>
           </NavLink>
           <div className="flex items-center gap-0.5">
+            <NotificationBell />
             <button
               onClick={toggleLocale}
               aria-label={locale === "en" ? "Turkce" : "English"}

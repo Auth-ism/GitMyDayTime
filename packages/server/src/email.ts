@@ -202,6 +202,27 @@ export async function sendProjectInvitationEmail(
   });
 }
 
+export async function sendPasswordResetEmail(
+  user: { email: string; username: string },
+  token: string
+): Promise<void> {
+  const resetUrl = `${APP_URL}/reset-password?token=${token}`;
+  const body = `
+    <p style="margin:0 0 6px;font-size:18px;font-weight:600;color:#f0f0f0;">Şifre Sıfırlama</p>
+    <p style="margin:0 0 20px;font-size:14px;color:#a1a1aa;line-height:1.6;">
+      Merhaba ${user.username}, şifreni sıfırlamak için aşağıdaki butona tıkla. Link 1 saat geçerlidir.
+    </p>
+    ${button(resetUrl, "Şifremi Sıfırla")}
+    <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Bu isteği sen yapmadıysan bu e-postayı görmezden gel.</p>
+  `;
+  await resend.emails.send({
+    from: FROM,
+    to: user.email,
+    subject: "Şifre sıfırlama — GitMyDayTime",
+    html: baseTemplate(body, "Şifre sıfırlama linki"),
+  });
+}
+
 export async function sendVerificationEmail(
   user: { email: string; username: string },
   token: string

@@ -6,6 +6,7 @@ import type {
   CreateIssueInput, UpdateIssueInput,
   CreateCommentInput, InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput,
   AddToPlanInput, BoardData, Issue, IssueLinkType,
+  CreateSprintInput, UpdateSprintInput,
 } from "@gmd/shared";
 
 // ── Project list ─────────────────────────────────────────────────
@@ -234,7 +235,13 @@ export function useIssueMutations(projectId: string) {
     },
   });
 
-  return { createIssue, updateIssue, updateIssueStatus, deleteIssue, restoreIssue, addIssueToPlan, removeIssueFromPlan };
+  const reorderIssues = useMutation({
+    mutationFn: (orders: Array<{ issueId: string; sortOrder: number }>) =>
+      api.reorderIssues(projectId, orders),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["board", projectId] }),
+  });
+
+  return { createIssue, updateIssue, updateIssueStatus, deleteIssue, restoreIssue, addIssueToPlan, removeIssueFromPlan, reorderIssues };
 }
 
 // ── Comment mutations ─────────────────────────────────────────────
@@ -303,6 +310,52 @@ export function useStatusMutations(projectId: string) {
   });
 
   return { createStatus, updateStatus, deleteStatus };
+}
+
+// ── Sprints ───────────────────────────────────────────────────────
+export function useSprints(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["sprints", projectId],
+    queryFn: () => api.getSprints(projectId!),
+    enabled: !!projectId,
+    staleTime: 30_000,
+  });
+}
+
+export function useSprintMutations(projectId: string) {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["sprints", projectId] });
+    qc.invalidateQueries({ queryKey: ["board", projectId] });
+  };
+
+  const createSprint = useMutation({
+    mutationFn: (data: CreateSprintInput) => api.createSprint(projectId, data),
+    onSuccess: invalidate,
+  });
+
+  const updateSprint = useMutation({
+    mutationFn: ({ sprintId, data }: { sprintId: string; data: UpdateSprintInput }) =>
+      api.updateSprint(projectId, sprintId, data),
+    onSuccess: invalidate,
+  });
+
+  const deleteSprint = useMutation({
+    mutationFn: (sprintId: string) => api.deleteSprint(projectId, sprintId),
+    onSuccess: invalidate,
+  });
+
+  const setIssueSprint = useMutation({
+    mutationFn: ({ issueId, sprintId }: { issueId: string; sprintId: string | null }) =>
+      api.setIssueSprint(projectId, issueId, sprintId),
+    onSuccess: (_res, { issueId }) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["issues", projectId] });
+      qc.invalidateQueries({ queryKey: ["issue", issueId] });
+    },
+  });
+
+  return { createSprint, updateSprint, deleteSprint, setIssueSprint };
 }
 
 // ── SSE hook — invalidates queries on server events ───────────────

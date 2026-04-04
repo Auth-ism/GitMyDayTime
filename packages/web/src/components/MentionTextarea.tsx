@@ -94,7 +94,7 @@ export default function MentionTextarea({ value, onChange, members = [], placeho
         autoFocus={autoFocus}
       />
       {query !== null && filtered.length > 0 && (
-        <div className={`absolute left-0 right-0 z-30 bg-bg-elevated border border-border rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}`}>
+        <div className={`absolute left-0 right-0 z-30 bg-bg-elevated border border-border rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto max-w-[calc(100vw-2rem)] ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}`}>
           {filtered.map(m => (
             <button
               key={m.userId}

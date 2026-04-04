@@ -7,6 +7,7 @@ import {
   CreateCommentInput,
   InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput,
   AddToPlanInput,
+  CreateSprintInput, UpdateSprintInput,
   type ProjectRole,
 } from "@gmd/shared";
 import { zodMsg } from "../validation.js";
@@ -28,7 +29,10 @@ import {
   invalidateAllMemberCaches,
   getIssueLinks, createIssueLink, deleteIssueLink,
   getProjectLabels,
+  getProjectSprints, getSprint, createSprint, updateSprint, deleteSprint, setIssueSprint,
+  reorderIssues,
 } from "../storage/projects.js";
+import { createUserNotification } from "../storage/notifications.js";
 
 // ─────────────────────────────────────────────────────────────────
 // Extend Express Request
@@ -330,18 +334,28 @@ router.post("/:id/issues", canReport, wrap(async (req, res) => {
     statusId: defaultStatus.id,
   });
 
-  if (issue.assigneeId) {
+  if (issue.assigneeId && issue.assigneeId !== req.userId) {
     const { rows: userRows } = await pool.query(
       "SELECT username FROM users WHERE id = $1", [req.userId]
     );
+    const assignerName = userRows[0]?.username ?? "Bilinmiyor";
     await enqueueProjectNotification({
       type: "issue_assigned",
       issueId: issue.id,
       assigneeId: issue.assigneeId,
-      assignerName: userRows[0]?.username ?? "Bilinmiyor",
+      assignerName,
       projectName: projRows[0].name as string,
       issueKey: issue.issueKey,
       issueTitle: issue.title,
+    });
+    await createUserNotification({
+      userId: issue.assigneeId,
+      type: "issue_assigned",
+      projectId: id,
+      issueId: issue.id,
+      actorName: assignerName,
+      message: `${assignerName} size ${issue.issueKey} görevini atadı: ${issue.title.slice(0, 60)}`,
+      url: `/projects/${id}/issues/${issue.id}`,
     });
   }
 
@@ -370,21 +384,31 @@ router.patch("/:id/issues/:issueId", canReport, wrap(async (req, res) => {
   const updated = await updateIssue(issueId, input.data, req.userId!);
   if (!updated) { res.status(404).json({ error: "Issue bulunamadı" }); return; }
 
-  if ("assigneeId" in input.data && input.data.assigneeId && input.data.assigneeId !== current.assigneeId) {
+  if ("assigneeId" in input.data && input.data.assigneeId && input.data.assigneeId !== current.assigneeId && input.data.assigneeId !== req.userId) {
     const { rows: userRows } = await pool.query(
       "SELECT username FROM users WHERE id = $1", [req.userId]
     );
     const { rows: projRows } = await pool.query(
       "SELECT name FROM projects WHERE id = $1", [id]
     );
+    const assignerName = userRows[0]?.username ?? "Bilinmiyor";
     await enqueueProjectNotification({
       type: "issue_assigned",
       issueId: updated.id,
       assigneeId: input.data.assigneeId,
-      assignerName: userRows[0]?.username ?? "Bilinmiyor",
+      assignerName,
       projectName: projRows[0]?.name ?? "",
       issueKey: updated.issueKey,
       issueTitle: updated.title,
+    });
+    await createUserNotification({
+      userId: input.data.assigneeId,
+      type: "issue_assigned",
+      projectId: id,
+      issueId: updated.id,
+      actorName: assignerName,
+      message: `${assignerName} size ${updated.issueKey} görevini atadı: ${updated.title.slice(0, 60)}`,
+      url: `/projects/${id}/issues/${updated.id}`,
     });
   }
 
@@ -512,14 +536,24 @@ router.post("/:id/issues/:issueId/comments", canReport, wrap(async (req, res) =>
 
   for (const mentionedId of mentionIds) {
     if (mentionedId === req.userId) continue;
+    const authorName = authorRows[0]?.username ?? "Birisi";
     await enqueueProjectNotification({
       type: "comment_mention",
       issueId,
       mentionedId,
-      authorName: authorRows[0]?.username ?? "Birisi",
+      authorName,
       projectName: projRows[0]?.name ?? "",
       issueKey: current.issueKey,
       commentPreview: input.data.content.slice(0, 100),
+    });
+    await createUserNotification({
+      userId: mentionedId,
+      type: "comment_mention",
+      projectId: id,
+      issueId,
+      actorName: authorName,
+      message: `${authorName} sizi ${current.issueKey} yorumunda etiketledi`,
+      url: `/projects/${id}/issues/${issueId}`,
     });
   }
 
@@ -681,6 +715,89 @@ router.patch("/:id/statuses/:sid", isAdmin, wrap(async (req, res) => {
 router.delete("/:id/statuses/:sid", isAdmin, wrap(async (req, res) => {
   const result = await deleteWorkflowStatus(req.params.sid as string, req.params.id as string);
   if (!result.ok) { res.status(422).json({ error: result.error }); return; }
+  res.json({ ok: true });
+}));
+
+// ─────────────────────────────────────────────────────────────────
+// Issue reorder
+// ─────────────────────────────────────────────────────────────────
+
+router.patch("/:id/issues/reorder", isDev, wrap(async (req, res) => {
+  const { orders } = req.body as { orders: Array<{ issueId: string; sortOrder: number }> };
+  if (!Array.isArray(orders)) { res.status(400).json({ error: "orders array gerekli" }); return; }
+  await reorderIssues(orders);
+  await invalidateBoardCache(req.params.id as string);
+  res.json({ ok: true });
+}));
+
+// ─────────────────────────────────────────────────────────────────
+// Sprints
+// ─────────────────────────────────────────────────────────────────
+
+router.get("/:id/sprints", isMember, wrap(async (req, res) => {
+  const sprints = await getProjectSprints(req.params.id as string);
+  res.json(sprints);
+}));
+
+router.post("/:id/sprints", isAdmin, wrap(async (req, res) => {
+  const input = CreateSprintInput.safeParse(req.body);
+  if (!input.success) { res.status(400).json({ error: zodMsg(input.error) }); return; }
+  const sprint = await createSprint(req.params.id as string, {
+    name: input.data.name,
+    goal: input.data.goal,
+    startDate: input.data.startDate,
+    endDate: input.data.endDate,
+  });
+  res.status(201).json(sprint);
+}));
+
+router.patch("/:id/sprints/:sprintId", isAdmin, wrap(async (req, res) => {
+  const input = UpdateSprintInput.safeParse(req.body);
+  if (!input.success) { res.status(400).json({ error: zodMsg(input.error) }); return; }
+
+  const sprint = await getSprint(req.params.sprintId as string);
+  if (!sprint || sprint.projectId !== req.params.id) {
+    res.status(404).json({ error: "Sprint bulunamadı" }); return;
+  }
+  // Only one active sprint at a time
+  if (input.data.status === "active") {
+    const all = await getProjectSprints(req.params.id as string);
+    const alreadyActive = all.find(s => s.status === "active" && s.id !== sprint.id);
+    if (alreadyActive) {
+      res.status(409).json({ error: "Zaten aktif bir sprint var" }); return;
+    }
+  }
+  const updated = await updateSprint(req.params.sprintId as string, input.data);
+  await invalidateBoardCache(req.params.id as string);
+  res.json(updated);
+}));
+
+router.delete("/:id/sprints/:sprintId", isAdmin, wrap(async (req, res) => {
+  const sprint = await getSprint(req.params.sprintId as string);
+  if (!sprint || sprint.projectId !== req.params.id) {
+    res.status(404).json({ error: "Sprint bulunamadı" }); return;
+  }
+  await deleteSprint(req.params.sprintId as string);
+  await invalidateBoardCache(req.params.id as string);
+  res.json({ ok: true });
+}));
+
+// Assign / remove issue from sprint
+router.post("/:id/issues/:issueId/sprint", isDev, wrap(async (req, res) => {
+  const { sprintId } = req.body as { sprintId: string | null };
+  const issue = await getIssueById(req.params.issueId as string);
+  if (!issue || issue.projectId !== req.params.id) {
+    res.status(404).json({ error: "Issue bulunamadı" }); return;
+  }
+  if (sprintId) {
+    const sprint = await getSprint(sprintId);
+    if (!sprint || sprint.projectId !== req.params.id) {
+      res.status(404).json({ error: "Sprint bulunamadı" }); return;
+    }
+  }
+  await setIssueSprint(req.params.issueId as string, sprintId ?? null);
+  await invalidateBoardCache(req.params.id as string);
+  await publishProjectEvent(req.params.id as string, { type: "issue_updated", issueId: req.params.issueId as string });
   res.json({ ok: true });
 }));
 

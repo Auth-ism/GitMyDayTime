@@ -84,6 +84,13 @@ export default function IssueCard({ issue, projectId, currentUserId, onDragStart
             <TypeIcon size={12} className={cn("flex-shrink-0 mt-0.5", TYPE_COLORS[issue.issueType])} />
           </div>
 
+          {issue.parentIssueKey && (
+            <div className="text-[10px] text-text-tertiary flex items-center gap-0.5">
+              <Minus size={9} />
+              <span className="font-mono">{issue.parentIssueKey}</span>
+            </div>
+          )}
+
           <p className="text-text text-xs font-medium leading-snug line-clamp-2">
             {issue.title}
           </p>

@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Layers, Settings, Users, Plus, Archive, RotateCcw } from "lucide-react";
+import { ArrowLeft, Layers, Settings, Users, Plus, Archive, RotateCcw, BarChart2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useProject, useArchivedIssues, useIssueMutations } from "@/hooks/useProjects";
 import KanbanBoard from "@/components/board/KanbanBoard";
@@ -13,6 +13,7 @@ export default function BoardPage() {
   const { data: project, isLoading } = useProject(projectId);
   const [showCreate, setShowCreate] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
+  const [activeSprint, setActiveSprint] = useState<string | null | undefined>(undefined);
   const { data: archivedData } = useArchivedIssues(projectId, showArchive);
   const { restoreIssue } = useIssueMutations(projectId!);
 
@@ -61,6 +62,13 @@ export default function BoardPage() {
 
         <div className="flex items-center gap-1 ml-auto flex-shrink-0">
           <Link
+            to={`/projects/${projectId}/insights`}
+            className="btn-icon p-2 rounded-lg text-text-tertiary hover:text-text"
+            title="Raporlar"
+          >
+            <BarChart2 size={15} />
+          </Link>
+          <Link
             to={`/projects/${projectId}/members`}
             className="btn-icon p-2 rounded-lg flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text"
           >
@@ -99,7 +107,12 @@ export default function BoardPage() {
       </div>
 
       {/* Kanban board — full width, horizontal scroll */}
-      <KanbanBoard projectId={projectId!} myRole={project.myRole} />
+      <KanbanBoard
+        projectId={projectId!}
+        myRole={project.myRole}
+        activeSprint={activeSprint}
+        onSprintChange={setActiveSprint}
+      />
 
       {/* Archived issues panel */}
       {showArchive && (

@@ -9,7 +9,7 @@ import { zodMsg } from "./validation.js";
 import { pool } from "./db.js";
 import { redis, isRedisConnected, cacheSession, getCachedSession, invalidateSessionCache } from "./redis.js";
 import { logAuditEvent, getClientIp } from "./audit.js";
-import { sendAdminApprovalEmail, sendUserApprovedEmail, sendVerificationEmail } from "./email.js";
+import { sendAdminApprovalEmail, sendUserApprovedEmail, sendVerificationEmail, sendPasswordResetEmail } from "./email.js";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
 
@@ -452,6 +452,75 @@ authRouter.post("/logout", async (req: Request, res: Response) => {
   }
   clearCookies(res);
   res.status(204).end();
+});
+
+const forgotPasswordLimiter = createRateLimiter(60 * 60 * 1000, 5, { prefix: "forgot-pw" });
+
+authRouter.post("/forgot-password", forgotPasswordLimiter, async (req: Request, res: Response) => {
+  const { email } = req.body as { email?: string };
+  if (!email || typeof email !== "string") {
+    res.status(400).json({ error: "Email required" });
+    return;
+  }
+
+  const { rows } = await pool.query(
+    "SELECT id, email, username, approved FROM users WHERE email = $1",
+    [email.toLowerCase().trim()]
+  );
+
+  // Always respond OK to prevent email enumeration
+  if (rows.length === 0 || !rows[0].approved) {
+    res.json({ ok: true });
+    return;
+  }
+
+  const user = rows[0];
+  const tokenRaw = crypto.randomBytes(32).toString("hex");
+  const tokenHash = hashSessionToken(tokenRaw);
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  await pool.query(
+    "UPDATE users SET password_reset_token_hash = $1, password_reset_expires_at = $2 WHERE id = $3",
+    [tokenHash, expiresAt, user.id]
+  );
+
+  sendPasswordResetEmail({ email: user.email, username: user.username }, tokenRaw).catch(console.error);
+  res.json({ ok: true });
+});
+
+authRouter.post("/reset-password", async (req: Request, res: Response) => {
+  const { token, password } = req.body as { token?: string; password?: string };
+  if (!token || !password || typeof token !== "string" || typeof password !== "string") {
+    res.status(400).json({ error: "Token and password required" });
+    return;
+  }
+
+  if (password.length < 6) {
+    res.status(400).json({ error: "Password must be at least 6 characters" });
+    return;
+  }
+
+  const tokenHash = hashSessionToken(token);
+  const { rows } = await pool.query(
+    "SELECT id, email FROM users WHERE password_reset_token_hash = $1 AND password_reset_expires_at > NOW()",
+    [tokenHash]
+  );
+
+  if (rows.length === 0) {
+    res.status(400).json({ error: "invalid_token" });
+    return;
+  }
+
+  const user = rows[0];
+  const newHash = await argon2.hash(password, { memoryCost: 65536, timeCost: 3, parallelism: 4 });
+
+  await pool.query(
+    "UPDATE users SET password_hash = $1, password_reset_token_hash = NULL, password_reset_expires_at = NULL, updated_at = NOW() WHERE id = $2",
+    [newHash, user.id]
+  );
+
+  await logAuditEvent("password_change", req, user.id, { method: "reset" });
+  res.json({ ok: true });
 });
 
 authRouter.get("/check", async (req: Request, res: Response) => {

@@ -25,6 +25,7 @@ import exportRoutes from "./routes/export.js";
 import pushRoutes from "./routes/push.js";
 import projectRoutes from "./routes/projects.js";
 import spaceRoutes from "./routes/spaces.js";
+import notificationRoutes from "./routes/notifications.js";
 import { startScheduler } from "./scheduler.js";
 
 const app = express();
@@ -170,6 +171,7 @@ app.use("/api/projects", projectRoutes);
 // Spaces — UI deferred, routes ready
 const rlSpaces = rl(60, 60_000, "spaces");
 app.use("/api/spaces", rlSpaces, spaceRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Global async error handler — Express 4 doesn't catch async errors
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

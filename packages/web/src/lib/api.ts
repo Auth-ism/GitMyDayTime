@@ -1,4 +1,4 @@
-import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput, Project, ProjectMember, WorkflowStatus, Issue, IssueComment, IssueDetail, IssueLink, BoardData, CreateProjectInput, UpdateProjectInput, CreateIssueInput, UpdateIssueInput, CreateCommentInput, InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput, AddToPlanInput } from "@gmd/shared";
+import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput, Project, ProjectMember, WorkflowStatus, Issue, IssueComment, IssueDetail, IssueLink, BoardData, CreateProjectInput, UpdateProjectInput, CreateIssueInput, UpdateIssueInput, CreateCommentInput, InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput, AddToPlanInput, Sprint, CreateSprintInput, UpdateSprintInput } from "@gmd/shared";
 
 const BASE = "/api";
 
@@ -345,6 +345,42 @@ export const api = {
 
   getProjectLabels: (id: string) =>
     request<string[]>(`/projects/${id}/labels`),
+
+  reorderIssues: (projectId: string, orders: Array<{ issueId: string; sortOrder: number }>) =>
+    request<{ ok: boolean }>(`/projects/${projectId}/issues/reorder`, {
+      method: "PATCH", body: JSON.stringify({ orders }),
+    }),
+
+  // Notifications
+  getNotifications: () =>
+    request<{ notifications: Array<{ id: string; type: string; message: string; url: string | null; read: boolean; actorName: string | null; createdAt: string; projectId: string | null; issueId: string | null }>; unread: number }>("/notifications"),
+
+  getUnreadCount: () =>
+    request<{ count: number }>("/notifications/unread-count"),
+
+  markRead: (id: string) =>
+    request<{ ok: boolean }>(`/notifications/${id}/read`, { method: "PATCH" }),
+
+  markAllRead: () =>
+    request<{ ok: boolean }>("/notifications/read-all", { method: "PATCH" }),
+
+  // Sprints
+  getSprints: (id: string) =>
+    request<Sprint[]>(`/projects/${id}/sprints`),
+
+  createSprint: (id: string, data: CreateSprintInput) =>
+    request<Sprint>(`/projects/${id}/sprints`, { method: "POST", body: JSON.stringify(data) }),
+
+  updateSprint: (id: string, sprintId: string, data: UpdateSprintInput) =>
+    request<Sprint>(`/projects/${id}/sprints/${sprintId}`, { method: "PATCH", body: JSON.stringify(data) }),
+
+  deleteSprint: (id: string, sprintId: string) =>
+    request<{ ok: boolean }>(`/projects/${id}/sprints/${sprintId}`, { method: "DELETE" }),
+
+  setIssueSprint: (id: string, issueId: string, sprintId: string | null) =>
+    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/sprint`, {
+      method: "POST", body: JSON.stringify({ sprintId }),
+    }),
 
   getIssueLinks: (id: string, issueId: string) =>
     request<IssueLink[]>(`/projects/${id}/issues/${issueId}/links`),
