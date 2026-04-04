@@ -183,13 +183,13 @@ router.post("/:id/invitations", isAdmin, wrap(async (req, res) => {
   const input = InviteMemberInput.safeParse(req.body);
   if (!input.success) { res.status(400).json({ error: zodMsg(input.error) }); return; }
 
-  // Only registered & approved users can be invited
+  // Only registered users can be invited
   const { rows: targetRows } = await pool.query(
-    "SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND approved = TRUE",
+    "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
     [input.data.email]
   );
   if (!targetRows[0]) {
-    res.status(422).json({ error: "Bu e-posta adresiyle kayıtlı ve onaylı bir kullanıcı bulunamadı." });
+    res.status(422).json({ error: "Bu e-posta adresiyle kayıtlı bir kullanıcı bulunamadı." });
     return;
   }
 
