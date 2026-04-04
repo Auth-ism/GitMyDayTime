@@ -1,17 +1,58 @@
 import { useState } from "react";
-import { Plus, Layers, FolderOpen } from "lucide-react";
+import { Plus, Layers, FolderOpen, MailWarning } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
 import { useProjects } from "@/hooks/useProjects";
 import ProjectCard from "@/components/projects/ProjectCard";
 import CreateProjectModal from "@/components/projects/CreateProjectModal";
 
+function EmailVerifyBanner() {
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const handleResend = async () => {
+    setSending(true);
+    try {
+      await fetch("/api/auth/resend-verification", { method: "POST", credentials: "include" });
+      setSent(true);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30">
+      <MailWarning size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-amber-300">E-posta doğrulaması gerekiyor</p>
+        <p className="text-xs text-amber-400/80 mt-0.5">
+          Projelere katılmak ve kullanmak için e-posta adresinizi doğrulamanız gerekiyor.
+        </p>
+      </div>
+      {!sent ? (
+        <button
+          onClick={handleResend}
+          disabled={sending}
+          className="flex-shrink-0 text-xs font-medium text-amber-300 hover:text-amber-200 border border-amber-500/40 rounded-lg px-2.5 py-1.5 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
+        >
+          {sending ? "Gönderiliyor..." : "Doğrulama gönder"}
+        </button>
+      ) : (
+        <span className="flex-shrink-0 text-xs text-amber-300">Gönderildi ✓</span>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectsPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const { data: projects, isLoading } = useProjects();
   const [showCreate, setShowCreate] = useState(false);
 
   return (
     <div className="space-y-5">
+      {user && !user.emailVerified && <EmailVerifyBanner />}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Layers size={20} className="text-accent" />

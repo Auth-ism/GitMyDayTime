@@ -79,6 +79,18 @@ const isAdmin = requireProjectMembership("admin");
 const isOwner = requireProjectMembership("owner");
 
 // ─────────────────────────────────────────────────────────────────
+// Email verification guard — required for all project collaboration
+// ─────────────────────────────────────────────────────────────────
+async function requireVerified(req: Request, res: Response, next: NextFunction) {
+  const { rows } = await pool.query("SELECT email_verified FROM users WHERE id = $1", [req.userId]);
+  if (!rows[0]?.email_verified) {
+    res.status(403).json({ error: "email_not_verified", message: "Proje özelliklerini kullanmak için e-posta adresinizi doğrulamanız gerekiyor." });
+    return;
+  }
+  next();
+}
+
+// ─────────────────────────────────────────────────────────────────
 // My Assignments (no project context needed)
 // ─────────────────────────────────────────────────────────────────
 router.get("/my-assignments", wrap(async (req, res) => {
@@ -86,6 +98,9 @@ router.get("/my-assignments", wrap(async (req, res) => {
   const assignments = await getMyAssignments(req.userId!, date);
   res.json(assignments);
 }));
+
+// All project collaboration features require verified email
+router.use(wrap(requireVerified));
 
 // ─────────────────────────────────────────────────────────────────
 // Join via invitation token
@@ -167,6 +182,23 @@ router.post("/:id/invitations", isAdmin, wrap(async (req, res) => {
   const id = req.params.id as string;
   const input = InviteMemberInput.safeParse(req.body);
   if (!input.success) { res.status(400).json({ error: zodMsg(input.error) }); return; }
+
+  // Only registered & approved users can be invited
+  const { rows: targetRows } = await pool.query(
+    "SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND approved = TRUE",
+    [input.data.email]
+  );
+  if (!targetRows[0]) {
+    res.status(422).json({ error: "Bu e-posta adresiyle kayıtlı ve onaylı bir kullanıcı bulunamadı." });
+    return;
+  }
+
+  // Already a member?
+  const already = await getMemberRole(id, targetRows[0].id);
+  if (already) {
+    res.status(409).json({ error: "Bu kullanıcı zaten projenin üyesi." });
+    return;
+  }
 
   const count = await getMemberCount(id);
   if (count >= 50) { res.status(422).json({ error: "Üye limiti dolmuş (50)" }); return; }
