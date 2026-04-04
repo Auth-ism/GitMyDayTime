@@ -1,0 +1,332 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { api } from "@/lib/api";
+import type {
+  CreateProjectInput, UpdateProjectInput,
+  CreateIssueInput, UpdateIssueInput,
+  CreateCommentInput, InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput,
+  AddToPlanInput, BoardData, Issue, IssueLinkType,
+} from "@gmd/shared";
+
+// ── Project list ─────────────────────────────────────────────────
+export function useProjects() {
+  return useQuery({
+    queryKey: ["projects"],
+    queryFn: () => api.getProjects(),
+    staleTime: 30_000,
+  });
+}
+
+// ── Single project (with members + statuses) ─────────────────────
+export function useProject(id: string | undefined) {
+  return useQuery({
+    queryKey: ["project", id],
+    queryFn: () => api.getProject(id!),
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+}
+
+// ── Board data ────────────────────────────────────────────────────
+export function useBoard(projectId: string | undefined, sprintId?: string | null) {
+  return useQuery({
+    queryKey: ["board", projectId, sprintId ?? null],
+    queryFn: () => api.getBoard(projectId!, sprintId),
+    enabled: !!projectId,
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+  });
+}
+
+// ── Project labels (for autocomplete) ────────────────────────────
+export function useProjectLabels(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["labels", projectId],
+    queryFn: () => api.getProjectLabels(projectId!),
+    enabled: !!projectId,
+    staleTime: 60_000,
+  });
+}
+
+// ── Issue list (filtered) ─────────────────────────────────────────
+export function useIssues(projectId: string | undefined, filters?: Record<string, string | number | undefined>) {
+  return useQuery({
+    queryKey: ["issues", projectId, filters],
+    queryFn: () => api.getIssues(projectId!, filters),
+    enabled: !!projectId,
+    staleTime: 20_000,
+  });
+}
+
+// ── Single issue (detail with comments + history) ─────────────────
+export function useIssue(projectId: string | undefined, issueId: string | undefined) {
+  return useQuery({
+    queryKey: ["issue", issueId],
+    queryFn: () => api.getIssue(projectId!, issueId!),
+    enabled: !!projectId && !!issueId,
+    staleTime: 30_000,
+  });
+}
+
+// ── Archived issues ───────────────────────────────────────────────
+export function useArchivedIssues(projectId: string | undefined, enabled = false) {
+  return useQuery({
+    queryKey: ["issues-archived", projectId],
+    queryFn: () => api.getArchivedIssues(projectId!),
+    enabled: !!projectId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+// ── My assignments for DayView banner ────────────────────────────
+export function useMyAssignments(date?: string) {
+  return useQuery({
+    queryKey: ["my-assignments", date],
+    queryFn: () => api.getMyAssignments(date),
+    staleTime: 60_000,
+  });
+}
+
+// ── Project mutations (create, update, delete, members) ──────────
+export function useProjectMutations() {
+  const qc = useQueryClient();
+
+  const createProject = useMutation({
+    mutationFn: (data: CreateProjectInput) => api.createProject(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+
+  const updateProject = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateProjectInput }) =>
+      api.updateProject(id, data),
+    onSuccess: (_res, { id }) => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["project", id] });
+    },
+  });
+
+  const deleteProject = useMutation({
+    mutationFn: (id: string) => api.deleteProject(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+
+  const inviteMember = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: InviteMemberInput }) =>
+      api.inviteMember(id, data),
+  });
+
+  const leaveProject = useMutation({
+    mutationFn: (id: string) => api.leaveProject(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+
+  const removeMember = useMutation({
+    mutationFn: ({ id, userId }: { id: string; userId: string }) =>
+      api.removeMember(id, userId),
+    onSuccess: (_res, { id }) => qc.invalidateQueries({ queryKey: ["project", id] }),
+  });
+
+  const updateMemberRole = useMutation({
+    mutationFn: ({ id, userId, data }: { id: string; userId: string; data: UpdateMemberRoleInput }) =>
+      api.updateMemberRole(id, userId, data),
+    onSuccess: (_res, { id }) => qc.invalidateQueries({ queryKey: ["project", id] }),
+  });
+
+  const transferOwnership = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: TransferOwnerInput }) =>
+      api.transferOwnership(id, data),
+    onSuccess: (_res, { id }) => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["project", id] });
+    },
+  });
+
+  return { createProject, updateProject, deleteProject, inviteMember, leaveProject, removeMember, updateMemberRole, transferOwnership };
+}
+
+// ── Issue mutations ───────────────────────────────────────────────
+export function useIssueMutations(projectId: string) {
+  const qc = useQueryClient();
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["board", projectId] });
+    qc.invalidateQueries({ queryKey: ["issues", projectId] });
+  };
+
+  const createIssue = useMutation({
+    mutationFn: (data: CreateIssueInput) => api.createIssue(projectId, data),
+    onSuccess: invalidate,
+  });
+
+  const updateIssue = useMutation({
+    mutationFn: ({ issueId, data }: { issueId: string; data: UpdateIssueInput }) =>
+      api.updateIssue(projectId, issueId, data),
+    onSuccess: (_res, { issueId }) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["issue", issueId] });
+    },
+  });
+
+  const updateIssueStatus = useMutation({
+    mutationFn: ({ issueId, statusId }: { issueId: string; statusId: string }) =>
+      api.updateIssueStatus(projectId, issueId, statusId),
+    // Optimistic update on board
+    onMutate: async ({ issueId, statusId }) => {
+      await qc.cancelQueries({ queryKey: ["board", projectId] });
+      const prev = qc.getQueryData<BoardData>(["board", projectId, null]);
+      if (prev) {
+        const updated: BoardData = { ...prev, columns: { ...prev.columns } };
+        // Remove from old column, add to new
+        let movedIssue: Issue | undefined;
+        for (const col of Object.values(updated.columns)) {
+          const idx = col.issues.findIndex(i => i.id === issueId);
+          if (idx !== -1) {
+            movedIssue = { ...col.issues[idx], statusId };
+            col.issues = col.issues.filter(i => i.id !== issueId);
+            break;
+          }
+        }
+        if (movedIssue && updated.columns[statusId]) {
+          updated.columns[statusId] = {
+            ...updated.columns[statusId],
+            issues: [...updated.columns[statusId].issues, movedIssue],
+          };
+          qc.setQueryData(["board", projectId, null], updated);
+        }
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["board", projectId, null], ctx.prev);
+    },
+    onSettled: () => invalidate(),
+  });
+
+  const deleteIssue = useMutation({
+    mutationFn: (issueId: string) => api.deleteIssue(projectId, issueId),
+    onSuccess: invalidate,
+  });
+
+  const restoreIssue = useMutation({
+    mutationFn: (issueId: string) => api.restoreIssue(projectId, issueId),
+    onSuccess: (_res, issueId) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["issues-archived", projectId] });
+      qc.invalidateQueries({ queryKey: ["issue", issueId] });
+    },
+  });
+
+  const addIssueToPlan = useMutation({
+    mutationFn: ({ issueId, data }: { issueId: string; data: AddToPlanInput }) =>
+      api.addIssueToPlan(projectId, issueId, data),
+    onSuccess: (_res, { issueId }) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["issue", issueId] });
+      qc.invalidateQueries({ queryKey: ["my-assignments"] });
+    },
+  });
+
+  const removeIssueFromPlan = useMutation({
+    mutationFn: (issueId: string) => api.removeIssueFromPlan(projectId, issueId),
+    onSuccess: (_res, issueId) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["issue", issueId] });
+    },
+  });
+
+  return { createIssue, updateIssue, updateIssueStatus, deleteIssue, restoreIssue, addIssueToPlan, removeIssueFromPlan };
+}
+
+// ── Comment mutations ─────────────────────────────────────────────
+export function useCommentMutations(projectId: string, issueId: string) {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["issue", issueId] });
+
+  const addComment = useMutation({
+    mutationFn: (data: CreateCommentInput) => api.addComment(projectId, issueId, data),
+    onSuccess: invalidate,
+  });
+
+  const updateComment = useMutation({
+    mutationFn: ({ commentId, data }: { commentId: string; data: CreateCommentInput }) =>
+      api.updateComment(projectId, issueId, commentId, data),
+    onSuccess: invalidate,
+  });
+
+  const deleteComment = useMutation({
+    mutationFn: (commentId: string) => api.deleteComment(projectId, issueId, commentId),
+    onSuccess: invalidate,
+  });
+
+  return { addComment, updateComment, deleteComment };
+}
+
+// ── Issue link mutations ──────────────────────────────────────────
+export function useIssueLinkMutations(projectId: string, issueId: string) {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["issue", issueId] });
+
+  const createLink = useMutation({
+    mutationFn: (data: { targetId: string; linkType: IssueLinkType }) =>
+      api.createIssueLink(projectId, issueId, data),
+    onSuccess: invalidate,
+  });
+
+  const deleteLink = useMutation({
+    mutationFn: (linkId: string) => api.deleteIssueLink(projectId, issueId, linkId),
+    onSuccess: invalidate,
+  });
+
+  return { createLink, deleteLink };
+}
+
+// ── Workflow status mutations ─────────────────────────────────────
+export function useStatusMutations(projectId: string) {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["project", projectId] });
+
+  const createStatus = useMutation({
+    mutationFn: (data: { name: string; color: string; category: string }) =>
+      api.createStatus(projectId, data),
+    onSuccess: invalidate,
+  });
+
+  const updateStatus = useMutation({
+    mutationFn: ({ sid, data }: { sid: string; data: { name?: string; color?: string; category?: string; isDefault?: boolean } }) =>
+      api.updateStatus(projectId, sid, data),
+    onSuccess: invalidate,
+  });
+
+  const deleteStatus = useMutation({
+    mutationFn: (sid: string) => api.deleteStatus(projectId, sid),
+    onSuccess: invalidate,
+  });
+
+  return { createStatus, updateStatus, deleteStatus };
+}
+
+// ── SSE hook — invalidates queries on server events ───────────────
+export function useProjectEvents(projectId: string | undefined) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!projectId) return;
+    const es = new EventSource(`/api/projects/${projectId}/events`, { withCredentials: true });
+    es.onmessage = (e) => {
+      const ev = JSON.parse(e.data);
+      if (ev.type === "connected") return;
+
+      if (["issue_created", "issue_updated", "issue_deleted", "issue_status_changed"].includes(ev.type)) {
+        qc.invalidateQueries({ queryKey: ["board", projectId] });
+        qc.invalidateQueries({ queryKey: ["issues", projectId] });
+        if (ev.issueId) qc.invalidateQueries({ queryKey: ["issue", ev.issueId] });
+      }
+      if (["comment_added", "comment_edited", "comment_deleted"].includes(ev.type)) {
+        if (ev.issueId) qc.invalidateQueries({ queryKey: ["issue", ev.issueId] });
+      }
+      if (["member_joined", "member_left"].includes(ev.type)) {
+        qc.invalidateQueries({ queryKey: ["project", projectId] });
+      }
+    };
+    return () => es.close();
+  }, [projectId, qc]);
+}

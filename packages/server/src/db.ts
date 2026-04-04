@@ -5,6 +5,11 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Return DATE columns as "yyyy-MM-dd" strings, not JS Date objects.
+// Without this, pg converts DATE → Date object → JSON gives "2026-04-06T00:00:00.000Z"
+// which breaks <input type="date"> that expects "yyyy-MM-dd".
+pg.types.setTypeParser(1082, (val: string) => val);
+
 export const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
 });

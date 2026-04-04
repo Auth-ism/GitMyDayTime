@@ -343,6 +343,9 @@ export const api = {
       `/projects/my-assignments${date ? `?date=${date}` : ""}`
     ),
 
+  getProjectLabels: (id: string) =>
+    request<string[]>(`/projects/${id}/labels`),
+
   getIssueLinks: (id: string, issueId: string) =>
     request<IssueLink[]>(`/projects/${id}/issues/${issueId}/links`),
 

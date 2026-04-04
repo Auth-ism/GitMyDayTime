@@ -532,3 +532,52 @@ export const IssueLinkSchema = z.object({
   targetPriority: z.string().optional(),
 });
 export type IssueLink = z.infer<typeof IssueLinkSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// Spaces  (UI deferred — schema/types ready for future wiring)
+// ─────────────────────────────────────────────────────────────────
+
+export const SpaceRole = z.enum(["owner", "admin", "member"]);
+export type SpaceRole = z.infer<typeof SpaceRole>;
+
+export const SpaceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  icon: z.string().nullable(),
+  color: z.string(),
+  ownerId: z.string(),
+  settings: z.record(z.unknown()),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  // Joined
+  myRole: SpaceRole.optional(),
+  memberCount: z.number().optional(),
+  projectCount: z.number().optional(),
+});
+export type Space = z.infer<typeof SpaceSchema>;
+
+export const CreateSpaceInput = z.object({
+  name: z.string().min(1).max(100),
+  slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, "Küçük harf, rakam ve tire"),
+  description: z.string().max(500).optional(),
+  icon: z.string().optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+});
+export type CreateSpaceInput = z.infer<typeof CreateSpaceInput>;
+
+export const UpdateSpaceInput = CreateSpaceInput.partial();
+export type UpdateSpaceInput = z.infer<typeof UpdateSpaceInput>;
+
+export const SpaceMemberSchema = z.object({
+  spaceId: z.string(),
+  userId: z.string(),
+  role: SpaceRole,
+  joinedAt: z.string(),
+  username: z.string().optional(),
+  displayName: z.string().nullable().optional(),
+  avatarUrl: z.string().nullable().optional(),
+  email: z.string().optional(),
+});
+export type SpaceMember = z.infer<typeof SpaceMemberSchema>;

@@ -220,9 +220,8 @@ async function processProjectNotifications(): Promise<number> {
 
       const { rows } = await pool.query(
         `SELECT push_subscription, email, plan_push_notifications, plan_email_notifications
-         FROM users u
-         JOIN user_profiles up ON up.user_id = u.id
-         WHERE u.id = $1`, [targetUserId]
+         FROM users
+         WHERE id = $1`, [targetUserId]
       );
       if (!rows.length) continue;
       const user = rows[0];

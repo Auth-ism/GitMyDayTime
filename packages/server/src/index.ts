@@ -24,6 +24,7 @@ import templateRoutes from "./routes/templates.js";
 import exportRoutes from "./routes/export.js";
 import pushRoutes from "./routes/push.js";
 import projectRoutes from "./routes/projects.js";
+import spaceRoutes from "./routes/spaces.js";
 import { startScheduler } from "./scheduler.js";
 
 const app = express();
@@ -110,45 +111,65 @@ app.use("/api", getGlobalLimiter());
 app.use(authMiddleware);
 
 // ── Route-specific rate limiters (per-user, after auth) ──────────
+// All instances created at startup — express-rate-limit requires this
 const rl = (max: number, windowMs = 60_000, prefix?: string) =>
   createRateLimiter(windowMs, max, { perUser: true, prefix });
 
+const rlDaysR    = rl(120, 60_000, "days-r");
+const rlDaysW    = rl(60,  60_000, "days-w");
+const rlStats    = rl(30,  60_000, "stats");
+const rlSearch   = rl(20,  60_000, "search");
+const rlRecurring= rl(30,  60_000, "recurring");
+const rlAvatar   = rl(5,   60_000, "avatar");
+const rlProfileW = rl(10,  60_000, "profile-w");
+const rlCategories = rl(30, 60_000, "categories");
+const rlTemplates  = rl(30, 60_000, "templates");
+const rlImport   = rl(3,   60_000, "import");
+const rlExport   = rl(5,   60_000, "export");
+const rlPush     = rl(20,  60_000, "push");
+const rlProjectsR = rl(120, 60_000, "projects-r");
+const rlProjectsW = rl(40,  60_000, "projects-w");
+
 // days: read-heavy (WeekView fires 7 reqs)
 app.use("/api/days", (req, _res, next) => {
-  if (req.method === "GET") return rl(120, 60_000, "days-r")(req, _res, next);
-  return rl(60, 60_000, "days-w")(req, _res, next);
+  if (req.method === "GET") return rlDaysR(req, _res, next);
+  return rlDaysW(req, _res, next);
 });
 app.use("/api/days", taskRoutes);
 app.use("/api/days", planRoutes);
 app.use("/api/days", journalRoutes);
 
-app.use("/api/stats", rl(30, 60_000, "stats"), statsRoutes);
-app.use("/api/search", rl(20, 60_000, "search"), searchRoutes);
-app.use("/api/recurring", rl(30, 60_000, "recurring"), recurringRoutes);
+app.use("/api/stats", rlStats, statsRoutes);
+app.use("/api/search", rlSearch, searchRoutes);
+app.use("/api/recurring", rlRecurring, recurringRoutes);
 
 // profile: separate limits for write vs avatar (large payload)
-app.use("/api/profile/avatar", express.json({ limit: "250kb" }), rl(5, 60_000, "avatar"));
+app.use("/api/profile/avatar", express.json({ limit: "250kb" }), rlAvatar);
 app.use("/api/profile", (req, _res, next) => {
-  if (req.method === "PUT" || req.method === "POST") return rl(10, 60_000, "profile-w")(req, _res, next);
+  if (req.method === "PUT" || req.method === "POST") return rlProfileW(req, _res, next);
   next();
 });
 app.use("/api/profile", profileRoutes);
 
-app.use("/api/categories", rl(30, 60_000, "categories"), categoryRoutes);
-app.use("/api/templates", rl(30, 60_000, "templates"), templateRoutes);
+app.use("/api/categories", rlCategories, categoryRoutes);
+app.use("/api/templates", rlTemplates, templateRoutes);
 
 // export: heavy DB queries — import needs larger body for bulk data
-app.use("/api/export/import", express.json({ limit: "1mb" }), rl(3, 60_000, "import"));
-app.use("/api/export", rl(5, 60_000, "export"), exportRoutes);
+app.use("/api/export/import", express.json({ limit: "1mb" }), rlImport);
+app.use("/api/export", rlExport, exportRoutes);
 
-app.use("/api/push", rl(20, 60_000, "push"), pushRoutes);
+app.use("/api/push", rlPush, pushRoutes);
 
 // Projects — higher read limit (board polling), moderate write limit
 app.use("/api/projects", (req, _res, next) => {
-  if (req.method === "GET") return rl(120, 60_000, "projects-r")(req, _res, next);
-  return rl(40, 60_000, "projects-w")(req, _res, next);
+  if (req.method === "GET") return rlProjectsR(req, _res, next);
+  return rlProjectsW(req, _res, next);
 });
 app.use("/api/projects", projectRoutes);
+
+// Spaces — UI deferred, routes ready
+const rlSpaces = rl(60, 60_000, "spaces");
+app.use("/api/spaces", rlSpaces, spaceRoutes);
 
 // Global async error handler — Express 4 doesn't catch async errors
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
