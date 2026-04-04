@@ -1,0 +1,54 @@
+# .claudeignore — Files excluded from Claude Code's auto-context
+# Reduces token usage by excluding large files rarely needed during development.
+
+# Dependencies — never needed
+node_modules/
+
+# Build outputs — read source, not compiled output
+packages/*/dist/
+packages/shared/dist/
+*.tsbuildinfo
+
+# Lock files — never useful in context
+package-lock.json
+*.lock
+
+# Static assets — binary/generated, no code value
+packages/web/public/
+
+# IDE & OS
+.idea/
+.DS_Store
+
+# Old planning documents — groups feature is complete, plans are stale
+GROUPS_PLAN.md
+plans/
+
+# Git internals
+.git/
+
+# Docker & K8s — only needed when explicitly working on infra
+Dockerfile
+k8s.yaml
+
+# Migrations — large historical SQL, read on-demand only
+# (do NOT ignore if actively writing a new migration)
+packages/server/migrations/001_initial.sql
+packages/server/migrations/002_indexes.sql
+packages/server/migrations/003_plan_time_fields.sql
+packages/server/migrations/004_audit_log.sql
+packages/server/migrations/005_recurring_tasks.sql
+packages/server/migrations/006_user_profiles.sql
+packages/server/migrations/007_plan_checklist.sql
+packages/server/migrations/008_custom_categories_and_reminders.sql
+packages/server/migrations/009_checklist_table_alignment.sql
+packages/server/migrations/010_email_verification_and_approval.sql
+packages/server/migrations/011_reminders_and_notifications.sql
+packages/server/migrations/012_priority_journal_templates_push.sql
+packages/server/migrations/013_fuzzy_search.sql
+packages/server/migrations/014_split_notification_prefs.sql
+packages/server/migrations/015_hidden_categories.sql
+packages/server/migrations/016_indexes_and_constraints.sql
+packages/server/migrations/017_recurring_task_link.sql
+packages/server/migrations/018_carry_over_flag.sql
+packages/server/migrations/019_notification_settings.sql
