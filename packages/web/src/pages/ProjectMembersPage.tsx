@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, UserPlus, ChevronDown, X, Crown, Shield, Code2, Eye, FileText } from "lucide-react";
+import { ArrowLeft, UserPlus, ChevronDown, X, Crown, Shield, Code2, Eye, FileText, Check } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { useProject, useProjectMutations } from "@/hooks/useProjects";
@@ -34,7 +34,12 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-const ASSIGNABLE_ROLES: ProjectRole[] = ["admin", "developer", "reporter", "viewer"];
+const ASSIGNABLE_ROLES: { role: ProjectRole; label: string; desc: string; Icon: React.FC<{ size?: number; className?: string }> }[] = [
+  { role: "admin",     label: "Admin",      desc: "Her şeyi yönetir, üye ekler",       Icon: Shield  },
+  { role: "developer", label: "Developer",  desc: "Issue oluşturur ve düzenler",         Icon: Code2   },
+  { role: "reporter",  label: "Reporter",   desc: "Issue açar, yorum yapar",             Icon: FileText },
+  { role: "viewer",    label: "İzleyici",   desc: "Sadece görüntüler",                   Icon: Eye     },
+];
 
 export default function ProjectMembersPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -138,44 +143,71 @@ export default function ProjectMembersPage() {
 
       {/* Invite panel */}
       {showInvite && (
-        <div className="card p-4 space-y-3 border-accent/30">
+        <div className="card p-4 space-y-4 border-accent/30">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-text">{t("members.invite")}</span>
+            <span className="text-sm font-semibold text-text">Üye Davet Et</span>
             <button onClick={() => setShowInvite(false)} className="btn-icon p-1 rounded text-text-tertiary hover:text-text">
               <X size={14} />
             </button>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+
+          {/* Email */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-medium text-text-secondary uppercase tracking-wide">E-posta</label>
             <input
               type="email"
-              className="input flex-1 text-sm"
-              placeholder={t("members.inviteEmail")}
+              className="input w-full text-sm"
+              placeholder="ornek@sirket.com"
               value={inviteEmail}
               onChange={e => { setInviteEmail(e.target.value); setInviteStatus("idle"); }}
               onKeyDown={e => e.key === "Enter" && handleInvite()}
+              autoFocus
             />
-            <select
-              className="input text-sm w-full sm:w-32"
-              value={inviteRole}
-              onChange={e => setInviteRole(e.target.value as ProjectRole)}
-            >
-              {ASSIGNABLE_ROLES.map(r => (
-                <option key={r} value={r}>{t(`members.role.${r}` as any)}</option>
-              ))}
-            </select>
-            <button
-              onClick={handleInvite}
-              disabled={inviteStatus === "sending" || !inviteEmail.trim()}
-              className="btn-primary w-full sm:w-auto px-3 py-2 text-xs disabled:opacity-50 whitespace-nowrap"
-            >
-              {inviteStatus === "sending" ? t("members.inviting") : t("members.inviteSend")}
-            </button>
           </div>
+
+          {/* Role picker */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-text-secondary uppercase tracking-wide">Rol</label>
+            <div className="grid grid-cols-2 gap-2">
+              {ASSIGNABLE_ROLES.map(({ role, label, desc, Icon }) => {
+                const selected = inviteRole === role;
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setInviteRole(role)}
+                    className={cn(
+                      "flex items-start gap-2 p-2.5 rounded-xl border text-left transition-colors",
+                      selected
+                        ? "border-accent bg-accent/10"
+                        : "border-border hover:border-accent/40 hover:bg-bg-subtle"
+                    )}
+                  >
+                    <Icon size={13} className={selected ? "text-accent mt-0.5 flex-shrink-0" : "text-text-tertiary mt-0.5 flex-shrink-0"} />
+                    <div className="min-w-0 flex-1">
+                      <p className={cn("text-xs font-semibold leading-none", selected ? "text-accent" : "text-text")}>{label}</p>
+                      <p className="text-[10px] text-text-tertiary mt-0.5 leading-snug">{desc}</p>
+                    </div>
+                    {selected && <Check size={11} className="text-accent flex-shrink-0 mt-0.5" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            onClick={handleInvite}
+            disabled={inviteStatus === "sending" || !inviteEmail.trim()}
+            className="btn-primary w-full py-2 text-sm disabled:opacity-50"
+          >
+            {inviteStatus === "sending" ? "Gönderiliyor..." : "Davet Gönder"}
+          </button>
+
           {inviteStatus === "sent" && (
-            <p className="text-xs text-green-400">{t("members.inviteSent")}</p>
+            <p className="text-xs text-green-400 text-center">Davet e-postası gönderildi.</p>
           )}
           {inviteStatus === "error" && (
-            <p className="text-xs text-danger">{t("members.inviteError")}</p>
+            <p className="text-xs text-danger text-center">{t("members.inviteError")}</p>
           )}
         </div>
       )}
@@ -220,14 +252,15 @@ export default function ProjectMembersPage() {
                     <ChevronDown size={10} className="text-text-tertiary" />
                   </button>
                   {openRoleMenuFor === member.userId && (
-                    <div className="absolute right-0 top-full mt-1 bg-bg-elevated border border-border rounded-xl shadow-lg z-20 overflow-hidden min-w-[120px]">
-                      {ASSIGNABLE_ROLES.map(r => (
+                    <div className="absolute right-0 top-full mt-1 bg-bg-elevated border border-border rounded-xl shadow-lg z-20 overflow-hidden min-w-[130px]">
+                      {ASSIGNABLE_ROLES.map(({ role: r, label, Icon }) => (
                         <button
                           key={r}
                           onClick={() => handleRoleChange(member.userId, r)}
                           className={cn("w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent/10 transition-colors", r === member.role && "bg-accent/5 font-medium")}
                         >
-                          {t(`members.role.${r}` as any)}
+                          <Icon size={11} className="text-text-tertiary flex-shrink-0" />
+                          {label}
                         </button>
                       ))}
                     </div>

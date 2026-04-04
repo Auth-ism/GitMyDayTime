@@ -18,6 +18,7 @@ import IssuePage from "@/pages/IssuePage";
 import ProjectMembersPage from "@/pages/ProjectMembersPage";
 import ProjectSettingsPage from "@/pages/ProjectSettingsPage";
 import ProjectInsightsPage from "@/pages/ProjectInsightsPage";
+import ProjectJoinPage from "@/pages/ProjectJoinPage";
 import { Clock } from "lucide-react";
 
 function LoadingScreen() {
@@ -62,7 +63,7 @@ export default function App() {
             <Route path="/projects/:projectId/members" element={<ProjectMembersPage />} />
             <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
             <Route path="/projects/:projectId/insights" element={<ProjectInsightsPage />} />
-            <Route path="/projects/join/:token" element={<ProjectsPage />} />
+            <Route path="/projects/join/:token" element={<ProjectJoinPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </>
