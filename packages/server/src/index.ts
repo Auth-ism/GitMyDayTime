@@ -130,6 +130,7 @@ const rlExport   = rl(5,   60_000, "export");
 const rlPush     = rl(20,  60_000, "push");
 const rlProjectsR = rl(120, 60_000, "projects-r");
 const rlProjectsW = rl(40,  60_000, "projects-w");
+const rlFeedback  = rl(3,   3_600_000, "feedback"); // 3/saat — email gönderiyor
 
 // days: read-heavy (WeekView fires 7 reqs)
 app.use("/api/days", (req, _res, next) => {
@@ -146,6 +147,7 @@ app.use("/api/recurring", rlRecurring, recurringRoutes);
 
 // profile: separate limits for write vs avatar (large payload)
 app.use("/api/profile/avatar", express.json({ limit: "250kb" }), rlAvatar);
+app.use("/api/profile/feedback", rlFeedback); // email gönderdiği için sıkı limit
 app.use("/api/profile", (req, _res, next) => {
   if (req.method === "PUT" || req.method === "POST") return rlProfileW(req, _res, next);
   next();
