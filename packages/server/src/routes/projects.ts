@@ -341,6 +341,15 @@ router.get("/:id/issues/:issueId", isMember, wrap(async (req, res) => {
   res.json(detail);
 }));
 
+// Issue reorder — must be BEFORE /:id/issues/:issueId to avoid param capture
+router.patch("/:id/issues/reorder", isDev, wrap(async (req, res) => {
+  const { orders } = req.body as { orders: Array<{ issueId: string; sortOrder: number }> };
+  if (!Array.isArray(orders)) { res.status(400).json({ error: "orders array gerekli" }); return; }
+  await reorderIssues(orders);
+  await invalidateBoardCache(req.params.id as string);
+  res.json({ ok: true });
+}));
+
 router.post("/:id/issues", canReport, wrap(async (req, res) => {
   const id = req.params.id as string;
   const input = CreateIssueInput.safeParse(req.body);
@@ -775,17 +784,6 @@ router.delete("/:id/statuses/:sid", isAdmin, wrap(async (req, res) => {
 }));
 
 // ─────────────────────────────────────────────────────────────────
-// Issue reorder
-// ─────────────────────────────────────────────────────────────────
-
-router.patch("/:id/issues/reorder", isDev, wrap(async (req, res) => {
-  const { orders } = req.body as { orders: Array<{ issueId: string; sortOrder: number }> };
-  if (!Array.isArray(orders)) { res.status(400).json({ error: "orders array gerekli" }); return; }
-  await reorderIssues(orders);
-  await invalidateBoardCache(req.params.id as string);
-  res.json({ ok: true });
-}));
-
 // ─────────────────────────────────────────────────────────────────
 // Sprints
 // ─────────────────────────────────────────────────────────────────
