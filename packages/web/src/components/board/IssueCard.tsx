@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Bug, Zap, BookOpen, CheckSquare, Minus, Plus } from "lucide-react";
+import { CalendarDays, Bug, Zap, BookOpen, CheckSquare, Minus, Plus, CornerDownRight } from "lucide-react";
 import DatePicker from "@/components/DatePicker";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
@@ -85,9 +85,12 @@ export default function IssueCard({ issue, projectId, currentUserId, onDragStart
           </div>
 
           {issue.parentIssueKey && (
-            <div className="text-[10px] text-text-tertiary flex items-center gap-0.5">
-              <Minus size={9} />
-              <span className="font-mono">{issue.parentIssueKey}</span>
+            <div className="flex items-center gap-1 text-[10px] bg-bg-subtle rounded px-1.5 py-0.5 -mx-0.5 border border-border/50">
+              <CornerDownRight size={9} className="text-text-tertiary flex-shrink-0" />
+              <span className="font-mono text-text-secondary font-medium flex-shrink-0">{issue.parentIssueKey}</span>
+              {issue.parentTitle && (
+                <span className="text-text-tertiary truncate">{issue.parentTitle}</span>
+              )}
             </div>
           )}
 

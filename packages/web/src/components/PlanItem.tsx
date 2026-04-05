@@ -44,6 +44,8 @@ export default function PlanItem({
   const [expanded, setExpanded] = useState(false);
   const [newCheckItem, setNewCheckItem] = useState("");
   const [editPriority, setEditPriority] = useState<PriorityType>(item.priority ?? "normal");
+  const [editTime, setEditTime] = useState(item.scheduledTime ?? "");
+  const [editDuration, setEditDuration] = useState(item.duration != null && item.duration > 0 ? String(item.duration) : "");
   const editRef = useRef<HTMLInputElement>(null);
   const checkInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,6 +89,14 @@ export default function PlanItem({
       const updates: Partial<PlanItemType> = {};
       if (trimmed && trimmed !== item.description) updates.description = trimmed;
       if (editPriority !== (item.priority ?? "normal")) updates.priority = editPriority;
+      // scheduledTime: empty string → null to clear
+      const newTime = editTime.trim() || null;
+      if (newTime !== (item.scheduledTime ?? null)) updates.scheduledTime = newTime ?? undefined;
+      // duration: parse minutes
+      const newDur = editDuration.trim() ? Number(editDuration) : null;
+      if (!isNaN(newDur ?? 0) && newDur !== (item.duration ?? null)) {
+        updates.duration = newDur ?? undefined;
+      }
       if (Object.keys(updates).length > 0) onUpdate(updates);
     }
     setEditing(false);
@@ -94,6 +104,8 @@ export default function PlanItem({
 
   const handleEditCancel = () => {
     setEditValue(item.description);
+    setEditTime(item.scheduledTime ?? "");
+    setEditDuration(item.duration != null && item.duration > 0 ? String(item.duration) : "");
     setEditing(false);
   };
 
@@ -167,6 +179,34 @@ export default function PlanItem({
                   </button>
                 ))}
               </div>
+              <div className="flex gap-2">
+                <div className="flex items-center gap-1.5 flex-1">
+                  <Clock size={12} className="text-text-tertiary flex-shrink-0" />
+                  <input
+                    type="time"
+                    className="input !py-1 !px-2 !text-xs flex-1"
+                    value={editTime}
+                    onChange={(e) => setEditTime(e.target.value)}
+                    placeholder="--:--"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 flex-1">
+                  <Timer size={12} className="text-text-tertiary flex-shrink-0" />
+                  <input
+                    type="number"
+                    min={1}
+                    max={480}
+                    className="input !py-1 !px-2 !text-xs flex-1"
+                    value={editDuration}
+                    onChange={(e) => setEditDuration(e.target.value)}
+                    placeholder={t("plan.durationMin" as any)}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-1.5 pt-0.5">
+                <button onClick={handleEditSave} className="btn-primary px-3 py-1 text-xs flex-1">{t("form.save" as any)}</button>
+                <button onClick={handleEditCancel} className="btn-secondary px-3 py-1 text-xs">{t("issue.cancelEdit" as any)}</button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-1.5">
@@ -175,7 +215,7 @@ export default function PlanItem({
               )}
               <p
                 className={cn("text-sm leading-snug", item.completed && "line-through text-text-tertiary", onUpdate && "cursor-pointer")}
-                onClick={() => { if (onUpdate && !item.completed) { setEditing(true); setEditPriority(item.priority ?? "normal"); } }}
+                onClick={() => { if (onUpdate && !item.completed) { setEditing(true); setEditPriority(item.priority ?? "normal"); setEditTime(item.scheduledTime ?? ""); setEditDuration(item.duration != null && item.duration > 0 ? String(item.duration) : ""); } }}
               >
                 {item.description}
               </p>
@@ -218,7 +258,7 @@ export default function PlanItem({
 
         {!item.completed && onUpdate && !editing && (
           <button
-            onClick={() => { setEditing(true); setEditPriority(item.priority ?? "normal"); }}
+            onClick={() => { setEditing(true); setEditPriority(item.priority ?? "normal"); setEditTime(item.scheduledTime ?? ""); setEditDuration(item.duration != null && item.duration > 0 ? String(item.duration) : ""); }}
             aria-label="Edit"
             className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
           >

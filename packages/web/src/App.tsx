@@ -20,6 +20,7 @@ import ProjectSettingsPage from "@/pages/ProjectSettingsPage";
 import ProjectInsightsPage from "@/pages/ProjectInsightsPage";
 import ProjectJoinPage from "@/pages/ProjectJoinPage";
 import { Clock } from "lucide-react";
+import { ToastContainer } from "@/components/Toast";
 
 function LoadingScreen() {
   return (
@@ -40,6 +41,8 @@ export default function App() {
   if (isLoading) return <LoadingScreen />;
 
   return (
+    <>
+    <ToastContainer />
     <Routes>
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -69,5 +72,6 @@ export default function App() {
         </>
       )}
     </Routes>
+    </>
   );
 }

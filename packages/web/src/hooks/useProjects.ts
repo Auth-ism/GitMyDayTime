@@ -156,7 +156,13 @@ export function useIssueMutations(projectId: string) {
 
   const createIssue = useMutation({
     mutationFn: (data: CreateIssueInput) => api.createIssue(projectId, data),
-    onSuccess: invalidate,
+    onSuccess: (_res, vars) => {
+      invalidate();
+      // If sub-task, refresh parent issue so children list updates
+      if ((vars as any).parentId) {
+        qc.invalidateQueries({ queryKey: ["issue", (vars as any).parentId] });
+      }
+    },
   });
 
   const updateIssue = useMutation({
@@ -217,6 +223,14 @@ export function useIssueMutations(projectId: string) {
     },
   });
 
+  const permanentDeleteIssue = useMutation({
+    mutationFn: (issueId: string) => api.permanentDeleteIssue(projectId, issueId),
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["issues-archived", projectId] });
+    },
+  });
+
   const addIssueToPlan = useMutation({
     mutationFn: ({ issueId, data }: { issueId: string; data: AddToPlanInput }) =>
       api.addIssueToPlan(projectId, issueId, data),
@@ -241,7 +255,7 @@ export function useIssueMutations(projectId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["board", projectId] }),
   });
 
-  return { createIssue, updateIssue, updateIssueStatus, deleteIssue, restoreIssue, addIssueToPlan, removeIssueFromPlan, reorderIssues };
+  return { createIssue, updateIssue, updateIssueStatus, deleteIssue, restoreIssue, permanentDeleteIssue, addIssueToPlan, removeIssueFromPlan, reorderIssues };
 }
 
 // ── Comment mutations ─────────────────────────────────────────────

@@ -155,7 +155,12 @@ export function useDayLog(date: string) {
       return { prev };
     },
     onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
-    onSettled: invalidateWithStats,
+    onSettled: () => {
+      invalidateWithStats();
+      // Invalidate all board caches — plan item may have been linked to a project issue
+      qc.invalidateQueries({ queryKey: ["board"] });
+      qc.invalidateQueries({ queryKey: ["issue"] });
+    },
   });
 
   const reorderPlan = useMutation({

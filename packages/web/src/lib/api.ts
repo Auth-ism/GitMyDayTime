@@ -307,6 +307,9 @@ export const api = {
   restoreIssue: (id: string, issueId: string) =>
     request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/restore`, { method: "PATCH" }),
 
+  permanentDeleteIssue: (id: string, issueId: string) =>
+    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/permanent`, { method: "DELETE" }),
+
   getArchivedIssues: (id: string) =>
     request<{ issues: Issue[]; total: number }>(`/projects/${id}/issues/archived`),
 

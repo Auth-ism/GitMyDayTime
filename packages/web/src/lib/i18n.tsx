@@ -65,6 +65,7 @@ const translations = {
     "form.duration": "Duration",
     "form.custom": "Custom",
     "form.add": "Add",
+    "form.save": "Save",
     "form.addedSuccess": "Added successfully",
 
     // PlanItem
@@ -76,6 +77,7 @@ const translations = {
     "plan.skip": "Skip",
     "plan.complete": "complete",
     "plan.incomplete": "incomplete",
+    "plan.durationMin": "min",
 
     // TaskItem
     "task.deleteNote": "Delete note",
@@ -490,6 +492,25 @@ const translations = {
     "settings.statusCategory.done": "Done",
     "settings.setDefault": "Set as Default",
     "settings.statusDefault": "Default",
+    // DatePicker
+    "datepicker.placeholder": "Select date",
+    // Issue labels / links / sub-tasks
+    "issue.labels": "Labels",
+    "issue.labelsAdd": "Add label...",
+    "issue.labelsAddHint": "Add label (Enter to confirm)",
+    "issue.labelAdd": "add",
+    "issue.noLabels": "No labels",
+    "issue.subTasks": "Sub-tasks",
+    "issue.links": "Links",
+    "issue.noLinks": "No links",
+    "issue.permanentDelete": "Delete Permanently",
+    "issue.permanentDeleteConfirm": "Permanently delete this issue? This cannot be undone.",
+    // Board filter bar
+    "board.searchPlaceholder": "Search issues...",
+    "board.filterType": "Type:",
+    "board.filterPriority": "Priority:",
+    "board.filterLabel": "Label:",
+    "board.clearFilters": "Clear",
   },
   tr: {
     // Nav
@@ -552,6 +573,7 @@ const translations = {
     "form.duration": "Süre",
     "form.custom": "Özel",
     "form.add": "Ekle",
+    "form.save": "Kaydet",
     "form.addedSuccess": "Başarıyla eklendi",
 
     // PlanItem
@@ -563,6 +585,7 @@ const translations = {
     "plan.skip": "Atla",
     "plan.complete": "tamamlandı",
     "plan.incomplete": "tamamlanmadı",
+    "plan.durationMin": "dk",
 
     // TaskItem
     "task.deleteNote": "Notu sil",
@@ -977,6 +1000,25 @@ const translations = {
     "settings.statusCategory.done": "Tamamlandı",
     "settings.setDefault": "Varsayılan Yap",
     "settings.statusDefault": "Varsayılan",
+    // DatePicker
+    "datepicker.placeholder": "Tarih seç",
+    // Issue labels / links / sub-tasks
+    "issue.labels": "Etiketler",
+    "issue.labelsAdd": "Etiket ekle...",
+    "issue.labelsAddHint": "Etiket ekle (Enter ile onayla)",
+    "issue.labelAdd": "ekle",
+    "issue.noLabels": "Etiket yok",
+    "issue.subTasks": "Alt Görevler",
+    "issue.links": "Bağlantılar",
+    "issue.noLinks": "Bağlantı yok",
+    "issue.permanentDelete": "Kalıcı Sil",
+    "issue.permanentDeleteConfirm": "Bu görev kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
+    // Board filter bar
+    "board.searchPlaceholder": "Görev ara...",
+    "board.filterType": "Tür:",
+    "board.filterPriority": "Öncelik:",
+    "board.filterLabel": "Etiket:",
+    "board.clearFilters": "Temizle",
   },
 } as const;
 

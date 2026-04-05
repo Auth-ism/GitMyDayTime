@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Layers, Settings, Users, Plus, Archive, RotateCcw, BarChart2 } from "lucide-react";
+import { ArrowLeft, Layers, Settings, Users, Plus, Archive, RotateCcw, Trash2, BarChart2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useProject, useArchivedIssues, useIssueMutations } from "@/hooks/useProjects";
 import KanbanBoard from "@/components/board/KanbanBoard";
@@ -15,7 +15,7 @@ export default function BoardPage() {
   const [showArchive, setShowArchive] = useState(false);
   const [activeSprint, setActiveSprint] = useState<string | null | undefined>(undefined);
   const { data: archivedData } = useArchivedIssues(projectId, showArchive);
-  const { restoreIssue } = useIssueMutations(projectId!);
+  const { restoreIssue, permanentDeleteIssue } = useIssueMutations(projectId!);
 
   if (isLoading) {
     return (
@@ -127,14 +127,28 @@ export default function BoardPage() {
                   <span className="font-mono text-[10px] text-text-tertiary flex-shrink-0">{issue.issueKey}</span>
                   <span className="text-xs text-text-secondary flex-1 truncate">{issue.title}</span>
                   {canManage && (
-                    <button
-                      onClick={() => restoreIssue.mutateAsync(issue.id)}
-                      disabled={restoreIssue.isPending}
-                      className="flex items-center gap-1 text-[10px] text-text-tertiary hover:text-accent transition-colors disabled:opacity-50"
-                    >
-                      <RotateCcw size={11} />
-                      {t("issue.restore")}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => restoreIssue.mutateAsync(issue.id)}
+                        disabled={restoreIssue.isPending}
+                        className="flex items-center gap-1 text-[10px] text-text-tertiary hover:text-accent transition-colors disabled:opacity-50"
+                      >
+                        <RotateCcw size={11} />
+                        {t("issue.restore")}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(t("issue.permanentDeleteConfirm" as any))) {
+                            permanentDeleteIssue.mutate(issue.id);
+                          }
+                        }}
+                        disabled={permanentDeleteIssue.isPending}
+                        className="flex items-center gap-1 text-[10px] text-text-tertiary hover:text-danger transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 size={11} />
+                        {t("issue.permanentDelete" as any)}
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}

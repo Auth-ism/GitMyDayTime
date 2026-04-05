@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Bug, Zap, BookOpen, CheckSquare, Minus,
-  CalendarDays, Trash2, Edit2, Check, X, ChevronDown, Link2, Plus, Tag,
+  CalendarDays, Trash2, Edit2, Check, X, ChevronDown, Link2, Plus, Tag, CornerDownRight, ChevronRight,
 } from "lucide-react";
 import type { IssueLinkType } from "@gmd/shared";
 import { useI18n } from "@/lib/i18n";
@@ -83,6 +83,7 @@ function ChildIssuesSection({
   canEdit: boolean;
   statuses: import("@gmd/shared").WorkflowStatus[];
 }) {
+  const { t } = useI18n();
   const { createIssue } = useIssueMutations(projectId);
   const [adding, setAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -111,7 +112,7 @@ function ChildIssuesSection({
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
           <Minus size={12} className="text-text-tertiary" />
-          Alt Görevler {children.length > 0 && <span className="text-text-tertiary">({children.length})</span>}
+          {t("issue.subTasks" as any)} {children.length > 0 && <span className="text-text-tertiary">({children.length})</span>}
         </span>
         {canEdit && !adding && (
           <button onClick={() => setAdding(true)} className="btn-icon p-1 rounded text-text-tertiary hover:text-text">
@@ -182,6 +183,7 @@ function IssueLinkSection({
   links: NonNullable<import("@gmd/shared").IssueDetail["links"]>;
   canEdit: boolean;
 }) {
+  const { t } = useI18n();
   const { createLink, deleteLink } = useIssueLinkMutations(projectId, issueId);
   const [showPicker, setShowPicker] = useState(false);
   const [linkType, setLinkType] = useState<IssueLinkType>("relates_to");
@@ -206,18 +208,18 @@ function IssueLinkSection({
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
           <Link2 size={12} />
-          Bağlantılar {links.length > 0 && `(${links.length})`}
+          {t("issue.links" as any)} {links.length > 0 && `(${links.length})`}
         </span>
         {canEdit && (
           <button onClick={() => setShowPicker(true)} className="text-[10px] text-text-tertiary hover:text-accent transition-colors flex items-center gap-1">
             <Plus size={10} />
-            Ekle
+            {t("form.add")}
           </button>
         )}
       </div>
 
       {links.length === 0 && (
-        <p className="text-xs text-text-tertiary italic">Bağlantı yok</p>
+        <p className="text-xs text-text-tertiary italic">{t("issue.noLinks" as any)}</p>
       )}
 
       {links.map(link => (
@@ -376,7 +378,7 @@ export default function IssuePage() {
   const canEdit = myRole && myRole !== "viewer" &&
     (["owner", "admin", "developer"].includes(myRole) || issue.reporterId === user?.id);
   const canDelete = myRole && (["owner", "admin"].includes(myRole) || issue.reporterId === user?.id);
-  const canManageStatus = myRole && myRole !== "viewer";
+  const canManageStatus = myRole && ["owner", "admin", "developer"].includes(myRole);
 
   const TypeIcon = TYPE_ICONS[issue.issueType] ?? CheckSquare;
   const statuses = project?.statuses ?? [];
@@ -444,16 +446,20 @@ export default function IssuePage() {
 
       {/* Parent link */}
       {issue.parentId && (
-        <div className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
-          <span>Alt görev:</span>
-          <Link
-            to={`/projects/${projectId}/issues/${issue.parentId}`}
-            className="flex items-center gap-1 text-accent hover:underline"
-          >
-            <span className="font-mono">{issue.parentIssueKey}</span>
-            <span className="truncate max-w-[120px] sm:max-w-[200px]">{issue.parentTitle}</span>
-          </Link>
-        </div>
+        <Link
+          to={`/projects/${projectId}/issues/${issue.parentId}`}
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-border bg-bg-subtle hover:border-accent/40 hover:bg-accent/5 transition-colors group"
+        >
+          <CornerDownRight size={13} className="text-text-tertiary flex-shrink-0 group-hover:text-accent transition-colors" />
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <span className="text-[10px] text-text-tertiary uppercase tracking-wide font-medium flex-shrink-0">Parent</span>
+            <span className="font-mono text-xs text-accent font-semibold flex-shrink-0">{issue.parentIssueKey}</span>
+            {issue.parentTitle && (
+              <span className="text-xs text-text truncate">{issue.parentTitle}</span>
+            )}
+          </div>
+          <ChevronRight size={13} className="text-text-tertiary flex-shrink-0 group-hover:text-accent transition-colors" />
+        </Link>
       )}
 
       {/* Title */}
@@ -820,7 +826,7 @@ export default function IssuePage() {
           <div className="card p-3 space-y-2">
             <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wide flex items-center gap-1">
               <Tag size={10} />
-              Etiketler
+              {t("issue.labels" as any)}
             </span>
 
             {/* Existing labels */}
@@ -853,7 +859,7 @@ export default function IssuePage() {
               <div className="relative">
                 <input
                   className="input w-full text-xs py-1.5"
-                  placeholder="Etiket ekle..."
+                  placeholder={t("issue.labelsAdd" as any)}
                   value={labelInput}
                   onChange={e => { setLabelInput(e.target.value); setLabelSuggestOpen(true); }}
                   onFocus={() => setLabelSuggestOpen(true)}
@@ -887,7 +893,7 @@ export default function IssuePage() {
                       >
                         <Plus size={11} className="text-accent" />
                         <span className="text-accent font-medium">"{labelInput.trim().toLowerCase()}"</span>
-                        <span className="text-text-tertiary ml-1">ekle</span>
+                        <span className="text-text-tertiary ml-1">{t("issue.labelAdd" as any)}</span>
                       </button>
                     )}
                     {/* Existing label suggestions */}
@@ -915,7 +921,7 @@ export default function IssuePage() {
             )}
 
             {(issue.labels ?? []).length === 0 && !canEdit && (
-              <p className="text-xs text-text-tertiary italic">Etiket yok</p>
+              <p className="text-xs text-text-tertiary italic">{t("issue.noLabels" as any)}</p>
             )}
           </div>
 

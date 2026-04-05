@@ -381,6 +381,7 @@ export async function acceptInvitation(invitationId: string, userId: string, rol
   } finally {
     client.release();
   }
+  await invalidateMemberCache(projectId, userId);
 }
 
 export async function removeMember(projectId: string, userId: string): Promise<void> {
@@ -731,6 +732,10 @@ export async function archiveIssue(issueId: string, archived: boolean): Promise<
      WHERE id = $1 OR parent_id = $1`,
     [issueId, archived]
   );
+}
+
+export async function deleteIssuePermanent(issueId: string): Promise<void> {
+  await pool.query("DELETE FROM issues WHERE id = $1 OR parent_id = $1", [issueId]);
 }
 
 // ─────────────────────────────────────────────────────────────────

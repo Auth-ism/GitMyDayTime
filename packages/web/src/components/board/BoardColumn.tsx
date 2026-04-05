@@ -30,6 +30,7 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
   const handleColumnDrop = (e: React.DragEvent, targetIndex: number) => {
     e.preventDefault();
     e.stopPropagation();
+    const effectiveIndex = dragOverIndex !== null && targetIndex === issues.length ? dragOverIndex : targetIndex;
     setIsDragOver(false);
     setDragOverIndex(null);
     const issueId = e.dataTransfer.getData("issueId");
@@ -39,15 +40,15 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
     if (sourceStatusId === status.id) {
       // Intra-column reorder
       const oldIndex = issues.findIndex(i => i.id === issueId);
-      if (oldIndex === -1 || oldIndex === targetIndex) return;
+      if (oldIndex === -1 || oldIndex === effectiveIndex) return;
       const newOrder = [...issues];
       const [moved] = newOrder.splice(oldIndex, 1);
-      const insertAt = targetIndex > oldIndex ? targetIndex - 1 : targetIndex;
+      const insertAt = effectiveIndex > oldIndex ? effectiveIndex - 1 : effectiveIndex;
       newOrder.splice(insertAt, 0, moved);
       onReorder?.(newOrder.map((is, idx) => ({ issueId: is.id, sortOrder: idx })));
     } else {
       // Cross-column drop
-      onDropIssue?.(issueId, status.id, targetIndex);
+      onDropIssue?.(issueId, status.id, effectiveIndex);
     }
   };
 
@@ -91,15 +92,17 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
         )}
 
         {issues.map((issue, idx) => (
-          <div key={issue.id}>
-            {/* Drop zone before each card */}
+          <div
+            key={issue.id}
+            onDragEnter={(e) => { e.preventDefault(); setDragOverIndex(idx); }}
+          >
+            {/* Drop zone before each card — highlighted when this card is hovered */}
             <div
               className={cn(
-                "h-1 rounded transition-all",
-                dragOverIndex === idx ? "bg-accent/50 h-2 my-0.5" : "my-0.5"
+                "rounded transition-all",
+                dragOverIndex === idx ? "bg-accent/40 h-1.5 my-1" : "h-px my-0.5 bg-transparent"
               )}
               onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(idx); }}
-              onDragLeave={() => setDragOverIndex(null)}
               onDrop={(e) => handleColumnDrop(e, idx)}
             />
             <IssueCard

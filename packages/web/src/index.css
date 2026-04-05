@@ -92,7 +92,10 @@
     pointer-events: none;
   }
 
-  /* Main content needs extra bottom padding on notch devices */
+  /* Main content needs extra bottom padding on mobile notch devices only */
+}
+
+@media (max-width: 639px) {
   @supports (padding-bottom: env(safe-area-inset-bottom)) {
     .safe-main-bottom {
       padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));

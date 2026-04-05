@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays, X } from "lucide-react";
 import { cn } from "@/lib/cn";
-
-const MONTHS = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
-const DAYS   = ["Pt","Sa","Ça","Pe","Cu","Ct","Pz"];
+import { useI18n } from "@/lib/i18n";
 
 interface Props {
   value: string;
@@ -13,9 +11,22 @@ interface Props {
   clearable?: boolean;
 }
 
-function toDisplay(dateStr: string): string {
+// Jan 1 2024 was a Monday — use it to generate Mon-first day headers
+function getMonthNames(locale: string): string[] {
+  return Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { month: "long" }).format(new Date(2024, i, 1))
+  );
+}
+
+function getDayNames(locale: string): string[] {
+  return Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { weekday: "short" }).format(new Date(2024, 0, 1 + i))
+  );
+}
+
+function toDisplay(dateStr: string, locale: string): string {
   const d = new Date(dateStr + "T12:00:00");
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(d);
 }
 
 function buildCells(year: number, month: number): (number | null)[] {
@@ -28,7 +39,11 @@ function buildCells(year: number, month: number): (number | null)[] {
   return cells;
 }
 
-export default function DatePicker({ value, onChange, placeholder = "Tarih seç", className, clearable = false }: Props) {
+export default function DatePicker({ value, onChange, placeholder, className, clearable = false }: Props) {
+  const { t, locale } = useI18n();
+  const resolvedPlaceholder = placeholder ?? t("datepicker.placeholder" as any);
+  const MONTHS = getMonthNames(locale);
+  const DAYS   = getDayNames(locale);
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() =>
     value ? parseInt(value.slice(0, 4)) : new Date().getFullYear()
@@ -89,7 +104,7 @@ export default function DatePicker({ value, onChange, placeholder = "Tarih seç"
       >
         <CalendarDays size={14} className="text-text-tertiary flex-shrink-0" />
         <span className={cn("flex-1 text-sm", value ? "text-text" : "text-text-tertiary")}>
-          {value ? toDisplay(value) : placeholder}
+          {value ? toDisplay(value, locale) : resolvedPlaceholder}
         </span>
         {clearable && value && (
           <span

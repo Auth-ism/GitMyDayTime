@@ -16,7 +16,7 @@ import JournalSection from "@/components/JournalSection";
 import TimelineView from "@/components/TimelineView";
 import TemplatesModal from "@/components/TemplatesModal";
 import ShortcutHelp from "@/components/ShortcutHelp";
-import { UndoToastContainer, showUndoToast } from "@/components/UndoToast";
+import { showUndoToast } from "@/components/Toast";
 import { AnimatePresence, Reorder } from "framer-motion";
 import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, Keyboard } from "lucide-react";
 import { todayStr, type PlanItem as PlanItemData } from "@gmd/shared";
@@ -175,8 +175,6 @@ export default function DayView() {
 
   return (
     <div className="space-y-3" {...swipeHandlers}>
-      <UndoToastContainer />
-
       {/* Date header — compact */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">

@@ -124,7 +124,7 @@ export default function CreateIssueModal({ projectId, defaultStatusId, parentId,
                 value={assigneeId}
                 onChange={e => setAssigneeId(e.target.value)}
               >
-                <option value="">Atanmamış</option>
+                <option value="">{t("issue.unassigned" as any)}</option>
                 {project?.members.map(m => (
                   <option key={m.userId} value={m.userId}>
                     {m.displayName || m.username || m.email}
@@ -137,7 +137,7 @@ export default function CreateIssueModal({ projectId, defaultStatusId, parentId,
               <DatePicker
                 value={dueDate}
                 onChange={val => setDueDate(val ?? "")}
-                placeholder="Tarih seç"
+                placeholder={t("datepicker.placeholder" as any)}
                 clearable
               />
             </div>
@@ -147,7 +147,7 @@ export default function CreateIssueModal({ projectId, defaultStatusId, parentId,
           <div className="space-y-1.5">
             <label className="label block text-[11px] flex items-center gap-1">
               <Tag size={11} />
-              Etiketler
+              {t("issue.labels" as any)}
             </label>
             {labels.length > 0 && (
               <div className="flex flex-wrap gap-1 mb-1.5">
@@ -165,7 +165,7 @@ export default function CreateIssueModal({ projectId, defaultStatusId, parentId,
               <input
                 type="text"
                 className="input w-full text-sm"
-                placeholder="Etiket ekle (Enter ile onayla)"
+                placeholder={t("issue.labelsAddHint" as any)}
                 value={labelInput}
                 onChange={e => { setLabelInput(e.target.value); setLabelSuggestOpen(true); }}
                 onFocus={() => setLabelSuggestOpen(true)}
@@ -188,7 +188,7 @@ export default function CreateIssueModal({ projectId, defaultStatusId, parentId,
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent/10 text-xs">
                       <Plus size={11} className="text-accent" />
                       <span className="text-accent font-medium">"{labelInput.trim().toLowerCase()}"</span>
-                      <span className="text-text-tertiary ml-1">ekle</span>
+                      <span className="text-text-tertiary ml-1">{t("issue.labelAdd" as any)}</span>
                     </button>
                   )}
                   {projectLabels.filter(l => l.includes(labelInput.trim().toLowerCase()) && !labels.includes(l)).map(l => (
@@ -209,14 +209,14 @@ export default function CreateIssueModal({ projectId, defaultStatusId, parentId,
 
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose} className="btn-secondary flex-1 py-2 text-sm">
-              İptal
+              {t("issue.cancelEdit")}
             </button>
             <button
               type="submit"
               disabled={createIssue.isPending || !title.trim()}
               className="btn-primary flex-1 py-2 text-sm disabled:opacity-50"
             >
-              {createIssue.isPending ? "..." : "Ekle"}
+              {createIssue.isPending ? "..." : t("form.add")}
             </button>
           </div>
         </form>

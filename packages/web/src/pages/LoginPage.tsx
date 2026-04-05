@@ -60,8 +60,12 @@ export default function LoginPage() {
         : await register(email, username, password);
 
     if (!result.ok) {
-      const errKey = result.error === "pending_approval" ? "login.pendingApprovalError" : "login.error";
-      setError(t(errKey as any) || result.error || t("login.error"));
+      if (result.error === "pending_approval") {
+        setError(t("login.pendingApprovalError" as any));
+      } else {
+        // Show actual server error message if available, fallback to generic
+        setError(result.error || t("login.error"));
+      }
       setLoading(false);
     } else if (result.pending) {
       setPendingApproval(true);

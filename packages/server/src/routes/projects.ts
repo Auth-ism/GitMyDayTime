@@ -20,7 +20,7 @@ import {
   removeMember, updateMemberRole, transferOwnership, getMemberCount, getUserProjectCount,
   getWorkflowStatuses, getDefaultStatus,
   createWorkflowStatus, updateWorkflowStatus, deleteWorkflowStatus,
-  createIssue, getIssues, getIssueById, updateIssue, archiveIssue,
+  createIssue, getIssues, getIssueById, updateIssue, archiveIssue, deleteIssuePermanent,
   getBoardData, invalidateBoardCache,
   getIssueDetail, invalidateIssueCache,
   getIssueComments, addComment, updateComment, deleteComment, getComment,
@@ -228,7 +228,7 @@ router.delete("/:id/leave", isMember, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-router.delete("/:id/members/:userId", isMember, wrap(async (req, res) => {
+router.delete("/:id/members/:userId", isAdmin, wrap(async (req, res) => {
   const id = req.params.id as string;
   const targetId = req.params.userId as string;
   const targetRole = await getMemberRole(id, targetId);
@@ -245,12 +245,20 @@ router.delete("/:id/members/:userId", isMember, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-router.patch("/:id/members/:userId", isOwner, wrap(async (req, res) => {
+router.patch("/:id/members/:userId", isAdmin, wrap(async (req, res) => {
   const id = req.params.id as string;
+  const targetId = req.params.userId as string;
   const input = UpdateMemberRoleInput.safeParse(req.body);
   if (!input.success) { res.status(400).json({ error: zodMsg(input.error) }); return; }
 
-  const updated = await updateMemberRole(id, req.params.userId as string, input.data.role);
+  // Cannot escalate to your own level or above (admin can't make someone else admin if you're admin, only owner can)
+  const myLevel = ROLE_HIERARCHY[req.projectRole!];
+  const targetLevel = ROLE_HIERARCHY[input.data.role as ProjectRole];
+  if (req.projectRole !== "owner" && targetLevel >= myLevel) {
+    res.status(403).json({ error: "Kendi rolünüzden yüksek bir rol atayamazsınız" }); return;
+  }
+
+  const updated = await updateMemberRole(id, targetId, input.data.role);
   if (!updated) { res.status(404).json({ error: "Üye bulunamadı" }); return; }
   res.json(updated);
 }));
@@ -487,6 +495,22 @@ router.delete("/:id/issues/:issueId", canReport, wrap(async (req, res) => {
   await invalidateBoardCache(id);
   await publishProjectEvent(id, { type: "issue_deleted", issueId: current.id });
 
+  res.json({ ok: true });
+}));
+
+router.delete("/:id/issues/:issueId/permanent", isAdmin, wrap(async (req, res) => {
+  const id = req.params.id as string;
+  const issueId = req.params.issueId as string;
+  const current = await getIssueById(issueId);
+  if (!current || current.projectId !== id) {
+    res.status(404).json({ error: "Issue bulunamadı" }); return;
+  }
+  if (!current.archived) {
+    res.status(422).json({ error: "Sadece arşivlenmiş issue'lar kalıcı silinebilir" }); return;
+  }
+  await deleteIssuePermanent(issueId);
+  await invalidateIssueCache(issueId);
+  await invalidateBoardCache(id);
   res.json({ ok: true });
 }));
 

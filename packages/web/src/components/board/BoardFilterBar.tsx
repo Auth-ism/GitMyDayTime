@@ -66,7 +66,7 @@ export default function BoardFilterBar({ projectId, filters, onChange }: Props) 
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
           <input
             className="input pl-7 text-sm w-full py-1.5"
-            placeholder="Görev ara..."
+            placeholder={t("board.searchPlaceholder" as any)}
             value={filters.search}
             onChange={e => onChange({ ...filters, search: e.target.value })}
           />
@@ -85,14 +85,14 @@ export default function BoardFilterBar({ projectId, filters, onChange }: Props) 
             className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text px-2 py-1.5 rounded-lg hover:bg-bg-subtle transition-colors whitespace-nowrap"
           >
             <X size={11} />
-            Temizle
+            {t("board.clearFilters" as any)}
           </button>
         )}
       </div>
 
       {/* Chip filters */}
       <div className="flex items-center gap-1 flex-wrap">
-        <span className="text-[10px] text-text-tertiary mr-0.5">Tür:</span>
+        <span className="text-[10px] text-text-tertiary mr-0.5">{t("board.filterType" as any)}</span>
         {ISSUE_TYPES.map(type => (
           <button
             key={type}
@@ -108,7 +108,7 @@ export default function BoardFilterBar({ projectId, filters, onChange }: Props) 
           </button>
         ))}
 
-        <span className="text-[10px] text-text-tertiary ml-2 mr-0.5">Öncelik:</span>
+        <span className="text-[10px] text-text-tertiary ml-2 mr-0.5">{t("board.filterPriority" as any)}</span>
         {PRIORITIES.map(p => (
           <button
             key={p}
@@ -128,7 +128,7 @@ export default function BoardFilterBar({ projectId, filters, onChange }: Props) 
           <>
             <span className="text-[10px] text-text-tertiary ml-2 mr-0.5 flex items-center gap-0.5">
               <Tag size={9} />
-              Etiket:
+              {t("board.filterLabel" as any)}
             </span>
             {availableLabels.map(l => (
               <button

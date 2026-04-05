@@ -361,6 +361,13 @@ export async function updatePlanItem(
 
 export async function deletePlanItem(userId: string, itemId: string): Promise<boolean> {
   const { rows: dateRows } = await pool.query("SELECT date FROM plan_items WHERE id = $1 AND user_id = $2", [itemId, userId]);
+
+  // If a project issue is linked to this plan item, clear the reference before deleting
+  const { rows: issueRows } = await pool.query(
+    "UPDATE issues SET plan_item_id = NULL, updated_at = NOW() WHERE plan_item_id = $1 RETURNING project_id",
+    [itemId]
+  );
+
   const { rowCount } = await pool.query(
     "DELETE FROM plan_items WHERE id = $1 AND user_id = $2",
     [itemId, userId]
@@ -370,6 +377,13 @@ export async function deletePlanItem(userId: string, itemId: string): Promise<bo
     await invalidateStats(userId);
   }
   await unscheduleReminder(userId, itemId);
+
+  // Invalidate board cache if the plan item was linked to an issue
+  if (issueRows[0]?.project_id) {
+    await cacheDelPattern(`gmd:pm:board:${issueRows[0].project_id}:*`);
+    await cacheDelPattern(`gmd:pm:issue:*`);
+  }
+
   return (rowCount ?? 0) > 0;
 }
 
