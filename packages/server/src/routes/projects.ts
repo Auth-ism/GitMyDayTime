@@ -679,6 +679,7 @@ router.post("/:id/issues/:issueId/add-to-plan", isMember, wrap(async (req, res) 
   const { planItemId } = await addIssueToPlan(
     issueId, req.userId!, input.data.date, input.data.scheduledTime
   );
+  await invalidateIssueCache(issueId);
   await invalidateBoardCache(id);
   await publishProjectEvent(id, { type: "issue_updated", issueId: issue.id });
 
@@ -697,6 +698,7 @@ router.delete("/:id/issues/:issueId/add-to-plan", isMember, wrap(async (req, res
   }
 
   await removeIssueFromPlan(issueId);
+  await invalidateIssueCache(issueId);
   await invalidateBoardCache(id);
   res.json({ ok: true });
 }));
