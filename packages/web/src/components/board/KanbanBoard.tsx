@@ -24,7 +24,7 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
   const { t } = useI18n();
   const { user } = useAuth();
   const { data: board, isLoading } = useBoard(projectId, activeSprint);
-  const { updateIssueStatus, reorderIssues } = useIssueMutations(projectId);
+  const { updateIssueStatus, reorderIssues, addIssueToPlan, deleteIssue } = useIssueMutations(projectId);
   const { data: sprints = [] } = useSprints(projectId);
   const { completeSprint } = useSprintMutations(projectId);
   const [createStatusId, setCreateStatusId] = useState<string | null>(null);
@@ -162,6 +162,10 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
                 currentUserId={user?.id ?? ""}
                 canCreate={canCreate}
                 canEdit={canEdit}
+                onAddToPlan={(issueId, date) => addIssueToPlan.mutateAsync({ issueId, data: { date } })}
+                addToPlanPending={addIssueToPlan.isPending}
+                onArchive={(issueId) => deleteIssue.mutate(issueId)}
+                archivePending={deleteIssue.isPending}
                 onCreateIssue={(sid) => setCreateStatusId(sid)}
                 onDropIssue={(issueId, targetStatusId, targetIndex) => {
                   updateIssueStatus.mutate({ issueId, statusId: targetStatusId });

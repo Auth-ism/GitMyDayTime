@@ -96,9 +96,11 @@ export default function Layout() {
   const [showBugReport, setShowBugReport] = useState(false);
 
   useEffect(() => {
-    if (shouldShowOnboarding()) {
+    const showOnboarding = shouldShowOnboarding();
+    const showChangelog = shouldShowChangelog(__APP_VERSION__);
+    if (showOnboarding) {
       setShowOnboarding(true);
-    } else if (shouldShowChangelog(__APP_VERSION__)) {
+    } else if (showChangelog) {
       setShowChangelog(true);
     }
   }, []);
@@ -316,7 +318,6 @@ export default function Layout() {
       {showOnboarding && (
         <OnboardingModal onClose={() => {
           setShowOnboarding(false);
-          // After onboarding, check if changelog should also show
           if (shouldShowChangelog(__APP_VERSION__)) setShowChangelog(true);
         }} />
       )}

@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { CalendarDays, Bug, Zap, BookOpen, CheckSquare, Minus, Plus, CornerDownRight, Archive } from "lucide-react";
 import DatePicker from "@/components/DatePicker";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
-import { useIssueMutations } from "@/hooks/useProjects";
 import { showSuccessToast } from "@/components/Toast";
 import type { Issue } from "@gmd/shared";
 
@@ -37,28 +36,37 @@ interface Props {
   projectId: string;
   currentUserId: string;
   canEdit?: boolean;
+  onAddToPlan?: (issueId: string, date: string) => Promise<void>;
+  addToPlanPending?: boolean;
+  onArchive?: (issueId: string) => void;
+  archivePending?: boolean;
   onDragStart?: (issueId: string, sourceStatusId: string) => void;
 }
 
-export default function IssueCard({ issue, projectId, currentUserId, canEdit, onDragStart }: Props) {
+export default function IssueCard({
+  issue, projectId, currentUserId, canEdit,
+  onAddToPlan, addToPlanPending, onArchive, archivePending,
+  onDragStart,
+}: Props) {
   const { t } = useI18n();
-  const { addIssueToPlan, deleteIssue } = useIssueMutations(projectId);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planDate, setPlanDate] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
+  const [dragging, setDragging] = useState(false);
 
   const TypeIcon = TYPE_ICONS[issue.issueType] ?? CheckSquare;
-  const isOverdue = issue.dueDate && new Date(issue.dueDate) < new Date() && issue.statusCategory !== "done";
   const isAssignee = issue.assigneeId === currentUserId;
+  const isOverdue = useMemo(
+    () => !!issue.dueDate && new Date(issue.dueDate) < new Date() && issue.statusCategory !== "done",
+    [issue.dueDate, issue.statusCategory],
+  );
 
   const handleAddToPlan = async () => {
-    await addIssueToPlan.mutateAsync({ issueId: issue.id, data: { date: planDate } });
+    await onAddToPlan?.(issue.id, planDate);
     setShowPlanModal(false);
   };
-
-  const [dragging, setDragging] = useState(false);
 
   return (
     <>
@@ -105,9 +113,7 @@ export default function IssueCard({ issue, projectId, currentUserId, canEdit, on
             </div>
           )}
 
-          <p className="text-text text-xs font-medium leading-snug line-clamp-2">
-            {issue.title}
-          </p>
+          <p className="text-text text-xs font-medium leading-snug line-clamp-2">{issue.title}</p>
 
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">
@@ -119,16 +125,10 @@ export default function IssueCard({ issue, projectId, currentUserId, canEdit, on
               )}
             </div>
             {issue.assigneeAvatarUrl ? (
-              <img
-                src={issue.assigneeAvatarUrl}
-                alt={issue.assigneeUsername ?? ""}
-                className="w-5 h-5 rounded-full flex-shrink-0 object-cover"
-              />
+              <img src={issue.assigneeAvatarUrl} alt={issue.assigneeUsername ?? ""} className="w-5 h-5 rounded-full flex-shrink-0 object-cover" />
             ) : issue.assigneeUsername ? (
               <div className="w-5 h-5 rounded-full bg-accent-soft flex items-center justify-center flex-shrink-0">
-                <span className="text-[9px] font-semibold text-text-secondary">
-                  {issue.assigneeUsername.slice(0, 2).toUpperCase()}
-                </span>
+                <span className="text-[9px] font-semibold text-text-secondary">{issue.assigneeUsername.slice(0, 2).toUpperCase()}</span>
               </div>
             ) : null}
           </div>
@@ -136,37 +136,37 @@ export default function IssueCard({ issue, projectId, currentUserId, canEdit, on
 
         {/* Hover actions — only render if there's something to show */}
         {(isAssignee || canEdit) && (
-        <div className="mt-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {isAssignee && !issue.planItemId && (
-            <button
-              onClick={(e) => { e.preventDefault(); setShowPlanModal(true); }}
-              className="flex-1 flex items-center justify-center gap-1 py-1 text-[10px] text-accent hover:bg-accent/10 rounded transition-colors"
-            >
-              <Plus size={10} />
-              {t("projects.addToPlan" as any)}
-            </button>
-          )}
-          {isAssignee && issue.planItemId && (
-            <div className="flex-1 text-[10px] text-green-400 text-center">
-              ✓ {t("projects.inPlan" as any)}
-            </div>
-          )}
-          {canEdit && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                if (confirm(t("issue.archiveConfirm" as any) || "Bu issue arşivlensin mi?")) {
-                  deleteIssue.mutate(issue.id);
-                }
-              }}
-              disabled={deleteIssue.isPending}
-              className="p-1 text-text-tertiary hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors disabled:opacity-50"
-              title={t("issue.archive" as any) || "Arşivle"}
-            >
-              <Archive size={11} />
-            </button>
-          )}
-        </div>
+          <div className="mt-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {isAssignee && !issue.planItemId && (
+              <button
+                onClick={(e) => { e.preventDefault(); setShowPlanModal(true); }}
+                className="flex-1 flex items-center justify-center gap-1 py-1 text-[10px] text-accent hover:bg-accent/10 rounded transition-colors"
+              >
+                <Plus size={10} />
+                {t("projects.addToPlan" as any)}
+              </button>
+            )}
+            {isAssignee && issue.planItemId && (
+              <div className="flex-1 text-[10px] text-green-400 text-center">
+                ✓ {t("projects.inPlan" as any)}
+              </div>
+            )}
+            {canEdit && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (confirm(t("issue.archiveConfirm" as any) || "Bu issue arşivlensin mi?")) {
+                    onArchive?.(issue.id);
+                  }
+                }}
+                disabled={archivePending}
+                className="p-1 text-text-tertiary hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors disabled:opacity-50"
+                title={t("issue.archive" as any) || "Arşivle"}
+              >
+                <Archive size={11} />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -175,29 +175,15 @@ export default function IssueCard({ issue, projectId, currentUserId, canEdit, on
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg/80 backdrop-blur-sm"
           onClick={() => setShowPlanModal(false)}
         >
-          <div
-            className="card p-4 w-full max-w-xs shadow-xl"
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="card p-4 w-full max-w-xs shadow-xl" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-text text-sm mb-3">{t("projects.addToPlan" as any)}</h3>
-            <DatePicker
-              value={planDate}
-              onChange={val => val && setPlanDate(val)}
-              className="mb-3"
-            />
+            <DatePicker value={planDate} onChange={val => val && setPlanDate(val)} className="mb-3" />
             <div className="flex gap-2">
-              <button
-                onClick={() => setShowPlanModal(false)}
-                className="btn-secondary flex-1 py-2 text-xs"
-              >
+              <button onClick={() => setShowPlanModal(false)} className="btn-secondary flex-1 py-2 text-xs">
                 İptal
               </button>
-              <button
-                onClick={handleAddToPlan}
-                disabled={addIssueToPlan.isPending}
-                className="btn-primary flex-1 py-2 text-xs disabled:opacity-50"
-              >
-                {addIssueToPlan.isPending ? "..." : "Ekle"}
+              <button onClick={handleAddToPlan} disabled={addToPlanPending} className="btn-primary flex-1 py-2 text-xs disabled:opacity-50">
+                {addToPlanPending ? "..." : "Ekle"}
               </button>
             </div>
           </div>
