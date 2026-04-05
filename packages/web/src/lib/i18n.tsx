@@ -505,12 +505,25 @@ const translations = {
     "issue.noLinks": "No links",
     "issue.permanentDelete": "Delete Permanently",
     "issue.permanentDeleteConfirm": "Permanently delete this issue? This cannot be undone.",
+    // Issue story points
+    "issue.storyPoints": "Story Points",
     // Board filter bar
     "board.searchPlaceholder": "Search issues...",
     "board.filterType": "Type:",
     "board.filterPriority": "Priority:",
     "board.filterLabel": "Label:",
     "board.clearFilters": "Clear",
+    "board.myIssues": "Mine",
+    "board.allSprints": "All",
+    // Sprint
+    "sprint.complete": "Complete Sprint",
+    "sprint.completeTitle": "Complete Sprint",
+    "sprint.incompleteIssues": "incomplete issue(s) will be moved",
+    "sprint.noIncomplete": "All issues are done. Ready to complete!",
+    "sprint.incompleteAction": "What to do with incomplete issues",
+    "sprint.moveToBacklog": "Move to Backlog",
+    "sprint.moveToBacklogDesc": "Incomplete issues return to the backlog",
+    "sprint.noActive": "No active sprint",
   },
   tr: {
     // Nav
@@ -1013,12 +1026,25 @@ const translations = {
     "issue.noLinks": "Bağlantı yok",
     "issue.permanentDelete": "Kalıcı Sil",
     "issue.permanentDeleteConfirm": "Bu görev kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
+    // Issue story points
+    "issue.storyPoints": "Story Points",
     // Board filter bar
     "board.searchPlaceholder": "Görev ara...",
     "board.filterType": "Tür:",
     "board.filterPriority": "Öncelik:",
     "board.filterLabel": "Etiket:",
     "board.clearFilters": "Temizle",
+    "board.myIssues": "Benimkiler",
+    "board.allSprints": "Tümü",
+    // Sprint
+    "sprint.complete": "Sprint'i Tamamla",
+    "sprint.completeTitle": "Sprint Tamamla",
+    "sprint.incompleteIssues": "tamamlanmamış görev backlog'a taşınacak",
+    "sprint.noIncomplete": "Tüm görevler tamamlandı. Sprint kapatılabilir!",
+    "sprint.incompleteAction": "Tamamlanmamış görevler için",
+    "sprint.moveToBacklog": "Backlog'a Taşı",
+    "sprint.moveToBacklogDesc": "Tamamlanmamış görevler backlog'a döner",
+    "sprint.noActive": "Aktif sprint yok",
   },
 } as const;
 

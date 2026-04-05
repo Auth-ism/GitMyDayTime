@@ -944,6 +944,29 @@ export default function IssuePage() {
             </div>
           )}
 
+          {/* Story Points */}
+          <div className="card p-3 space-y-1.5">
+            <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wide">{t("issue.storyPoints" as any)}</span>
+            {canEdit ? (
+              <input
+                type="number"
+                min={0}
+                max={9999}
+                className="input w-full text-xs py-1.5"
+                value={issue.storyPoints ?? ""}
+                placeholder="–"
+                onChange={e => {
+                  const val = e.target.value === "" ? null : Number(e.target.value);
+                  updateIssue.mutate({ issueId: issue.id, data: { storyPoints: val } });
+                }}
+              />
+            ) : (
+              <span className="text-xs text-text px-1 font-mono">
+                {issue.storyPoints != null ? issue.storyPoints : "–"}
+              </span>
+            )}
+          </div>
+
           {/* Sprint */}
           {sprints.length > 0 && (
             <div className="card p-3 space-y-1.5">

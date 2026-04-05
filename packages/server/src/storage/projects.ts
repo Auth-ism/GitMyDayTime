@@ -119,6 +119,7 @@ function rowToIssue(r: any): Issue {
     customFields: r.custom_fields ?? {},
     sortOrder: r.sort_order ?? 0,
     planItemId: r.plan_item_id ?? null,
+    storyPoints: r.story_points ?? null,
     notificationSent: r.notification_sent ?? false,
     resolvedAt: r.resolved_at ?? null,
     archived: r.archived ?? false,
@@ -667,6 +668,7 @@ export async function updateIssue(
     statusId: "status_id", priority: "priority", labels: "labels",
     assigneeId: "assignee_id", dueDate: "due_date",
     estimatedHours: "estimated_hours", loggedHours: "logged_hours",
+    storyPoints: "story_points",
     sprintId: "sprint_id", sortOrder: "sort_order",
     parentId: "parent_id",
   };
@@ -1307,6 +1309,61 @@ export async function setIssueSprint(issueId: string, sprintId: string | null) {
     "UPDATE issues SET sprint_id = $2, updated_at = NOW() WHERE id = $1",
     [issueId, sprintId]
   );
+}
+
+// Complete a sprint: mark as completed, move non-done issues to backlog or next sprint
+export async function completeSprint(
+  sprintId: string,
+  incompleteAction: "backlog" | "next_sprint",
+  nextSprintId?: string | null
+): Promise<{ completedCount: number; movedCount: number }> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Get sprint's project to find done workflow statuses
+    const { rows: sprintRows } = await client.query(
+      "SELECT project_id FROM sprints WHERE id = $1", [sprintId]
+    );
+    if (!sprintRows[0]) throw new Error("Sprint bulunamadı");
+    const projectId = sprintRows[0].project_id;
+
+    // Find all "done" status IDs for this project
+    const { rows: doneStatuses } = await client.query(
+      "SELECT id FROM workflow_statuses WHERE project_id = $1 AND category = 'done'",
+      [projectId]
+    );
+    const doneIds = doneStatuses.map((r: any) => r.id);
+
+    // Count completed issues
+    const { rows: completedRows } = await client.query(
+      `SELECT COUNT(*) FROM issues WHERE sprint_id = $1 AND status_id = ANY($2) AND archived = FALSE`,
+      [sprintId, doneIds]
+    );
+    const completedCount = Number(completedRows[0].count);
+
+    // Move non-done issues
+    const targetSprintId = incompleteAction === "next_sprint" && nextSprintId ? nextSprintId : null;
+    const { rowCount: movedCount } = await client.query(
+      `UPDATE issues SET sprint_id = $2, updated_at = NOW()
+       WHERE sprint_id = $1 AND NOT (status_id = ANY($3)) AND archived = FALSE`,
+      [sprintId, targetSprintId, doneIds]
+    );
+
+    // Mark sprint as completed
+    await client.query(
+      "UPDATE sprints SET status = 'completed', completed_at = NOW() WHERE id = $1",
+      [sprintId]
+    );
+
+    await client.query("COMMIT");
+    return { completedCount, movedCount: movedCount ?? 0 };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function getProjectLabels(projectId: string): Promise<string[]> {

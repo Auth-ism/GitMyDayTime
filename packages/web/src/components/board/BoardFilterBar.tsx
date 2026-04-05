@@ -1,4 +1,4 @@
-import { Search, X, Tag } from "lucide-react";
+import { Search, X, Tag, User } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import { useProjectLabels } from "@/hooks/useProjects";
@@ -19,9 +19,10 @@ export interface BoardFilters {
   types: string[];
   priorities: string[];
   labels: string[];
+  assignedToMe: boolean;
 }
 
-export const EMPTY_FILTERS: BoardFilters = { search: "", types: [], priorities: [], labels: [] };
+export const EMPTY_FILTERS: BoardFilters = { search: "", types: [], priorities: [], labels: [], assignedToMe: false };
 
 interface Props {
   projectId: string;
@@ -32,7 +33,7 @@ interface Props {
 export default function BoardFilterBar({ projectId, filters, onChange }: Props) {
   const { t } = useI18n();
   const { data: availableLabels = [] } = useProjectLabels(projectId);
-  const hasActive = filters.search || filters.types.length > 0 || filters.priorities.length > 0 || filters.labels.length > 0;
+  const hasActive = filters.search || filters.types.length > 0 || filters.priorities.length > 0 || filters.labels.length > 0 || filters.assignedToMe;
 
   const toggleType = (type: string) =>
     onChange({
@@ -79,6 +80,21 @@ export default function BoardFilterBar({ projectId, filters, onChange }: Props) 
             </button>
           )}
         </div>
+
+        {/* Assigned to me toggle */}
+        <button
+          onClick={() => onChange({ ...filters, assignedToMe: !filters.assignedToMe })}
+          className={cn(
+            "flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition-colors whitespace-nowrap",
+            filters.assignedToMe
+              ? "bg-accent/15 text-accent border-accent/40"
+              : "text-text-tertiary border-border hover:border-accent/30 hover:text-text"
+          )}
+        >
+          <User size={11} />
+          {t("board.myIssues" as any)}
+        </button>
+
         {hasActive && (
           <button
             onClick={() => onChange(EMPTY_FILTERS)}

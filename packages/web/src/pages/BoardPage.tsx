@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Layers, Settings, Users, Plus, Archive, RotateCcw, Trash2, BarChart2 } from "lucide-react";
+import { ArrowLeft, Layers, Settings, Users, Plus, Archive, RotateCcw, Trash2, BarChart2, List } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useProject, useArchivedIssues, useIssueMutations } from "@/hooks/useProjects";
 import KanbanBoard from "@/components/board/KanbanBoard";
@@ -61,6 +61,13 @@ export default function BoardPage() {
         </div>
 
         <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+          <Link
+            to={`/projects/${projectId}/backlog`}
+            className="btn-icon p-2 rounded-lg text-text-tertiary hover:text-text"
+            title="Backlog"
+          >
+            <List size={15} />
+          </Link>
           <Link
             to={`/projects/${projectId}/insights`}
             className="btn-icon p-2 rounded-lg text-text-tertiary hover:text-text"

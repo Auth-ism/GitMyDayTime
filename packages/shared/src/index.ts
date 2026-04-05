@@ -410,6 +410,7 @@ export const IssueSchema = z.object({
   customFields: z.record(z.unknown()),
   sortOrder: z.number(),
   planItemId: z.string().nullable(),
+  storyPoints: z.number().int().min(0).max(9999).nullable(),
   notificationSent: z.boolean(),
   resolvedAt: z.string().nullable(),
   archived: z.boolean(),
@@ -437,6 +438,7 @@ export const CreateIssueInput = z.object({
   assigneeId: z.string().uuid().nullable().optional(),
   dueDate: z.string().nullable().optional(),
   estimatedHours: z.number().min(0).nullable().optional(),
+  storyPoints: z.number().int().min(0).max(9999).nullable().optional(),
   sprintId: z.string().uuid().nullable().optional(),
   parentId: z.string().uuid().nullable().optional(),
 });
@@ -453,6 +455,7 @@ export const UpdateIssueInput = z.object({
   dueDate: z.string().nullable().optional(),
   estimatedHours: z.number().min(0).nullable().optional(),
   loggedHours: z.number().min(0).optional(),
+  storyPoints: z.number().int().min(0).max(9999).nullable().optional(),
   sprintId: z.string().uuid().nullable().optional(),
   sortOrder: z.number().optional(),
   parentId: z.string().uuid().nullable().optional(),
@@ -567,6 +570,13 @@ export const UpdateSprintInput = CreateSprintInput.partial().extend({
   status: SprintStatus.optional(),
 });
 export type UpdateSprintInput = z.infer<typeof UpdateSprintInput>;
+
+export const CompleteSprintInput = z.object({
+  // What to do with incomplete issues: move to backlog or to another sprint
+  incompleteAction: z.enum(["backlog", "next_sprint"]),
+  nextSprintId: z.string().uuid().optional(), // required if incompleteAction === "next_sprint"
+});
+export type CompleteSprintInput = z.infer<typeof CompleteSprintInput>;
 
 // ─────────────────────────────────────────────────────────────────
 // Spaces  (UI deferred — schema/types ready for future wiring)

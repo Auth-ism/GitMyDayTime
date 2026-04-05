@@ -6,7 +6,7 @@ import type {
   CreateIssueInput, UpdateIssueInput,
   CreateCommentInput, InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput,
   AddToPlanInput, BoardData, Issue, IssueLinkType,
-  CreateSprintInput, UpdateSprintInput,
+  CreateSprintInput, UpdateSprintInput, CompleteSprintInput,
 } from "@gmd/shared";
 
 // ── Project list ─────────────────────────────────────────────────
@@ -369,7 +369,13 @@ export function useSprintMutations(projectId: string) {
     },
   });
 
-  return { createSprint, updateSprint, deleteSprint, setIssueSprint };
+  const completeSprint = useMutation({
+    mutationFn: ({ sprintId, data }: { sprintId: string; data: CompleteSprintInput }) =>
+      api.completeSprint(projectId, sprintId, data),
+    onSuccess: () => invalidate(),
+  });
+
+  return { createSprint, updateSprint, deleteSprint, setIssueSprint, completeSprint };
 }
 
 // ── SSE hook — invalidates queries on server events ───────────────

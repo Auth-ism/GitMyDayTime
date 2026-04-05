@@ -1,4 +1,4 @@
-import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput, Project, ProjectMember, WorkflowStatus, Issue, IssueComment, IssueDetail, IssueLink, BoardData, CreateProjectInput, UpdateProjectInput, CreateIssueInput, UpdateIssueInput, CreateCommentInput, InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput, AddToPlanInput, Sprint, CreateSprintInput, UpdateSprintInput } from "@gmd/shared";
+import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput, Project, ProjectMember, WorkflowStatus, Issue, IssueComment, IssueDetail, IssueLink, BoardData, CreateProjectInput, UpdateProjectInput, CreateIssueInput, UpdateIssueInput, CreateCommentInput, InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput, AddToPlanInput, Sprint, CreateSprintInput, UpdateSprintInput, CompleteSprintInput } from "@gmd/shared";
 
 const BASE = "/api";
 
@@ -379,6 +379,12 @@ export const api = {
 
   deleteSprint: (id: string, sprintId: string) =>
     request<{ ok: boolean }>(`/projects/${id}/sprints/${sprintId}`, { method: "DELETE" }),
+
+  completeSprint: (id: string, sprintId: string, data: CompleteSprintInput) =>
+    request<{ ok: boolean; completedCount: number; movedCount: number }>(
+      `/projects/${id}/sprints/${sprintId}/complete`,
+      { method: "POST", body: JSON.stringify(data) }
+    ),
 
   setIssueSprint: (id: string, issueId: string, sprintId: string | null) =>
     request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/sprint`, {

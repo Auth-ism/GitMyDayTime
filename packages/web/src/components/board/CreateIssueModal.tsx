@@ -26,6 +26,7 @@ export default function CreateIssueModal({ projectId, defaultStatusId, parentId,
   const [priority, setPriority] = useState<IssuePriority>("medium");
   const [assigneeId, setAssigneeId] = useState<string>("");
   const [dueDate, setDueDate] = useState("");
+  const [storyPoints, setStoryPoints] = useState<string>("");
   const [labels, setLabels] = useState<string[]>([]);
   const [labelInput, setLabelInput] = useState("");
   const [labelSuggestOpen, setLabelSuggestOpen] = useState(false);
@@ -43,6 +44,7 @@ export default function CreateIssueModal({ projectId, defaultStatusId, parentId,
         dueDate: dueDate || undefined,
         labels,
         parentId: parentId ?? undefined,
+        storyPoints: storyPoints ? Number(storyPoints) : undefined,
       } as CreateIssueInput);
       onClose();
     } catch (err: any) {
@@ -116,7 +118,7 @@ export default function CreateIssueModal({ projectId, defaultStatusId, parentId,
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div>
               <label className="label mb-1 block text-[11px]">{t("projects.assignee" as any)}</label>
               <select
@@ -139,6 +141,18 @@ export default function CreateIssueModal({ projectId, defaultStatusId, parentId,
                 onChange={val => setDueDate(val ?? "")}
                 placeholder={t("datepicker.placeholder" as any)}
                 clearable
+              />
+            </div>
+            <div>
+              <label className="label mb-1 block text-[11px]">{t("issue.storyPoints" as any)}</label>
+              <input
+                type="number"
+                min={0}
+                max={9999}
+                className="input w-full text-sm"
+                value={storyPoints}
+                onChange={e => setStoryPoints(e.target.value)}
+                placeholder="SP"
               />
             </div>
           </div>

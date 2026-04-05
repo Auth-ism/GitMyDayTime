@@ -7,7 +7,7 @@ import {
   CreateCommentInput,
   InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput,
   AddToPlanInput,
-  CreateSprintInput, UpdateSprintInput,
+  CreateSprintInput, UpdateSprintInput, CompleteSprintInput,
   type ProjectRole,
 } from "@gmd/shared";
 import { zodMsg } from "../validation.js";
@@ -29,7 +29,7 @@ import {
   invalidateAllMemberCaches,
   getIssueLinks, createIssueLink, deleteIssueLink,
   getProjectLabels,
-  getProjectSprints, getSprint, createSprint, updateSprint, deleteSprint, setIssueSprint,
+  getProjectSprints, getSprint, createSprint, updateSprint, deleteSprint, setIssueSprint, completeSprint,
   reorderIssues,
 } from "../storage/projects.js";
 import { createUserNotification } from "../storage/notifications.js";
@@ -836,6 +836,28 @@ router.delete("/:id/sprints/:sprintId", isAdmin, wrap(async (req, res) => {
   await deleteSprint(req.params.sprintId as string);
   await invalidateBoardCache(req.params.id as string);
   res.json({ ok: true });
+}));
+
+// Complete sprint
+router.post("/:id/sprints/:sprintId/complete", isAdmin, wrap(async (req, res) => {
+  const input = CompleteSprintInput.safeParse(req.body);
+  if (!input.success) { res.status(400).json({ error: zodMsg(input.error) }); return; }
+
+  const sprint = await getSprint(req.params.sprintId as string);
+  if (!sprint || sprint.projectId !== req.params.id) {
+    res.status(404).json({ error: "Sprint bulunamadı" }); return;
+  }
+  if (sprint.status === "completed") {
+    res.status(409).json({ error: "Sprint zaten tamamlandı" }); return;
+  }
+
+  const result = await completeSprint(
+    req.params.sprintId as string,
+    input.data.incompleteAction,
+    input.data.nextSprintId
+  );
+  await invalidateBoardCache(req.params.id as string);
+  res.json({ ok: true, ...result });
 }));
 
 // Assign / remove issue from sprint
