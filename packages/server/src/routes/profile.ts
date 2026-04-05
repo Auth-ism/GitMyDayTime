@@ -5,7 +5,7 @@ import { UpdateProfileInput, ChangePasswordInput } from "@gmd/shared";
 import { zodMsg } from "../validation.js";
 import { getUserProfile, updateUserProfile } from "../storage.js";
 import { pool } from "../db.js";
-import { sendVerificationEmail } from "../email.js";
+import { sendVerificationEmail, sendFeedbackEmail } from "../email.js";
 
 const router = Router();
 
@@ -165,6 +165,35 @@ router.put("/password", wrap(async (req: Request, res: Response) => {
     "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
     [newHash, req.userId]
   );
+
+  res.json({ ok: true });
+}));
+
+// POST /api/profile/feedback — send feedback/bug report email to admin
+router.post("/feedback", wrap(async (req: Request, res: Response) => {
+  const { type, description, url } = req.body as { type?: string; description?: string; url?: string };
+  if (!description || description.trim().length < 5) {
+    res.status(400).json({ error: "Açıklama çok kısa" }); return;
+  }
+  const validTypes = ["bug", "feature", "other"];
+  const reportType = validTypes.includes(type ?? "") ? type! : "other";
+
+  const { rows } = await pool.query("SELECT email, username FROM users WHERE id = $1", [req.userId]);
+  const user = rows[0];
+  if (!user) { res.status(404).json({ error: "Kullanıcı bulunamadı" }); return; }
+
+  try {
+    await sendFeedbackEmail({
+      senderEmail: user.email as string,
+      senderUsername: user.username as string,
+      type: reportType,
+      description: description.trim(),
+      url: url || "(bilinmiyor)",
+    });
+  } catch {
+    // Don't fail the request if email fails — just log
+    console.error("Feedback email failed");
+  }
 
   res.json({ ok: true });
 }));

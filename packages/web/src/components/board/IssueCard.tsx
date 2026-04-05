@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Bug, Zap, BookOpen, CheckSquare, Minus, Plus, CornerDownRight } from "lucide-react";
+import { CalendarDays, Bug, Zap, BookOpen, CheckSquare, Minus, Plus, CornerDownRight, Archive } from "lucide-react";
 import DatePicker from "@/components/DatePicker";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import { useIssueMutations } from "@/hooks/useProjects";
+import { showSuccessToast } from "@/components/Toast";
 import type { Issue } from "@gmd/shared";
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -35,12 +36,13 @@ interface Props {
   issue: Issue;
   projectId: string;
   currentUserId: string;
+  canEdit?: boolean;
   onDragStart?: (issueId: string, sourceStatusId: string) => void;
 }
 
-export default function IssueCard({ issue, projectId, currentUserId, onDragStart }: Props) {
+export default function IssueCard({ issue, projectId, currentUserId, canEdit, onDragStart }: Props) {
   const { t } = useI18n();
-  const { addIssueToPlan } = useIssueMutations(projectId);
+  const { addIssueToPlan, deleteIssue } = useIssueMutations(projectId);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planDate, setPlanDate] = useState(() => {
     const d = new Date();
@@ -78,9 +80,18 @@ export default function IssueCard({ issue, projectId, currentUserId, onDragStart
       >
         <Link to={`/projects/${projectId}/issues/${issue.id}`} className="block space-y-2">
           <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] font-mono text-text-tertiary flex-shrink-0">
+            <button
+              type="button"
+              onClick={e => {
+                e.preventDefault();
+                navigator.clipboard.writeText(`${window.location.origin}/projects/${projectId}/issues/${issue.id}`);
+                showSuccessToast(`${issue.issueKey} kopyalandı`);
+              }}
+              className="text-[10px] font-mono text-text-tertiary flex-shrink-0 hover:text-accent transition-colors"
+              title="Linki kopyala"
+            >
               {issue.issueKey}
-            </span>
+            </button>
             <TypeIcon size={12} className={cn("flex-shrink-0 mt-0.5", TYPE_COLORS[issue.issueType])} />
           </div>
 
@@ -123,20 +134,39 @@ export default function IssueCard({ issue, projectId, currentUserId, onDragStart
           </div>
         </Link>
 
-        {/* Planıma Ekle — only visible for assignee on hover, when not yet in plan */}
-        {isAssignee && !issue.planItemId && (
-          <button
-            onClick={(e) => { e.preventDefault(); setShowPlanModal(true); }}
-            className="mt-2 w-full flex items-center justify-center gap-1 py-1 text-[10px] text-accent hover:bg-accent/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-          >
-            <Plus size={10} />
-            {t("projects.addToPlan" as any)}
-          </button>
-        )}
-        {isAssignee && issue.planItemId && (
-          <div className="mt-2 text-[10px] text-green-400 text-center">
-            ✓ {t("projects.inPlan" as any)}
-          </div>
+        {/* Hover actions — only render if there's something to show */}
+        {(isAssignee || canEdit) && (
+        <div className="mt-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {isAssignee && !issue.planItemId && (
+            <button
+              onClick={(e) => { e.preventDefault(); setShowPlanModal(true); }}
+              className="flex-1 flex items-center justify-center gap-1 py-1 text-[10px] text-accent hover:bg-accent/10 rounded transition-colors"
+            >
+              <Plus size={10} />
+              {t("projects.addToPlan" as any)}
+            </button>
+          )}
+          {isAssignee && issue.planItemId && (
+            <div className="flex-1 text-[10px] text-green-400 text-center">
+              ✓ {t("projects.inPlan" as any)}
+            </div>
+          )}
+          {canEdit && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirm(t("issue.archiveConfirm" as any) || "Bu issue arşivlensin mi?")) {
+                  deleteIssue.mutate(issue.id);
+                }
+              }}
+              disabled={deleteIssue.isPending}
+              className="p-1 text-text-tertiary hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors disabled:opacity-50"
+              title={t("issue.archive" as any) || "Arşivle"}
+            >
+              <Archive size={11} />
+            </button>
+          )}
+        </div>
         )}
       </div>
 

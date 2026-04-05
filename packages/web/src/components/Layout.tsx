@@ -1,12 +1,16 @@
-import { useState, useSyncExternalStore } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import { NavLink, useLocation, Outlet } from "react-router-dom";
-import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, Mail, UserCircle, WifiOff, X, Layers } from "lucide-react";
+import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, UserCircle, WifiOff, X, Layers, Bug } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { AnimatePresence, motion } from "framer-motion";
 import NotificationBell from "@/components/NotificationBell";
+import LogoutConfirmModal from "@/components/LogoutConfirmModal";
+import OnboardingModal, { shouldShowOnboarding } from "@/components/OnboardingModal";
+import ChangelogModal, { shouldShowChangelog } from "@/components/ChangelogModal";
+import BugReportModal from "@/components/BugReportModal";
 
 function EmailVerifyBanner() {
   const { t } = useI18n();
@@ -86,6 +90,21 @@ export default function Layout() {
   const { t, locale, setLocale } = useI18n();
   const location = useLocation();
   const isOnline = useOnline();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showChangelog, setShowChangelog] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
+
+  useEffect(() => {
+    if (shouldShowOnboarding()) {
+      setShowOnboarding(true);
+    } else if (shouldShowChangelog(__APP_VERSION__)) {
+      setShowChangelog(true);
+    }
+  }, []);
+
+  const handleLogoutClick = () => setShowLogoutConfirm(true);
+  const handleLogoutConfirm = () => { setShowLogoutConfirm(false); logout(); };
 
   const toggleLocale = () => setLocale(locale === "en" ? "tr" : "en" as Locale);
 
@@ -171,7 +190,7 @@ export default function Layout() {
             </NavLink>
 
             <button
-              onClick={logout}
+              onClick={handleLogoutClick}
               aria-label={t("nav.signOut")}
               className="btn-icon p-2 rounded-lg"
             >
@@ -226,7 +245,7 @@ export default function Layout() {
                   : <UserCircle size={14} />}
             </NavLink>
             <button
-              onClick={logout}
+              onClick={handleLogoutClick}
               aria-label={t("nav.signOut")}
               className="btn-icon p-2 rounded-lg"
             >
@@ -272,12 +291,41 @@ export default function Layout() {
         <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between text-[11px] text-text-tertiary">
           <span>© {new Date().getFullYear()} GitMyDayTime</span>
           <div className="flex items-center gap-3">
+            <NavLink to="/changelog" className="hover:text-text transition-colors">
+              Değişiklikler
+            </NavLink>
+            <button
+              onClick={() => setShowBugReport(true)}
+              className="flex items-center gap-1 hover:text-text transition-colors"
+              title="Geri bildirim gönder"
+            >
+              <Bug size={12} />
+              Geri bildirim
+            </button>
             <a href="https://byfeb.com" target="_blank" rel="noopener noreferrer" className="hover:text-text transition-colors">
               <Globe size={13} />
             </a>
           </div>
         </div>
       </footer>
+
+      {/* Modals */}
+      {showLogoutConfirm && (
+        <LogoutConfirmModal onConfirm={handleLogoutConfirm} onCancel={() => setShowLogoutConfirm(false)} />
+      )}
+      {showOnboarding && (
+        <OnboardingModal onClose={() => {
+          setShowOnboarding(false);
+          // After onboarding, check if changelog should also show
+          if (shouldShowChangelog(__APP_VERSION__)) setShowChangelog(true);
+        }} />
+      )}
+      {showChangelog && !showOnboarding && (
+        <ChangelogModal version={__APP_VERSION__} onClose={() => setShowChangelog(false)} />
+      )}
+      {showBugReport && (
+        <BugReportModal onClose={() => setShowBugReport(false)} />
+      )}
 
       {/* Mobile bottom tab bar */}
       <nav

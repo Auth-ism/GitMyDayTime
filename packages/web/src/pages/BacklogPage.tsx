@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Layers, Search, X, Plus, Zap, BookOpen, CheckSquare, Bug, Minus } from "lucide-react";
+import { showSuccessToast } from "@/components/Toast";
 import { useI18n } from "@/lib/i18n";
 import { useProject, useIssues, useSprints, useSprintMutations } from "@/hooks/useProjects";
 import CreateIssueModal from "@/components/board/CreateIssueModal";
@@ -58,7 +59,11 @@ function IssueRow({
     <div className="flex items-center gap-2 py-2 px-3 hover:bg-accent/5 rounded-lg group transition-colors">
       <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", PRIORITY_DOT[issue.priority])} />
       <TypeIcon size={12} className={cn("flex-shrink-0", TYPE_COLORS[issue.issueType])} />
-      <span className="font-mono text-[10px] text-text-tertiary flex-shrink-0 w-16">{issue.issueKey}</span>
+      <button
+        onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/projects/${projectId}/issues/${issue.id}`); showSuccessToast(`${issue.issueKey} kopyalandı`); }}
+        className="font-mono text-[10px] text-text-tertiary flex-shrink-0 w-16 text-left hover:text-accent transition-colors"
+        title="Linki kopyala"
+      >{issue.issueKey}</button>
       <Link
         to={`/projects/${projectId}/issues/${issue.id}`}
         className="flex-1 text-xs text-text truncate hover:text-accent transition-colors min-w-0"

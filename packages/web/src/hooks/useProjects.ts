@@ -174,38 +174,46 @@ export function useIssueMutations(projectId: string) {
     },
   });
 
+  // ── helpers: patch every board cache entry for this project ──────
+  type BoardSnapshot = [readonly unknown[], BoardData];
+  const patchAllBoards = (patcher: (b: BoardData) => BoardData): BoardSnapshot[] => {
+    const entries = qc.getQueriesData<BoardData>({ queryKey: ["board", projectId] });
+    const snapshots: BoardSnapshot[] = [];
+    for (const [key, prev] of entries) {
+      if (!prev) continue;
+      snapshots.push([key, prev]);
+      qc.setQueryData(key, patcher(prev));
+    }
+    return snapshots;
+  };
+  const restoreSnapshots = (snapshots: BoardSnapshot[]) => {
+    for (const [key, data] of snapshots) qc.setQueryData(key, data);
+  };
+
   const updateIssueStatus = useMutation({
     mutationFn: ({ issueId, statusId }: { issueId: string; statusId: string }) =>
       api.updateIssueStatus(projectId, issueId, statusId),
-    // Optimistic update on board
     onMutate: async ({ issueId, statusId }) => {
       await qc.cancelQueries({ queryKey: ["board", projectId] });
-      const prev = qc.getQueryData<BoardData>(["board", projectId, null]);
-      if (prev) {
-        const updated: BoardData = { ...prev, columns: { ...prev.columns } };
-        // Remove from old column, add to new
+      const snapshots = patchAllBoards(prev => {
+        const cols = { ...prev.columns };
         let movedIssue: Issue | undefined;
-        for (const col of Object.values(updated.columns)) {
-          const idx = col.issues.findIndex(i => i.id === issueId);
+        for (const colId of Object.keys(cols)) {
+          const idx = cols[colId].issues.findIndex(i => i.id === issueId);
           if (idx !== -1) {
-            movedIssue = { ...col.issues[idx], statusId };
-            col.issues = col.issues.filter(i => i.id !== issueId);
+            movedIssue = { ...cols[colId].issues[idx], statusId };
+            cols[colId] = { ...cols[colId], issues: cols[colId].issues.filter(i => i.id !== issueId) };
             break;
           }
         }
-        if (movedIssue && updated.columns[statusId]) {
-          updated.columns[statusId] = {
-            ...updated.columns[statusId],
-            issues: [...updated.columns[statusId].issues, movedIssue],
-          };
-          qc.setQueryData(["board", projectId, null], updated);
+        if (movedIssue && cols[statusId]) {
+          cols[statusId] = { ...cols[statusId], issues: [...cols[statusId].issues, movedIssue] };
         }
-      }
-      return { prev };
+        return { ...prev, columns: cols };
+      });
+      return { snapshots };
     },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["board", projectId, null], ctx.prev);
-    },
+    onError: (_err, _vars, ctx) => ctx?.snapshots && restoreSnapshots(ctx.snapshots),
     onSettled: () => invalidate(),
   });
 
@@ -252,7 +260,26 @@ export function useIssueMutations(projectId: string) {
   const reorderIssues = useMutation({
     mutationFn: (orders: Array<{ issueId: string; sortOrder: number }>) =>
       api.reorderIssues(projectId, orders),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["board", projectId] }),
+    onMutate: async (orders) => {
+      await qc.cancelQueries({ queryKey: ["board", projectId] });
+      const issueIdSet = new Set(orders.map(o => o.issueId));
+      const orderMap = new Map(orders.map(o => [o.issueId, o.sortOrder]));
+      const snapshots = patchAllBoards(prev => {
+        const cols = { ...prev.columns };
+        for (const colId of Object.keys(cols)) {
+          if (!cols[colId].issues.some(i => issueIdSet.has(i.id))) continue;
+          const sorted = [...cols[colId].issues].sort((a, b) =>
+            (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity)
+          );
+          cols[colId] = { ...cols[colId], issues: sorted };
+          break;
+        }
+        return { ...prev, columns: cols };
+      });
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => ctx?.snapshots && restoreSnapshots(ctx.snapshots),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["board", projectId] }),
   });
 
   return { createIssue, updateIssue, updateIssueStatus, deleteIssue, restoreIssue, permanentDeleteIssue, addIssueToPlan, removeIssueFromPlan, reorderIssues };

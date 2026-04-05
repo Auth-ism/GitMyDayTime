@@ -29,6 +29,30 @@ export default function MentionTextarea({ value, onChange, members = [], placeho
   const ref = useRef<HTMLTextAreaElement>(null);
   const [query, setQuery] = useState<string | null>(null); // null = closed
   const [dropUp, setDropUp] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  const filtered = query === null ? [] : members.filter(m => {
+    const name = (m.displayName || m.username || m.email || "").toLowerCase();
+    const un = (m.username || "").toLowerCase();
+    return name.includes(query.toLowerCase()) || un.includes(query.toLowerCase());
+  }).slice(0, 8);
+
+  const insertMention = (username: string) => {
+    const el = ref.current;
+    if (!el) return;
+    const pos = el.selectionStart ?? value.length;
+    const before = value.slice(0, pos);
+    const after = value.slice(pos);
+    const atIdx = before.lastIndexOf("@");
+    const newVal = before.slice(0, atIdx) + `@${username} ` + after;
+    onChange(newVal);
+    setQuery(null);
+    requestAnimationFrame(() => {
+      el.focus();
+      const newPos = atIdx + username.length + 2;
+      el.setSelectionRange(newPos, newPos);
+    });
+  };
 
   // Detect @trigger from current cursor position
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -39,16 +63,34 @@ export default function MentionTextarea({ value, onChange, members = [], placeho
     const before = val.slice(0, pos);
     const match = before.match(/@(\w*)$/);
     if (match) {
-      // Decide drop direction
       const rect = e.target.getBoundingClientRect();
       setDropUp(rect.bottom > window.innerHeight - 200);
       setQuery(match[1]);
+      setActiveIdx(0);
     } else {
       setQuery(null);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (query !== null && filtered.length > 0) {
+      if (e.key === "ArrowDown" || e.key === "Tab") {
+        e.preventDefault();
+        setActiveIdx(i => (i + 1) % filtered.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIdx(i => (i - 1 + filtered.length) % filtered.length);
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const m = filtered[activeIdx];
+        if (m) insertMention(m.username || m.email || m.userId);
+        return;
+      }
+    }
     if (e.key === "Escape" && query !== null) {
       e.stopPropagation();
       setQuery(null);
@@ -56,31 +98,6 @@ export default function MentionTextarea({ value, onChange, members = [], placeho
     }
     onKeyDown?.(e);
   };
-
-  const insertMention = (username: string) => {
-    const el = ref.current;
-    if (!el) return;
-    const pos = el.selectionStart ?? value.length;
-    const before = value.slice(0, pos);
-    const after = value.slice(pos);
-    // Replace the @query prefix
-    const atIdx = before.lastIndexOf("@");
-    const newVal = before.slice(0, atIdx) + `@${username} ` + after;
-    onChange(newVal);
-    setQuery(null);
-    // Restore focus
-    requestAnimationFrame(() => {
-      el.focus();
-      const newPos = atIdx + username.length + 2;
-      el.setSelectionRange(newPos, newPos);
-    });
-  };
-
-  const filtered = query === null ? [] : members.filter(m => {
-    const name = (m.displayName || m.username || m.email || "").toLowerCase();
-    const un = (m.username || "").toLowerCase();
-    return name.includes(query.toLowerCase()) || un.includes(query.toLowerCase());
-  }).slice(0, 8);
 
   return (
     <div className="relative">
@@ -95,13 +112,13 @@ export default function MentionTextarea({ value, onChange, members = [], placeho
       />
       {query !== null && filtered.length > 0 && (
         <div className={`absolute left-0 right-0 z-30 bg-bg-elevated border border-border rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto max-w-[calc(100vw-2rem)] ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}`}>
-          {filtered.map(m => (
+          {filtered.map((m, idx) => (
             <button
               key={m.userId}
               type="button"
               onMouseDown={e => e.preventDefault()}
               onClick={() => insertMention(m.username || m.email || m.userId)}
-              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent/10 text-left"
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${idx === activeIdx ? "bg-accent/15" : "hover:bg-accent/10"}`}
             >
               <div className="w-5 h-5 rounded-full bg-accent-soft flex items-center justify-center flex-shrink-0">
                 {m.avatarUrl

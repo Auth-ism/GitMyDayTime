@@ -381,6 +381,7 @@ router.post("/:id/issues", canReport, wrap(async (req, res) => {
     estimatedHours: input.data.estimatedHours,
     sprintId: input.data.sprintId,
     statusId: defaultStatus.id,
+    parentId: input.data.parentId,
   });
 
   if (issue.assigneeId && issue.assigneeId !== req.userId) {
@@ -409,6 +410,9 @@ router.post("/:id/issues", canReport, wrap(async (req, res) => {
   }
 
   await invalidateBoardCache(id);
+  if (input.data.parentId) {
+    await invalidateIssueCache(input.data.parentId);
+  }
   await publishProjectEvent(id, { type: "issue_created", issueId: issue.id, issue });
 
   res.status(201).json(issue);

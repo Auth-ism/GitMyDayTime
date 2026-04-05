@@ -17,6 +17,7 @@ interface Props {
 }
 
 const CAN_CREATE_ROLES: ProjectRole[] = ["owner", "admin", "developer", "reporter"];
+const CAN_EDIT_ROLES: ProjectRole[] = ["owner", "admin", "developer"];
 const CAN_MANAGE_ROLES: ProjectRole[] = ["owner", "admin"];
 
 export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintChange }: Props) {
@@ -58,6 +59,7 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
   }, [board, filters, user?.id]);
 
   const canCreate = myRole ? CAN_CREATE_ROLES.includes(myRole) : false;
+  const canEdit = myRole ? CAN_EDIT_ROLES.includes(myRole) : false;
 
   const handleCompleteSprint = async () => {
     if (!activeSprint) return;
@@ -159,6 +161,7 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
                 projectId={projectId}
                 currentUserId={user?.id ?? ""}
                 canCreate={canCreate}
+                canEdit={canEdit}
                 onCreateIssue={(sid) => setCreateStatusId(sid)}
                 onDropIssue={(issueId, targetStatusId, targetIndex) => {
                   updateIssueStatus.mutate({ issueId, statusId: targetStatusId });

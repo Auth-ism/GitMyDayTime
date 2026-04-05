@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Bug, Zap, BookOpen, CheckSquare, Minus,
-  CalendarDays, Trash2, Edit2, Check, X, ChevronDown, Link2, Plus, Tag, CornerDownRight, ChevronRight,
+  CalendarDays, Trash2, Edit2, Check, X, ChevronDown, Link2, Plus, Tag, CornerDownRight, ChevronRight, Copy,
 } from "lucide-react";
+import { showSuccessToast } from "@/components/Toast";
 import type { IssueLinkType } from "@gmd/shared";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
@@ -441,7 +442,17 @@ export default function IssuePage() {
           {project?.name ?? "..."}
         </Link>
         <span>/</span>
-        <span className="font-mono text-text-secondary">{issue.issueKey}</span>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(window.location.href);
+            showSuccessToast(`${issue.issueKey} kopyalandı`);
+          }}
+          className="font-mono text-text-secondary hover:text-accent transition-colors flex items-center gap-1 group"
+          title="Linki kopyala"
+        >
+          {issue.issueKey}
+          <Copy size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+        </button>
       </div>
 
       {/* Parent link */}

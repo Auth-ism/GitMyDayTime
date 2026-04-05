@@ -20,6 +20,7 @@ import ProjectSettingsPage from "@/pages/ProjectSettingsPage";
 import ProjectInsightsPage from "@/pages/ProjectInsightsPage";
 import ProjectJoinPage from "@/pages/ProjectJoinPage";
 import BacklogPage from "@/pages/BacklogPage";
+import ChangelogPage from "@/pages/ChangelogPage";
 import { Clock } from "lucide-react";
 import { ToastContainer } from "@/components/Toast";
 
@@ -69,6 +70,7 @@ export default function App() {
             <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
             <Route path="/projects/:projectId/insights" element={<ProjectInsightsPage />} />
             <Route path="/projects/join/:token" element={<ProjectJoinPage />} />
+            <Route path="/changelog" element={<ChangelogPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </>

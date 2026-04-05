@@ -223,6 +223,40 @@ export async function sendPasswordResetEmail(
   });
 }
 
+export async function sendFeedbackEmail(data: {
+  senderEmail: string;
+  senderUsername: string;
+  type: string;
+  description: string;
+  url: string;
+}): Promise<void> {
+  const typeLabel = data.type === "bug" ? "🐛 Hata" : data.type === "feature" ? "✨ Özellik İsteği" : "💬 Diğer";
+  const body = `
+    <p style="margin:0 0 4px;font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Geri Bildirim</p>
+    <p style="margin:0 0 20px;font-size:18px;font-weight:600;color:#f0f0f0;">${typeLabel}</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:20px;width:100%;">
+      <tr>
+        <td style="padding:8px 0;color:#a1a1aa;font-size:13px;width:100px;vertical-align:top;">Kullanıcı</td>
+        <td style="padding:8px 0;color:#f0f0f0;font-size:13px;font-weight:500;">${data.senderUsername} (${data.senderEmail})</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:#a1a1aa;font-size:13px;border-top:1px solid #27272a;vertical-align:top;">Sayfa</td>
+        <td style="padding:8px 0;color:#71717a;font-size:12px;font-family:monospace;border-top:1px solid #27272a;">${data.url}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:#a1a1aa;font-size:13px;border-top:1px solid #27272a;vertical-align:top;">Açıklama</td>
+        <td style="padding:12px 0;color:#f0f0f0;font-size:13px;line-height:1.6;border-top:1px solid #27272a;">${data.description.replace(/\n/g, "<br>")}</td>
+      </tr>
+    </table>
+  `;
+  await resend.emails.send({
+    from: FROM,
+    to: ADMIN_EMAIL,
+    subject: `GMD Geri Bildirim: ${typeLabel} — ${data.senderUsername}`,
+    html: baseTemplate(body, `${data.senderUsername} geri bildirim gönderdi`),
+  });
+}
+
 export async function sendVerificationEmail(
   user: { email: string; username: string },
   token: string

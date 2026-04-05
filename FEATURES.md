@@ -1,6 +1,6 @@
 # GMD — Feature Backlog & Roadmap
 
-Son güncelleme: 2026-04-04
+Son güncelleme: 2026-04-05
 
 ---
 
@@ -39,15 +39,20 @@ Son güncelleme: 2026-04-04
 - [x] Projeler — `project_key`, açıklama, üye rolleri (owner/admin/developer/reporter/viewer)
 - [x] Issue'lar — tip (epic/story/task/bug/sub_task), öncelik, etiket, atanan
 - [x] Issue hiyerarşisi — parent/child, breadcrumb navigasyon
-- [x] Kanban board — sürükle-bırak (kolon içi sıralama + kolon arası taşıma)
-- [x] Board filtreleri — arama, tip, öncelik, etiket
-- [x] Sprint yönetimi — CRUD, aktif sprint, board sprint filtresi, backlog
-- [x] @mention — textarea dropdown, CommentText renderer
-- [x] In-app bildirimler — NotificationBell, okunmamış badge
+- [x] Kanban board — sürükle-bırak (kolon içi sıralama + kolon arası taşıma), her ikisi de optimistik
+- [x] Board filtreleri — arama, tip, öncelik, etiket, "Bana Atananlar"
+- [x] Sprint yönetimi — CRUD, aktif sprint, board sprint filtresi, backlog view, sprint tamamla
+- [x] Story Points — issue sidebar + backlog SP toplamı + sprint velocity
+- [x] Backlog view — iki kolonlu (backlog / aktif sprint), sprint'e ekle/çıkar
+- [x] @mention — textarea dropdown, Tab/Enter klavye navigasyonu, CommentText renderer
+- [x] In-app bildirimler — NotificationBell, okunmamış badge; atama + mention + done bildirimleri
 - [x] Plan köprüsü — issue'dan günlük plana ekleme (dev kategorisi, issue key prefix, duplikasyon koruması)
 - [x] Raporlar sayfası (ProjectInsightsPage) — KPI kartları, durum/öncelik/tip/atanan grafikleri, sprint velocity
 - [x] SSE ile gerçek zamanlı board güncellemeleri (`useProjectEvents`)
 - [x] Proje ayarları — statüler, etiket yönetimi, sprint CRUD
+- [x] Issue link kopyalama — board kart + issue detay + backlog'da issue key'e tıkla → URL clipboard
+- [x] Board kartında hızlı arşivle (hover, developer+ için)
+- [x] Sub-issue oluşturma — parent'ta anlık görünüm (Redis + parentId fix)
 
 ---
 
@@ -55,23 +60,31 @@ Son güncelleme: 2026-04-04
 
 > Yüksek etki, düşük efor. Tek sprint'te hepsi yapılabilir.
 
-| # | Özellik | Açıklama | Efor |
-|---|---------|----------|------|
-| 1 | **Story Points** | Issue sidebar'a sayı alanı; velocity chart'ı anlamlı kılar | XS |
-| 2 | **"Bana Atananlar" filtresi** | Board'da tek tık, en sık kullanılan aksiyon | XS |
-| 3 | **Kolon issue sayısı** | Başlıkta "In Progress (5)" | XS |
-| 4 | **Issue linki kopyala** | Clipboard + toast bildirimi | XS |
-| 5 | **Sprint tamamla butonu** | Tamamlanmayanlar için "backlog'a taşı / sil" dialog | S |
-| 6 | **Cmd/Ctrl+K global arama** | Tüm projeler arası issue arama | M |
-| 7 | **Hover context menüsü** | Kart üzerinde hızlı atama/durum değişimi | S |
+| # | Özellik | Açıklama | Efor | Durum |
+|---|---------|----------|------|-------|
+| 1 | ~~Story Points~~ | Issue sidebar'a sayı alanı; velocity chart'ı anlamlı kılar | XS | ✅ |
+| 2 | ~~"Bana Atananlar" filtresi~~ | Board'da tek tık, en sık kullanılan aksiyon | XS | ✅ |
+| 3 | ~~Kolon issue sayısı~~ | Başlıkta badge | XS | ✅ |
+| 4 | ~~Issue linki kopyala~~ | Clipboard + toast bildirimi | XS | ✅ |
+| 5 | ~~Sprint tamamla butonu~~ | Tamamlanmayanlar için "backlog'a taşı" dialog | S | ✅ |
+| 6 | **Cmd/Ctrl+K global arama** | Tüm projeler arası issue arama | M | ⏳ |
+| 7 | **Hover context menüsü** | Kart üzerinde hızlı atama/durum değişimi | S | ⏳ |
+
+---
+
+## 🧩 UX Ekstralar (Tamamlanan)
+- [x] Logout onay dialogu
+- [x] İlk giriş onboarding turu (5 adım)
+- [x] Changelog popup (major/minor versiyonda otomatik)
+- [x] Changelog sayfası (`/changelog`)
+- [x] Geri bildirim / bug report butonu → admin'e e-posta
 
 ---
 
 ## 📋 Backlog — Core Eksikler
 
-### Backlog View + Sprint Planning
-İki kolonlu sayfa: sol = backlog, sağ = aktif sprint. Sürükle-bırak ile sprint'e taşı.
-Sprint'e issue eklemek şu an çok zahmetli — bu view kritik.
+### ~~Backlog View + Sprint Planning~~ ✅
+İki kolonlu sayfa tamamlandı: sol = backlog, sağ = aktif sprint.
 
 ### Activity Timeline (Issue Sayfasında)
 Yorum + durum değişikliği + atama + sprint değişikliği kronolojik akışı. "Kim ne zaman ne yaptı."

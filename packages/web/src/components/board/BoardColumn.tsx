@@ -11,11 +11,12 @@ interface Props {
   currentUserId: string;
   onCreateIssue?: (statusId: string) => void;
   canCreate?: boolean;
+  canEdit?: boolean;
   onDropIssue?: (issueId: string, targetStatusId: string, targetIndex: number) => void;
   onReorder?: (orders: Array<{ issueId: string; sortOrder: number }>) => void;
 }
 
-export default function BoardColumn({ column, projectId, currentUserId, onCreateIssue, canCreate, onDropIssue, onReorder }: Props) {
+export default function BoardColumn({ column, projectId, currentUserId, onCreateIssue, canCreate, canEdit, onDropIssue, onReorder }: Props) {
   const { t } = useI18n();
   const { status, issues } = column;
   const [isDragOver, setIsDragOver] = useState(false);
@@ -109,6 +110,7 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
               issue={issue}
               projectId={projectId}
               currentUserId={currentUserId}
+              canEdit={canEdit}
               onDragStart={() => setDragOverIndex(null)}
             />
           </div>

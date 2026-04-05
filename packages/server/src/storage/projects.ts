@@ -556,6 +556,7 @@ export async function createIssue(data: {
   estimatedHours?: number | null;
   sprintId?: string | null;
   statusId: string;
+  parentId?: string | null;
 }): Promise<Issue> {
   const issueNumber = await pool.query(
     "SELECT next_issue_number($1) AS num",
@@ -567,15 +568,15 @@ export async function createIssue(data: {
   const { rows } = await pool.query(
     `INSERT INTO issues
        (project_id, issue_number, issue_key, title, description, issue_type, status_id,
-        priority, labels, assignee_id, reporter_id, due_date, estimated_hours, sprint_id, sort_order)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,
+        priority, labels, assignee_id, reporter_id, due_date, estimated_hours, sprint_id, parent_id, sort_order)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
              COALESCE((SELECT MAX(sort_order)+1 FROM issues WHERE project_id=$1 AND status_id=$7 AND archived=FALSE), 0))
      RETURNING *`,
     [
       data.projectId, num, issueKey, data.title, data.description ?? null,
       data.issueType, data.statusId, data.priority, data.labels ?? [],
       data.assigneeId ?? null, data.reporterId, data.dueDate ?? null,
-      data.estimatedHours ?? null, data.sprintId ?? null,
+      data.estimatedHours ?? null, data.sprintId ?? null, data.parentId ?? null,
     ]
   );
 
