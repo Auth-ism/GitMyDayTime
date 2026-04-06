@@ -39,16 +39,6 @@ const STEPS = [
   },
 ];
 
-const LS_KEY = "gmd-onboarded";
-
-export function shouldShowOnboarding(): boolean {
-  try { return !localStorage.getItem(LS_KEY); } catch { return false; }
-}
-
-export function markOnboarded() {
-  try { localStorage.setItem(LS_KEY, "1"); } catch {}
-}
-
 interface Props {
   onClose: () => void;
 }
@@ -60,7 +50,6 @@ export default function OnboardingModal({ onClose }: Props) {
   const isLast = step === STEPS.length - 1;
 
   const finish = () => {
-    markOnboarded();
     onClose();
   };
 

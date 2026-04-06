@@ -79,6 +79,7 @@ function toUserProfile(r: any): UserProfile {
     silentHoursStart: r.silent_hours_start ? r.silent_hours_start.slice(0, 5) : null,
     silentHoursEnd: r.silent_hours_end ? r.silent_hours_end.slice(0, 5) : null,
     fontSize: (r.font_size ?? "normal") as UserProfile["fontSize"],
+    onboarded: r.onboarded ?? false,
     createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   };
 }
@@ -96,7 +97,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
             plan_email_notifications, plan_sms_notifications, plan_push_notifications,
             reminder_email_notifications, reminder_sms_notifications, reminder_push_notifications,
             hidden_categories, notify_before_minutes, silent_hours_start, silent_hours_end,
-            font_size, created_at
+            font_size, onboarded, created_at
      FROM users WHERE id = $1`,
     [userId]
   );
@@ -145,6 +146,7 @@ export async function updateUserProfile(
     silentHoursStart: "silent_hours_start",
     silentHoursEnd: "silent_hours_end",
     fontSize: "font_size",
+    onboarded: "onboarded",
     email: "email",
     username: "username",
   });
@@ -163,7 +165,7 @@ export async function updateUserProfile(
                plan_email_notifications, plan_sms_notifications, plan_push_notifications,
                reminder_email_notifications, reminder_sms_notifications, reminder_push_notifications,
                hidden_categories, notify_before_minutes, silent_hours_start, silent_hours_end,
-               font_size, created_at`,
+               font_size, onboarded, created_at`,
     values
   );
 

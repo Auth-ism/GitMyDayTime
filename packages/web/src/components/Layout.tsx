@@ -6,9 +6,10 @@ import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { AnimatePresence, motion } from "framer-motion";
+import { api } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
 import LogoutConfirmModal from "@/components/LogoutConfirmModal";
-import OnboardingModal, { shouldShowOnboarding } from "@/components/OnboardingModal";
+import OnboardingModal from "@/components/OnboardingModal";
 import ChangelogModal, { shouldShowChangelog } from "@/components/ChangelogModal";
 import BugReportModal from "@/components/BugReportModal";
 
@@ -86,7 +87,7 @@ const navLabelKeys = {
 
 export default function Layout() {
   const { theme, toggle } = useTheme();
-  const { logout, profile, user } = useAuth();
+  const { logout, profile, user, refreshProfile } = useAuth();
   const { t, locale, setLocale } = useI18n();
   const location = useLocation();
   const isOnline = useOnline();
@@ -96,14 +97,13 @@ export default function Layout() {
   const [showBugReport, setShowBugReport] = useState(false);
 
   useEffect(() => {
-    const showOnboarding = shouldShowOnboarding();
-    const showChangelog = shouldShowChangelog(__APP_VERSION__);
-    if (showOnboarding) {
+    if (!profile) return;
+    if (!profile.onboarded) {
       setShowOnboarding(true);
-    } else if (showChangelog) {
+    } else if (shouldShowChangelog(__APP_VERSION__)) {
       setShowChangelog(true);
     }
-  }, []);
+  }, [profile?.onboarded]);
 
   const handleLogoutClick = () => setShowLogoutConfirm(true);
   const handleLogoutConfirm = () => { setShowLogoutConfirm(false); logout(); };
@@ -318,6 +318,7 @@ export default function Layout() {
       {showOnboarding && (
         <OnboardingModal onClose={() => {
           setShowOnboarding(false);
+          api.updateProfile({ onboarded: true }).then(() => refreshProfile()).catch(() => {});
           if (shouldShowChangelog(__APP_VERSION__)) setShowChangelog(true);
         }} />
       )}
