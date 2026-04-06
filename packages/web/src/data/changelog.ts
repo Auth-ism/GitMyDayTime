@@ -15,6 +15,25 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.4.0",
+    date: "2026-04-06",
+    bump: "minor",
+    summary: "Font Boyutu, Sürükle-Bırak İyileştirmeleri & UX Düzeltmeleri",
+    changes: [
+      { type: "feat", text: "Font boyutu ayarı — Küçük / Normal / Büyük / Çok Büyük, hesaba özel kaydedilir" },
+      { type: "feat", text: "Onboarding turu artık hesap bazlı — yeni cihazda tekrar gösterilmez" },
+      { type: "feat", text: "Plan listesinde sürükleme kolu (grip) — mobilde kaydırırken kazara sıralama değişmez" },
+      { type: "feat", text: "E-posta şablonlarında GMD logosu" },
+      { type: "fix", text: "Tamamlanan issue'lar bugün banner'ında artık görünmüyor" },
+      { type: "fix", text: "Issue planına ekle → DayView anında güncelleniyor, etkileşim gerekmez" },
+      { type: "fix", text: "Tamamlanmış plan öğeleri sürüklenip yeniden sıralanabiliyor" },
+      { type: "fix", text: "Mobilde plan öğesi işaretlenince diğer öğeler üst üste binmiyordu" },
+      { type: "fix", text: "Hafta ve Ay görünümünde kaydırma (swipe) navigasyon layout bozukluğu giderildi" },
+      { type: "fix", text: "@mention bildirimleri büyük/küçük harf farkı gözetmeksizin ulaşıyor, tire/nokta içeren kullanıcı adları destekleniyor" },
+      { type: "fix", text: "Proje İçgörüler sayfası tooltip'leri dark mode'da okunabilir" },
+    ],
+  },
+  {
     version: "4.3.0",
     date: "2026-04-05",
     bump: "minor",
