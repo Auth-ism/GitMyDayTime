@@ -18,8 +18,8 @@ import TemplatesModal from "@/components/TemplatesModal";
 import ShortcutHelp from "@/components/ShortcutHelp";
 import { showUndoToast } from "@/components/Toast";
 import { AnimatePresence, Reorder, useDragControls, type DragControls } from "framer-motion";
-import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, Keyboard, GripVertical } from "lucide-react";
-import { todayStr, type PlanItem as PlanItemData } from "@gmd/shared";
+import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, Keyboard, GripVertical, Timer } from "lucide-react";
+import { todayStr, parseDuration, type PlanItem as PlanItemData } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { useSwipe } from "@/hooks/useSwipe";
 import SwipeableItem from "@/components/SwipeableItem";
@@ -71,6 +71,8 @@ export default function DayView() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [copyingDay, setCopyingDay] = useState(false);
+  const [pendingComplete, setPendingComplete] = useState<{ id: string; desc: string } | null>(null);
+  const [durationInput, setDurationInput] = useState("");
 
   const dayLog = query.data;
   const today = todayStr();
@@ -397,6 +399,10 @@ export default function DayView() {
                           completed: !item.completed,
                           ...(actualDuration !== undefined ? { actualDuration } : {}),
                         })}
+                        onRequestComplete={() => {
+                          setPendingComplete({ id: item.id, desc: item.description });
+                          setDurationInput("");
+                        }}
                         onDelete={() => handleDeletePlan(item.id, item.description)}
                         onUpdate={(data) => updatePlan.mutate({ id: item.id, ...data })}
                         onStartPomodoro={() => setPomodoroTask({ id: item.id, name: item.description })}
@@ -513,6 +519,54 @@ export default function DayView() {
           <ShortcutHelp onClose={() => setShowShortcutHelp(false)} />
         )}
       </AnimatePresence>
+
+      {/* Duration overlay — fixed bottom bar, list layout etkilenmez */}
+      {pendingComplete && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-bg-elevated border-t border-border shadow-xl p-4 flex items-center gap-2">
+          <Timer size={15} className="text-text-tertiary flex-shrink-0" />
+          <input
+            type="text"
+            className="input flex-1 !text-sm"
+            placeholder="1h 30m"
+            value={durationInput}
+            onChange={(e) => setDurationInput(e.target.value)}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const dur = durationInput ? parseDuration(durationInput) : undefined;
+                updatePlan.mutate({ id: pendingComplete.id, completed: true, ...(dur !== undefined ? { actualDuration: dur } : {}) });
+                setPendingComplete(null);
+                setDurationInput("");
+              }
+              if (e.key === "Escape") {
+                setPendingComplete(null);
+                setDurationInput("");
+              }
+            }}
+          />
+          <button
+            onClick={() => {
+              const dur = durationInput ? parseDuration(durationInput) : undefined;
+              updatePlan.mutate({ id: pendingComplete.id, completed: true, ...(dur !== undefined ? { actualDuration: dur } : {}) });
+              setPendingComplete(null);
+              setDurationInput("");
+            }}
+            className="btn btn-primary !py-1.5 !px-3 text-xs flex-shrink-0"
+          >
+            {t("plan.done")}
+          </button>
+          <button
+            onClick={() => {
+              updatePlan.mutate({ id: pendingComplete.id, completed: true });
+              setPendingComplete(null);
+              setDurationInput("");
+            }}
+            className="btn btn-ghost !py-1.5 !px-2 text-xs text-text-tertiary flex-shrink-0"
+          >
+            {t("plan.skip")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

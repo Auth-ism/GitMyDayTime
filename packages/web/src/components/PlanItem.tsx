@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Check, Trash2, Clock, Timer, Play, Pencil, Plus, ListChecks, ChevronDown, Bell } from "lucide-react";
-import { type PlanItem as PlanItemType, type ChecklistItem, type PriorityType, formatDuration, parseDuration } from "@gmd/shared";
+import { type PlanItem as PlanItemType, type ChecklistItem, type PriorityType, formatDuration } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { useCategories } from "@/hooks/useCategories";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,6 +21,7 @@ const PRIORITY_BORDER: Record<PriorityType, string> = {
 interface Props {
   item: PlanItemType;
   onToggle: (actualDuration?: number) => void;
+  onRequestComplete?: () => void;
   onDelete: () => void;
   onUpdate?: (data: Partial<PlanItemType>) => void;
   onStartPomodoro?: () => void;
@@ -31,15 +32,13 @@ interface Props {
 }
 
 export default function PlanItem({
-  item, onToggle, onDelete, onUpdate, onStartPomodoro,
+  item, onToggle, onRequestComplete, onDelete, onUpdate, onStartPomodoro,
   onAddChecklist, onUpdateChecklist, onDeleteChecklist, dragHandle,
 }: Props) {
   const { t } = useI18n();
   const getCatLabel = useCategoryLabel();
   const { getCategoryColor } = useCategories();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [showDuration, setShowDuration] = useState(false);
-  const [actualDur, setActualDur] = useState("");
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.description);
   const [expanded, setExpanded] = useState(false);
@@ -65,23 +64,10 @@ export default function PlanItem({
 
   const handleToggle = () => {
     if (!item.completed) {
-      setShowDuration(true);
+      onRequestComplete ? onRequestComplete() : onToggle();
     } else {
       onToggle();
     }
-  };
-
-  const handleComplete = () => {
-    const duration = actualDur ? parseDuration(actualDur) : undefined;
-    onToggle(duration);
-    setShowDuration(false);
-    setActualDur("");
-  };
-
-  const handleSkipDuration = () => {
-    onToggle();
-    setShowDuration(false);
-    setActualDur("");
   };
 
   const handleEditSave = () => {
