@@ -17,8 +17,8 @@ import TimelineView from "@/components/TimelineView";
 import TemplatesModal from "@/components/TemplatesModal";
 import ShortcutHelp from "@/components/ShortcutHelp";
 import { showUndoToast } from "@/components/Toast";
-import { AnimatePresence, Reorder } from "framer-motion";
-import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, Keyboard } from "lucide-react";
+import { AnimatePresence, Reorder, useDragControls, type DragControls } from "framer-motion";
+import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, Keyboard, GripVertical } from "lucide-react";
 import { todayStr, type PlanItem as PlanItemData } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { useSwipe } from "@/hooks/useSwipe";
@@ -28,6 +28,31 @@ import { useCategories } from "@/hooks/useCategories";
 
 function getDateStr(dateParam?: string): string {
   return dateParam || todayStr();
+}
+
+interface DraggablePlanRowProps {
+  item: PlanItemData;
+  planListRef: React.RefObject<HTMLDivElement | null>;
+  onDragEnd: () => void;
+  children: (controls: DragControls) => React.ReactNode;
+}
+
+function DraggablePlanRow({ item, planListRef, onDragEnd, children }: DraggablePlanRowProps) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      key={item.id}
+      value={item}
+      as="div"
+      dragListener={false}
+      dragControls={controls}
+      dragConstraints={planListRef}
+      dragElastic={0.1}
+      onDragEnd={onDragEnd}
+    >
+      {children(controls)}
+    </Reorder.Item>
+  );
 }
 
 export default function DayView() {
@@ -348,38 +373,50 @@ export default function DayView() {
               as="div"
             >
               {displayPlan.map((item) => (
-                <Reorder.Item
+                <DraggablePlanRow
                   key={item.id}
-                  value={item}
-                  as="div"
-                  dragListener={!item.completed}
-                  dragConstraints={planListRef}
-                  dragElastic={0.1}
+                  item={item}
+                  planListRef={planListRef}
                   onDragEnd={() => {
                     const order = dragOrderRef.current;
                     if (order) reorderPlan.mutate(order.map((p) => p.id));
+                    setDragOrder(null);
+                    dragOrderRef.current = null;
                   }}
                 >
-                  <SwipeableItem
-                    onSwipeRight={() => updatePlan.mutate({ id: item.id, completed: !item.completed })}
-                    onSwipeLeft={() => handleDeletePlan(item.id, item.description)}
-                  >
-                    <PlanItem
-                      item={item}
-                      onToggle={(actualDuration) => updatePlan.mutate({
-                        id: item.id,
-                        completed: !item.completed,
-                        ...(actualDuration !== undefined ? { actualDuration } : {}),
-                      })}
-                      onDelete={() => handleDeletePlan(item.id, item.description)}
-                      onUpdate={(data) => updatePlan.mutate({ id: item.id, ...data })}
-                      onStartPomodoro={() => setPomodoroTask({ id: item.id, name: item.description })}
-                      onAddChecklist={(desc) => addChecklist.mutate({ planId: item.id, description: desc })}
-                      onUpdateChecklist={(clId, data) => updateChecklist.mutate({ planId: item.id, clId, ...data })}
-                      onDeleteChecklist={(clId) => deleteChecklist.mutate({ planId: item.id, clId })}
-                    />
-                  </SwipeableItem>
-                </Reorder.Item>
+                  {(controls) => (
+                    <SwipeableItem
+                      onSwipeRight={() => updatePlan.mutate({ id: item.id, completed: !item.completed })}
+                      onSwipeLeft={() => handleDeletePlan(item.id, item.description)}
+                    >
+                      <PlanItem
+                        item={item}
+                        onToggle={(actualDuration) => updatePlan.mutate({
+                          id: item.id,
+                          completed: !item.completed,
+                          ...(actualDuration !== undefined ? { actualDuration } : {}),
+                        })}
+                        onDelete={() => handleDeletePlan(item.id, item.description)}
+                        onUpdate={(data) => updatePlan.mutate({ id: item.id, ...data })}
+                        onStartPomodoro={() => setPomodoroTask({ id: item.id, name: item.description })}
+                        onAddChecklist={(desc) => addChecklist.mutate({ planId: item.id, description: desc })}
+                        onUpdateChecklist={(clId, data) => updateChecklist.mutate({ planId: item.id, clId, ...data })}
+                        onDeleteChecklist={(clId) => deleteChecklist.mutate({ planId: item.id, clId })}
+                        dragHandle={
+                          <button
+                            onPointerDown={(e) => { e.preventDefault(); controls.start(e); }}
+                            style={{ touchAction: "none" }}
+                            tabIndex={-1}
+                            aria-label="Sürükle"
+                            className="p-1.5 rounded-lg flex-shrink-0 cursor-grab active:cursor-grabbing text-text-tertiary/30 hover:text-text-tertiary transition-colors"
+                          >
+                            <GripVertical size={13} />
+                          </button>
+                        }
+                      />
+                    </SwipeableItem>
+                  )}
+                </DraggablePlanRow>
               ))}
             </Reorder.Group>
           )}

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
+import { useFontSize, type FontSize } from "@/lib/fontSize";
 import { useI18n, useCategoryLabel, type Locale } from "@/lib/i18n";
 import { useCategories } from "@/hooks/useCategories";
 import { api } from "@/lib/api";
@@ -48,6 +49,7 @@ function rawPhone(formatted: string): string {
 export default function ProfilePage() {
   const { profile, refreshProfile, user } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { fontSize, setFontSize } = useFontSize();
   const { t, locale, setLocale } = useI18n();
 
   const [activeTab, setActiveTab] = useState<Tab>("account");
@@ -133,6 +135,7 @@ export default function ProfilePage() {
         notifyBeforeMinutes: profile.notifyBeforeMinutes ?? 0,
         silentHoursStart: profile.silentHoursStart ?? null,
         silentHoursEnd: profile.silentHoursEnd ?? null,
+        fontSize: profile.fontSize ?? "normal",
       });
       setPhoneDisplay(profile.phoneNumber ? formatPhoneInput(profile.phoneNumber) : "");
       if (profile.avatarUrl) setAvatarPreview(profile.avatarUrl);
@@ -247,6 +250,7 @@ export default function ProfilePage() {
       await refreshProfile();
       if (form.theme && form.theme !== theme) setTheme(form.theme as Theme);
       if (form.locale && form.locale !== locale) setLocale(form.locale as Locale);
+      if (form.fontSize && form.fontSize !== fontSize) setFontSize(form.fontSize as FontSize);
       setEmailPassword("");
       originalEmail.current = form.email || originalEmail.current;
       setEmailChanged(false);
@@ -401,6 +405,16 @@ export default function ProfilePage() {
               {(["system", "light", "dark"] as const).map((th) => (
                 <button key={th} onClick={() => setForm({ ...form, theme: th })} className={cn("flex-1 py-1.5 rounded-md text-xs font-medium transition-all", form.theme === th ? "bg-accent text-bg" : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary")}>
                   {th === "system" ? t("profile.themeSystem" as any) : t(th === "light" ? "profile.themeLight" as any : "profile.themeDark" as any)}
+                </button>
+              ))}
+            </div>
+          </Section>
+
+          <Section icon={<Palette size={14} className="text-text-secondary" />} title={t("profile.fontSize" as any)}>
+            <div className="flex gap-1.5">
+              {(["small", "normal", "large", "xlarge"] as const).map((sz) => (
+                <button key={sz} onClick={() => setForm({ ...form, fontSize: sz })} className={cn("flex-1 py-1.5 rounded-md text-xs font-medium transition-all", form.fontSize === sz ? "bg-accent text-bg" : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary")}>
+                  {t(`profile.fontSize${sz.charAt(0).toUpperCase()}${sz.slice(1)}` as any)}
                 </button>
               ))}
             </div>

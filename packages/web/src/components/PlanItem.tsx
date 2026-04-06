@@ -27,11 +27,12 @@ interface Props {
   onAddChecklist?: (description: string) => void;
   onUpdateChecklist?: (clId: string, data: Partial<ChecklistItem>) => void;
   onDeleteChecklist?: (clId: string) => void;
+  dragHandle?: React.ReactNode;
 }
 
 export default function PlanItem({
   item, onToggle, onDelete, onUpdate, onStartPomodoro,
-  onAddChecklist, onUpdateChecklist, onDeleteChecklist,
+  onAddChecklist, onUpdateChecklist, onDeleteChecklist, dragHandle,
 }: Props) {
   const { t } = useI18n();
   const getCatLabel = useCategoryLabel();
@@ -285,6 +286,8 @@ export default function PlanItem({
             <Play size={14} />
           </button>
         )}
+
+        {dragHandle}
 
         <button
           onClick={handleDelete}

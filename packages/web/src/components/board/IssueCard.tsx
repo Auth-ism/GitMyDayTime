@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Bug, Zap, BookOpen, CheckSquare, Minus, Plus, CornerDownRight, Archive } from "lucide-react";
+import { CalendarDays, Bug, Zap, BookOpen, CheckSquare, Minus, Plus, CornerDownRight, Archive, GripVertical } from "lucide-react";
 import DatePicker from "@/components/DatePicker";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
@@ -100,7 +100,10 @@ export default function IssueCard({
             >
               {issue.issueKey}
             </button>
-            <TypeIcon size={12} className={cn("flex-shrink-0 mt-0.5", TYPE_COLORS[issue.issueType])} />
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <TypeIcon size={12} className={cn("mt-0.5", TYPE_COLORS[issue.issueType])} />
+              <GripVertical size={12} className="text-text-tertiary/30 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
+            </div>
           </div>
 
           {issue.parentIssueKey && (

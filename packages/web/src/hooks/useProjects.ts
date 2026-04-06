@@ -242,10 +242,11 @@ export function useIssueMutations(projectId: string) {
   const addIssueToPlan = useMutation({
     mutationFn: ({ issueId, data }: { issueId: string; data: AddToPlanInput }) =>
       api.addIssueToPlan(projectId, issueId, data),
-    onSuccess: (_res, { issueId }) => {
+    onSuccess: (_res, { issueId, data }) => {
       invalidate();
       qc.invalidateQueries({ queryKey: ["issue", issueId] });
       qc.invalidateQueries({ queryKey: ["my-assignments"] });
+      qc.invalidateQueries({ queryKey: ["daylog", data.date] });
     },
   });
 
@@ -254,6 +255,7 @@ export function useIssueMutations(projectId: string) {
     onSuccess: (_res, issueId) => {
       invalidate();
       qc.invalidateQueries({ queryKey: ["issue", issueId] });
+      qc.invalidateQueries({ queryKey: ["daylog"] });
     },
   });
 

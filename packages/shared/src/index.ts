@@ -267,6 +267,7 @@ export const UserProfileSchema = z.object({
   notifyBeforeMinutes: z.number(),
   silentHoursStart: z.string().nullable(),
   silentHoursEnd: z.string().nullable(),
+  fontSize: z.enum(["small", "normal", "large", "xlarge"]),
   createdAt: z.string(),
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;
@@ -300,6 +301,7 @@ export const UpdateProfileInput = z.object({
   notifyBeforeMinutes: z.number().min(0).max(60).optional(),
   silentHoursStart: z.string().nullable().optional(),
   silentHoursEnd: z.string().nullable().optional(),
+  fontSize: z.enum(["small", "normal", "large", "xlarge"]).optional(),
   email: z.string().email().optional(),
   username: z.string().min(2).max(32).optional(),
   currentPassword: z.string().min(1).optional(),

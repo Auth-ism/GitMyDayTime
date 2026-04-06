@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { ThemeProvider } from "@/lib/theme";
+import { FontSizeProvider } from "@/lib/fontSize";
 import { AuthProvider } from "@/lib/auth";
 import { I18nProvider } from "@/lib/i18n";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -38,9 +39,11 @@ createRoot(document.getElementById("root")!).render(
         <BrowserRouter>
           <I18nProvider>
             <ThemeProvider>
+            <FontSizeProvider>
               <AuthProvider>
                 <App />
               </AuthProvider>
+            </FontSizeProvider>
             </ThemeProvider>
           </I18nProvider>
         </BrowserRouter>

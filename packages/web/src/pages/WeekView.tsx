@@ -8,7 +8,6 @@ import { ChevronLeft, ChevronRight, CalendarDays, Clock, Target, Check, MessageS
 import { formatDuration, todayStr, type DayLog } from "@gmd/shared";
 import { useCategories } from "@/hooks/useCategories";
 import { motion } from "framer-motion";
-import { useSwipe } from "@/hooks/useSwipe";
 
 function localDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -73,8 +72,6 @@ export default function WeekView() {
   const goToday = () => setWeekRef(new Date());
 
   const isCurrentWeek = dates.includes(today);
-  const swipeHandlers = useSwipe({ onSwipeLeft: nextWeek, onSwipeRight: prevWeek });
-
   const moveItem = useCallback(async (info: DragInfo, toDate: string) => {
     if (info.fromDate === toDate) return;
 
@@ -239,7 +236,7 @@ export default function WeekView() {
       </div>
 
       {/* Week grid */}
-      <div {...swipeHandlers}>
+      <div>
       <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
       <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, minmax(110px, 1fr))" }}>
         {dates.map((date, i) => {

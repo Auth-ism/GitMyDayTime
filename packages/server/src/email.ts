@@ -33,10 +33,8 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;">${prehead
 <!-- Header -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
 <tr><td style="padding-bottom:24px;text-align:center;">
-  <span style="font-size:20px;font-weight:700;color:#f0f0f0;letter-spacing:-0.5px;">
-    GMD
-  </span>
-  <span style="font-size:12px;color:#71717a;margin-left:8px;">GitMyDayTime</span>
+  <img src="${APP_URL}/email-logo.png" width="40" height="40" alt="GMD" style="border-radius:8px;display:inline-block;vertical-align:middle;" />
+  <span style="font-size:16px;font-weight:700;color:#f0f0f0;letter-spacing:-0.5px;vertical-align:middle;margin-left:10px;">GitMyDayTime</span>
 </td></tr>
 </table>
 

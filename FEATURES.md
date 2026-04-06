@@ -1,6 +1,6 @@
 # GMD — Feature Backlog & Roadmap
 
-Son güncelleme: 2026-04-05
+Son güncelleme: 2026-04-06
 
 ---
 
@@ -24,6 +24,8 @@ Son güncelleme: 2026-04-05
 - [x] Karanlık mod
 - [x] Rate limiting (route bazlı, Redis)
 - [x] Şifre sıfırlama (ResetPasswordPage + migration 025)
+- [x] Yazı boyutu ayarı (Küçük/Normal/Büyük/Çok Büyük) — ProfilePage + migration 027 + FontSizeProvider
+- [x] Email logolu şablon — favicon clock PNG, tüm email'lerde ortak header
 
 ### Grup / Takım Çalışma Alanları ✅
 - [x] `groups`, `group_members`, `group_tasks` tabloları
@@ -69,6 +71,18 @@ Son güncelleme: 2026-04-05
 | 5 | ~~Sprint tamamla butonu~~ | Tamamlanmayanlar için "backlog'a taşı" dialog | S | ✅ |
 | 6 | **Cmd/Ctrl+K global arama** | Tüm projeler arası issue arama | M | ⏳ |
 | 7 | **Hover context menüsü** | Kart üzerinde hızlı atama/durum değişimi | S | ⏳ |
+
+### UX/Bug Düzeltmeleri (2026-04-06)
+- [x] DayView banner: tamamlanmış issue'lar artık "plana eklenmemiş" uyarısı göstermiyor
+- [x] ProjectInsightsPage tooltip: dark mode'da yazılar görünür hale getirildi
+- [x] "Planıma Ekle" sonrası DayView anlık güncelleniyor (daylog cache invalidation)
+- [x] Tamamlanmış plan item'lar sürükleyerek yeniden sıralanabiliyor
+- [x] Mobilde plan check sonrası item'lar üst üste binme sorunu giderildi
+- [x] WeekView ve CalendarPage swipe navigasyonu kaldırıldı (layout hatası)
+- [x] Plan item sürükleme için köşe grip handle eklendi — sayfayı kaydırırken drag başlamıyor
+- [x] Board card'larda drag handle ikonu eklendi
+- [x] @mention regex genişletildi (tire/nokta içeren username'ler), case-insensitive lookup
+- [x] Yorumlarda @mention bildirimi çalışıyor
 
 ---
 

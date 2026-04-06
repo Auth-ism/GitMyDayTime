@@ -1028,8 +1028,10 @@ export async function getMyAssignments(
   const { rows } = await pool.query(
     `SELECT i.id AS issue_id, i.project_id, i.plan_item_id, i.issue_key, i.title
      FROM issues i
+     JOIN workflow_statuses ws ON ws.id = i.status_id
      WHERE i.assignee_id = $1
        AND i.archived = FALSE
+       AND ws.category <> 'done'
        ${date ? "AND (i.due_date IS NULL OR i.due_date = $2)" : ""}
      ORDER BY i.updated_at DESC
      LIMIT 50`,

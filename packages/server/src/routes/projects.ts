@@ -587,13 +587,13 @@ router.post("/:id/issues/:issueId/comments", canReport, wrap(async (req, res) =>
     res.status(404).json({ error: "Issue bulunamadı" }); return;
   }
 
-  const mentionUsernames = [...input.data.content.matchAll(/@(\w+)/g)].map(m => m[1]);
+  const mentionUsernames = [...new Set([...input.data.content.matchAll(/@([\w.-]+)/g)].map(m => m[1]))];
   let mentionIds: string[] = [];
   if (mentionUsernames.length > 0) {
     const placeholders = mentionUsernames.map((_, i) => `$${i + 1}`).join(",");
     const { rows: userRows } = await pool.query(
-      `SELECT id FROM users WHERE username IN (${placeholders})`,
-      mentionUsernames
+      `SELECT id FROM users WHERE LOWER(username) IN (${placeholders})`,
+      mentionUsernames.map(u => u.toLowerCase())
     );
     mentionIds = userRows.map((r: any) => r.id as string);
   }
