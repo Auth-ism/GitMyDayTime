@@ -73,7 +73,7 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
       }}
       onDrop={(e) => handleColumnDrop(e, issues.length)}
     >
-      <div className="flex items-center gap-2 mb-3 px-1">
+      <div className="flex items-center gap-2 mb-2 px-1">
         <div
           className="w-2.5 h-2.5 rounded-full flex-shrink-0"
           style={{ backgroundColor: status.color }}
@@ -84,6 +84,15 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
         <span className="text-[10px] text-text-tertiary bg-accent-soft px-1.5 py-0.5 rounded-full">
           {issues.length}
         </span>
+        {canCreate && (
+          <button
+            onClick={() => onCreateIssue?.(status.id)}
+            className="p-1 rounded-lg text-text-tertiary hover:text-accent hover:bg-accent/5 transition-colors flex-shrink-0"
+            aria-label={t("projects.addIssue" as any)}
+          >
+            <Plus size={14} />
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col flex-1 min-h-[60px]">
@@ -136,15 +145,6 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
         />
       </div>
 
-      {canCreate && (
-        <button
-          onClick={() => onCreateIssue?.(status.id)}
-          className="mt-2 flex items-center gap-1 py-2 px-3 rounded-lg text-xs text-text-tertiary hover:text-accent hover:bg-accent/5 transition-colors w-full"
-        >
-          <Plus size={13} />
-          {t("projects.addIssue" as any)}
-        </button>
-      )}
     </div>
   );
 }
