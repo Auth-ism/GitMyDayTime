@@ -37,11 +37,8 @@ node -e "
 
 echo ">> Version: $OLD_VERSION -> $NEW_VERSION"
 
-# Auto-generate changelog entry from commits since last release
-node scripts/update-changelog.mjs "$OLD_VERSION" "$NEW_VERSION" "$BUMP"
-
 # Git commit & tag
-git add package.json packages/web/src/data/changelog.ts
+git add package.json
 git commit -m "release: v$NEW_VERSION"
 git tag "v$NEW_VERSION"
 
