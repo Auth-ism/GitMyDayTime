@@ -354,38 +354,29 @@ export default function PlanItem({
       </AnimatePresence>
 
       {/* Actual duration input when completing */}
-      <AnimatePresence>
-        {showDuration && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="px-3.5 pb-3 pt-1 flex items-center gap-2 border-t border-border">
-              <Timer size={14} className="text-text-tertiary flex-shrink-0" />
-              <input
-                type="text"
-                className="input !w-28 !text-sm"
-                placeholder="1h 30m"
-                value={actualDur}
-                onChange={(e) => setActualDur(e.target.value)}
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleComplete();
-                  if (e.key === "Escape") { setShowDuration(false); setActualDur(""); }
-                }}
-              />
-              <button onClick={handleComplete} className="btn btn-primary !py-1.5 !px-3 text-xs">
-                {t("plan.done")}
-              </button>
-              <button onClick={handleSkipDuration} className="btn btn-ghost !py-1.5 !px-2 text-xs text-text-tertiary">
-                {t("plan.skip")}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showDuration && (
+        <div className="px-3.5 pb-3 pt-1 flex items-center gap-2 border-t border-border">
+          <Timer size={14} className="text-text-tertiary flex-shrink-0" />
+          <input
+            type="text"
+            className="input !w-28 !text-sm"
+            placeholder="1h 30m"
+            value={actualDur}
+            onChange={(e) => setActualDur(e.target.value)}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleComplete();
+              if (e.key === "Escape") { setShowDuration(false); setActualDur(""); }
+            }}
+          />
+          <button onClick={handleComplete} className="btn btn-primary !py-1.5 !px-3 text-xs">
+            {t("plan.done")}
+          </button>
+          <button onClick={handleSkipDuration} className="btn btn-ghost !py-1.5 !px-2 text-xs text-text-tertiary">
+            {t("plan.skip")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

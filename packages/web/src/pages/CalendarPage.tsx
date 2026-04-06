@@ -63,10 +63,13 @@ export default function CalendarPage() {
           <button onClick={prev} className="btn btn-ghost p-2" aria-label={t("cal.prevMonth")}>
             <ChevronLeft size={18} />
           </button>
-          <div className="flex flex-col items-center min-w-[140px]">
+          <div className="flex items-center gap-2 min-w-[160px] justify-center">
             <span className="text-sm font-medium" aria-live="polite">{monthName}</span>
             {!isCurrentMonth && (
-              <button onClick={goToday} className="text-[10px] text-accent hover:text-accent/80 transition-colors leading-none mt-0.5">
+              <button
+                onClick={goToday}
+                className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-accent/15 text-accent hover:bg-accent/25 transition-colors flex-shrink-0"
+              >
                 {t("day.today")}
               </button>
             )}
