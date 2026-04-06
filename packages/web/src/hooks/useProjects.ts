@@ -424,6 +424,7 @@ export function useProjectEvents(projectId: string | undefined) {
       }
       if (["comment_added", "comment_edited", "comment_deleted"].includes(ev.type)) {
         if (ev.issueId) qc.invalidateQueries({ queryKey: ["issue", ev.issueId] });
+        if (ev.type === "comment_added") qc.invalidateQueries({ queryKey: ["notifications"] });
       }
       if (["member_joined", "member_left"].includes(ev.type)) {
         qc.invalidateQueries({ queryKey: ["project", projectId] });

@@ -54,19 +54,23 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="space-y-2">
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <Calendar size={20} className="text-text-secondary" />
           {t("cal.title")}
         </h1>
-        <div className="flex items-center gap-1.5">
-          {!isCurrentMonth && (
-            <button onClick={goToday} className="btn btn-ghost text-xs mr-1">{t("day.today")}</button>
-          )}
+        <div className="flex items-center justify-center gap-1">
           <button onClick={prev} className="btn btn-ghost p-2" aria-label={t("cal.prevMonth")}>
             <ChevronLeft size={18} />
           </button>
-          <span className="text-sm font-medium w-40 text-center" aria-live="polite">{monthName}</span>
+          <div className="flex flex-col items-center min-w-[140px]">
+            <span className="text-sm font-medium" aria-live="polite">{monthName}</span>
+            {!isCurrentMonth && (
+              <button onClick={goToday} className="text-[10px] text-accent hover:text-accent/80 transition-colors leading-none mt-0.5">
+                {t("day.today")}
+              </button>
+            )}
+          </div>
           <button onClick={next} className="btn btn-ghost p-2" aria-label={t("cal.nextMonth")}>
             <ChevronRight size={18} />
           </button>

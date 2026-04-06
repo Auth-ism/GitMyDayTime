@@ -5,7 +5,60 @@ import {
   CalendarDays, Trash2, Edit2, Check, X, ChevronDown, Link2, Plus, Tag, CornerDownRight, ChevronRight, Copy,
 } from "lucide-react";
 import { showSuccessToast } from "@/components/Toast";
-import type { IssueLinkType } from "@gmd/shared";
+import type { IssueLinkType, WorkflowStatus, ProjectMember, Sprint } from "@gmd/shared";
+
+// ── History helpers ────────────────────────────────────────────────
+const HISTORY_FIELD_LABELS: Record<string, string> = {
+  statusId: "Durum", assigneeId: "Atanan", sprintId: "Sprint",
+  labels: "Etiketler", priority: "Öncelik", issueType: "Tür",
+  dueDate: "Bitiş tarihi", estimatedHours: "Tahmini süre",
+  loggedHours: "Harcanan süre", storyPoints: "Puan",
+  title: "Başlık", description: "Açıklama", parentId: "Üst issue",
+};
+const PRIORITY_LABELS: Record<string, string> = {
+  critical: "Kritik", high: "Yüksek", medium: "Orta", low: "Düşük", none: "Yok",
+};
+const ISSUE_TYPE_LABELS: Record<string, string> = {
+  epic: "Epic", story: "Hikaye", task: "Görev", bug: "Bug", sub_task: "Alt Görev",
+};
+const SKIPPED_HISTORY_FIELDS = new Set(["sortOrder"]);
+
+function resolveHistoryValue(
+  field: string,
+  value: string | null,
+  statuses: WorkflowStatus[],
+  members: ProjectMember[],
+  sprints: Sprint[],
+): string {
+  if (value == null || value === "") return "–";
+  switch (field) {
+    case "statusId":
+      return statuses.find(s => s.id === value)?.name ?? "Bilinmiyor";
+    case "assigneeId":
+      return members.find(m => m.userId === value)?.displayName
+        ?? members.find(m => m.userId === value)?.username
+        ?? "Bilinmiyor";
+    case "sprintId":
+      return sprints.find(s => s.id === value)?.name ?? "Bilinmiyor";
+    case "labels":
+      return value; // labels stored as comma-separated names already
+    case "priority":
+      return PRIORITY_LABELS[value] ?? value;
+    case "issueType":
+      return ISSUE_TYPE_LABELS[value] ?? value;
+    case "dueDate":
+      return new Date(value + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+    case "estimatedHours":
+    case "loggedHours":
+      return `${value} saat`;
+    case "storyPoints":
+      return `${value} puan`;
+    case "description":
+      return value.length > 60 ? value.slice(0, 60) + "…" : value;
+    default:
+      return value;
+  }
+}
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { useIssue, useIssueMutations, useCommentMutations, useProject, useIssueLinkMutations, useIssues, useProjectLabels, useSprints, useSprintMutations } from "@/hooks/useProjects";
@@ -547,24 +600,6 @@ export default function IssuePage() {
             )}
           </div>
 
-          {/* Links */}
-          <IssueLinkSection
-            projectId={projectId!}
-            issueId={issueId!}
-            links={issue.links ?? []}
-            canEdit={!!canEdit}
-          />
-
-          {/* Sub-tasks (children) */}
-          {issue.issueType !== "sub_task" && (
-            <ChildIssuesSection
-              projectId={projectId!}
-              issue={issue}
-              canEdit={!!canEdit}
-              statuses={statuses}
-            />
-          )}
-
           {/* Tabs: Comments | Activity */}
           <div className="card p-4 space-y-3">
             <div className="flex gap-4 border-b border-border pb-2">
@@ -674,21 +709,47 @@ export default function IssuePage() {
                 {issue.history?.length === 0 && (
                   <p className="text-xs text-text-tertiary italic py-2">{t("issue.noHistory")}</p>
                 )}
-                {issue.history?.map(h => (
-                  <div key={h.id} className="flex items-start gap-2 text-xs text-text-secondary">
-                    <span className="text-[10px] text-text-tertiary flex-shrink-0 mt-0.5">{relativeTime(h.changedAt)}</span>
-                    <span>
-                      <span className="font-medium text-text">{h.changedByUsername ?? "?"}</span>
-                      {" changed "}
-                      <span className="font-mono text-text-secondary">{h.field}</span>
-                      {h.oldValue != null && <> from <span className="line-through text-text-tertiary">{String(h.oldValue)}</span></>}
-                      {h.newValue != null && <> to <span className="text-text">{String(h.newValue)}</span></>}
-                    </span>
-                  </div>
-                ))}
+                {issue.history?.filter(h => !SKIPPED_HISTORY_FIELDS.has(h.fieldName)).map(h => {
+                  const statuses = project?.statuses ?? [];
+                  const members = project?.members ?? [];
+                  const oldLabel = resolveHistoryValue(h.fieldName, h.oldValue ?? null, statuses, members, sprints);
+                  const newLabel = resolveHistoryValue(h.fieldName, h.newValue ?? null, statuses, members, sprints);
+                  const fieldLabel = HISTORY_FIELD_LABELS[h.fieldName] ?? h.fieldName;
+                  return (
+                    <div key={h.id} className="flex items-start gap-2 text-xs text-text-secondary">
+                      <span className="text-[10px] text-text-tertiary flex-shrink-0 mt-0.5">{relativeTime(h.changedAt)}</span>
+                      <span>
+                        <span className="font-medium text-text">{h.changedByUsername ?? "?"}</span>
+                        {" · "}
+                        <span className="text-text-secondary">{fieldLabel}</span>
+                        {h.oldValue != null && <> <span className="line-through text-text-tertiary">{oldLabel}</span></>}
+                        {h.oldValue != null && h.newValue != null && <span className="text-text-tertiary"> → </span>}
+                        {h.newValue != null && <span className="text-text">{newLabel}</span>}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
+
+          {/* Links */}
+          <IssueLinkSection
+            projectId={projectId!}
+            issueId={issueId!}
+            links={issue.links ?? []}
+            canEdit={!!canEdit}
+          />
+
+          {/* Sub-tasks (children) */}
+          {issue.issueType !== "sub_task" && (
+            <ChildIssuesSection
+              projectId={projectId!}
+              issue={issue}
+              canEdit={!!canEdit}
+              statuses={statuses}
+            />
+          )}
         </div>
 
         {/* ── Right sidebar ── */}

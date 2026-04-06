@@ -91,7 +91,7 @@ export default function SwipeableItem({ children, onSwipeRight, onSwipeLeft, ...
 
   return (
     <motion.div
-      className="relative overflow-hidden rounded-xl"
+      className="relative overflow-x-hidden rounded-xl"
       style={{ touchAction: "pan-y" }}
       {...motionProps}
     >

@@ -44,6 +44,7 @@ function DraggablePlanRow({ item, planListRef, onDragEnd, children }: DraggableP
       key={item.id}
       value={item}
       as="div"
+      layout="position"
       dragListener={false}
       dragControls={controls}
       dragConstraints={planListRef}
