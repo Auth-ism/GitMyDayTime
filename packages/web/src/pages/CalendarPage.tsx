@@ -54,30 +54,28 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-5">
-      <div className="space-y-2">
+      <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <Calendar size={20} className="text-text-secondary" />
           {t("cal.title")}
         </h1>
-        <div className="flex items-center justify-center gap-1">
-          <button onClick={prev} className="btn btn-ghost p-2" aria-label={t("cal.prevMonth")}>
-            <ChevronLeft size={18} />
+        {!isCurrentMonth && (
+          <button
+            onClick={goToday}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-accent/15 text-accent hover:bg-accent/25 transition-colors"
+          >
+            {t("day.today")}
           </button>
-          <div className="flex items-center gap-2 min-w-[160px] justify-center">
-            <span className="text-sm font-medium" aria-live="polite">{monthName}</span>
-            {!isCurrentMonth && (
-              <button
-                onClick={goToday}
-                className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-accent/15 text-accent hover:bg-accent/25 transition-colors flex-shrink-0"
-              >
-                {t("day.today")}
-              </button>
-            )}
-          </div>
-          <button onClick={next} className="btn btn-ghost p-2" aria-label={t("cal.nextMonth")}>
-            <ChevronRight size={18} />
-          </button>
-        </div>
+        )}
+      </div>
+      <div className="flex items-center justify-center gap-1">
+        <button onClick={prev} className="btn btn-ghost p-2" aria-label={t("cal.prevMonth")}>
+          <ChevronLeft size={18} />
+        </button>
+        <span className="text-sm font-medium w-40 text-center" aria-live="polite">{monthName}</span>
+        <button onClick={next} className="btn btn-ghost p-2" aria-label={t("cal.nextMonth")}>
+          <ChevronRight size={18} />
+        </button>
       </div>
 
       <div className="card" role="grid" aria-label={`${t("cal.title")} ${monthName}`}>
