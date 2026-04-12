@@ -163,26 +163,29 @@ export default function BacklogPage() {
   return (
     <div className="space-y-4 max-w-5xl">
       {/* Header */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link to={`/projects/${projectId}/board`} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text transition-colors">
-          <ArrowLeft size={13} />
-          Board
-        </Link>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-            <Layers size={13} className="text-accent" />
+      <div className="space-y-2">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+          <div className="flex items-center gap-2">
+            <Link to={`/projects/${projectId}/board`} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text transition-colors flex-shrink-0">
+              <ArrowLeft size={13} />
+              Board
+            </Link>
+            <span className="text-[10px] font-mono text-text-tertiary bg-accent-soft px-1.5 py-0.5 rounded flex-shrink-0 sm:order-last sm:ml-auto">
+              {project.projectKey}
+            </span>
           </div>
-          <h1 className="font-semibold text-text text-base truncate">{project.name}</h1>
-          <span className="text-[10px] font-mono text-text-tertiary bg-accent-soft px-1.5 py-0.5 rounded">
-            {project.projectKey}
-          </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+              <Layers size={13} className="text-accent" />
+            </div>
+            <h1 className="font-semibold text-text text-base truncate min-w-0">{project.name}</h1>
+          </div>
         </div>
-
-        <div className="flex items-center gap-2 ml-auto">
-          <div className="relative">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
             <input
-              className="input pl-7 text-xs py-1.5 w-48"
+              className="input pl-7 text-xs py-1.5 w-full"
               placeholder={t("board.searchPlaceholder" as any)}
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -194,7 +197,7 @@ export default function BacklogPage() {
             )}
           </div>
           {canEdit && (
-            <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1 px-3 py-1.5 text-xs">
+            <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1 px-3 py-1.5 text-xs flex-shrink-0">
               <Plus size={13} />
               {t("projects.addIssue" as any)}
             </button>

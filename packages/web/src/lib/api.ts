@@ -408,4 +408,7 @@ export const api = {
 
   deleteStatus: (id: string, sid: string) =>
     request<{ ok: boolean }>(`/projects/${id}/statuses/${sid}`, { method: "DELETE" }),
+
+  reorderStatuses: (id: string, orders: Array<{ statusId: string; sortOrder: number }>) =>
+    request<{ ok: boolean }>(`/projects/${id}/statuses/reorder`, { method: "PATCH", body: JSON.stringify({ orders }) }),
 };

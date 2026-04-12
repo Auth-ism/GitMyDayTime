@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Bug, Zap, BookOpen, CheckSquare, Minus, Plus, CornerDownRight, Archive, GripVertical } from "lucide-react";
+import { CalendarDays, Bug, Zap, BookOpen, CheckSquare, Minus, Plus, CornerDownRight, Archive, GripVertical, ChevronDown } from "lucide-react";
 import DatePicker from "@/components/DatePicker";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import { showSuccessToast } from "@/components/Toast";
-import type { Issue } from "@gmd/shared";
+import type { Issue, WorkflowStatus } from "@gmd/shared";
 
 const PRIORITY_COLORS: Record<string, string> = {
   critical: "border-l-red-500",
@@ -41,20 +41,25 @@ interface Props {
   onArchive?: (issueId: string) => void;
   archivePending?: boolean;
   onDragStart?: (issueId: string, sourceStatusId: string) => void;
+  allStatuses?: WorkflowStatus[];
+  onStatusChange?: (issueId: string, statusId: string) => void;
+  dragHandle?: React.ReactNode;
 }
 
 export default function IssueCard({
   issue, projectId, currentUserId, canEdit,
   onAddToPlan, addToPlanPending, onArchive, archivePending,
-  onDragStart,
+  onDragStart, allStatuses, onStatusChange, dragHandle,
 }: Props) {
   const { t } = useI18n();
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [planDate, setPlanDate] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
   const [dragging, setDragging] = useState(false);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
 
   const TypeIcon = TYPE_ICONS[issue.issueType] ?? CheckSquare;
   const isAssignee = issue.assigneeId === currentUserId;
@@ -102,7 +107,7 @@ export default function IssueCard({
             </button>
             <div className="flex items-center gap-1 flex-shrink-0">
               <TypeIcon size={12} className={cn("mt-0.5", TYPE_COLORS[issue.issueType])} />
-              <GripVertical size={12} className="text-text-tertiary/30 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
+              {dragHandle}
             </div>
           </div>
 
@@ -137,9 +142,9 @@ export default function IssueCard({
           </div>
         </Link>
 
-        {/* Hover actions — only render if there's something to show */}
-        {(isAssignee || canEdit) && (
-          <div className="mt-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Hover actions — always visible on mobile, hover-reveal on desktop */}
+        {(isAssignee || canEdit || (allStatuses && onStatusChange)) && (
+          <div className="mt-2 pt-2 border-t border-border/40 flex items-center gap-1 sm:border-0 sm:pt-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             {isAssignee && !issue.planItemId && (
               <button
                 onClick={(e) => { e.preventDefault(); setShowPlanModal(true); }}
@@ -154,6 +159,48 @@ export default function IssueCard({
                 ✓ {t("projects.inPlan" as any)}
               </div>
             )}
+
+            {/* Quick status change */}
+            {allStatuses && onStatusChange && (
+              <div ref={statusMenuRef} className="relative">
+                <button
+                  onClick={(e) => { e.preventDefault(); setShowStatusMenu(v => !v); }}
+                  className="flex items-center gap-0.5 py-1 px-1.5 text-[10px] text-text-secondary hover:bg-bg-secondary rounded transition-colors"
+                  title="Durumu değiştir"
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: allStatuses.find(s => s.id === issue.statusId)?.color ?? "#888" }}
+                  />
+                  <ChevronDown size={9} />
+                </button>
+                {showStatusMenu && (
+                  <div
+                    className="absolute bottom-full left-0 mb-1 bg-bg-elevated border border-border rounded-lg shadow-xl py-1 z-20 min-w-[130px]"
+                    onClick={e => e.preventDefault()}
+                  >
+                    {allStatuses.map(s => (
+                      <button
+                        key={s.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (s.id !== issue.statusId) onStatusChange(issue.id, s.id);
+                          setShowStatusMenu(false);
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px] text-left hover:bg-bg-secondary transition-colors",
+                          s.id === issue.statusId && "text-text font-medium"
+                        )}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {canEdit && (
               <button
                 onClick={(e) => {

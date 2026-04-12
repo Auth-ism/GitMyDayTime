@@ -1,11 +1,38 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Plus, Trash2, Star, Pencil, X, Play, StopCircle } from "lucide-react";
+import { ArrowLeft, Check, Plus, Trash2, Star, Pencil, X, Play, StopCircle, GripVertical } from "lucide-react";
+import { Reorder, useDragControls } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { useProject, useProjectMutations, useStatusMutations, useSprints, useSprintMutations } from "@/hooks/useProjects";
 import DatePicker from "@/components/DatePicker";
 import { cn } from "@/lib/cn";
 import type { WorkflowStatus, Sprint } from "@gmd/shared";
+
+import type { DragControls } from "framer-motion";
+
+function DraggableStatusRow({ status, listRef, onDragEnd, children }: {
+  status: WorkflowStatus;
+  listRef: React.RefObject<HTMLDivElement | null>;
+  onDragEnd: () => void;
+  children: (controls: DragControls) => React.ReactNode;
+}) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      key={status.id}
+      value={status}
+      as="div"
+      layout="position"
+      dragListener={false}
+      dragControls={controls}
+      dragConstraints={listRef}
+      dragElastic={0.1}
+      onDragEnd={onDragEnd}
+    >
+      {children(controls)}
+    </Reorder.Item>
+  );
+}
 
 const STATUS_COLORS = [
   "#6b7280", "#94a3b8", "#60a5fa", "#34d399", "#fbbf24",
@@ -15,8 +42,8 @@ const STATUS_COLORS = [
 const CATEGORIES = ["todo", "in_progress", "done"] as const;
 
 function StatusRow({
-  status, projectId, canEdit,
-}: { status: WorkflowStatus; projectId: string; canEdit: boolean }) {
+  status, projectId, canEdit, dragHandle,
+}: { status: WorkflowStatus; projectId: string; canEdit: boolean; dragHandle?: React.ReactNode }) {
   const { t } = useI18n();
   const { updateStatus, deleteStatus } = useStatusMutations(projectId);
   const [editing, setEditing] = useState(false);
@@ -105,7 +132,8 @@ function StatusRow({
   }
 
   return (
-    <div className="flex items-center gap-3 py-2 px-1 group hover:bg-bg-subtle/50 rounded-lg transition-colors">
+    <div className="flex items-center gap-2 py-2 px-1 group hover:bg-bg-subtle/50 rounded-lg transition-colors">
+      {canEdit && dragHandle}
       <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: status.color }} />
       <span className="text-sm text-text flex-1 truncate">{status.name}</span>
       <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", catColor[status.category])}>
@@ -402,6 +430,29 @@ export default function ProjectSettingsPage() {
   };
 
   const statuses = project.statuses ?? [];
+  const { reorderStatuses } = useStatusMutations(projectId!);
+
+  // Status drag reorder
+  const statusListRef = useRef<HTMLDivElement>(null);
+  const [statusDragOrder, setStatusDragOrder] = useState<WorkflowStatus[] | null>(null);
+  const statusDragRef = useRef<WorkflowStatus[] | null>(null);
+  const statusIds = statuses.map(s => s.id).join();
+  useEffect(() => { setStatusDragOrder(null); statusDragRef.current = null; }, [statusIds]);
+  const displayStatuses = statusDragOrder ?? statuses;
+
+  const handleStatusReorder = useCallback((newOrder: WorkflowStatus[]) => {
+    statusDragRef.current = newOrder;
+    setStatusDragOrder(newOrder);
+  }, []);
+
+  const handleStatusDragEnd = useCallback(() => {
+    const order = statusDragRef.current;
+    if (order) {
+      reorderStatuses.mutate(order.map((s, idx) => ({ statusId: s.id, sortOrder: idx })));
+    }
+    setStatusDragOrder(null);
+    statusDragRef.current = null;
+  }, [reorderStatuses]);
 
   return (
     <div className="space-y-5 max-w-xl mx-auto">
@@ -505,11 +556,37 @@ export default function ProjectSettingsPage() {
           )}
         </div>
 
-        <div className="space-y-0.5">
-          {statuses.map(s => (
-            <StatusRow key={s.id} status={s} projectId={projectId!} canEdit={isAdmin} />
+        <Reorder.Group
+          ref={statusListRef}
+          axis="y"
+          values={displayStatuses}
+          onReorder={handleStatusReorder}
+          className="space-y-0.5"
+          as="div"
+        >
+          {displayStatuses.map(s => (
+              <DraggableStatusRow key={s.id} status={s} listRef={statusListRef} onDragEnd={handleStatusDragEnd}>
+                {(dragControls) => (
+                  <StatusRow
+                    status={s}
+                    projectId={projectId!}
+                    canEdit={isAdmin}
+                    dragHandle={
+                      <button
+                        onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
+                        style={{ touchAction: "none" }}
+                        tabIndex={-1}
+                        aria-label="Sürükle"
+                        className="p-1 rounded flex-shrink-0 cursor-grab active:cursor-grabbing text-text-tertiary/40 hover:text-text-tertiary transition-colors"
+                      >
+                        <GripVertical size={14} />
+                      </button>
+                    }
+                  />
+                )}
+              </DraggableStatusRow>
           ))}
-        </div>
+        </Reorder.Group>
 
         {showAddStatus && (
           <AddStatusForm projectId={projectId!} onClose={() => setShowAddStatus(false)} />

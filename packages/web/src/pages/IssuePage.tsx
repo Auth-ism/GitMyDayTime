@@ -61,7 +61,7 @@ function resolveHistoryValue(
 }
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
-import { useIssue, useIssueMutations, useCommentMutations, useProject, useIssueLinkMutations, useIssues, useProjectLabels, useSprints, useSprintMutations } from "@/hooks/useProjects";
+import { useIssue, useIssueMutations, useCommentMutations, useProject, useIssueLinkMutations, useIssues, useProjectLabels, useSprints, useSprintMutations, useProjectEvents } from "@/hooks/useProjects";
 import DatePicker from "@/components/DatePicker";
 import MentionTextarea, { CommentText } from "@/components/MentionTextarea";
 import { cn } from "@/lib/cn";
@@ -380,6 +380,7 @@ export default function IssuePage() {
   const { addComment, updateComment, deleteComment } = useCommentMutations(projectId!, issueId!);
   const { data: sprints = [] } = useSprints(projectId);
   const { setIssueSprint } = useSprintMutations(projectId!);
+  useProjectEvents(projectId);
 
   // Title edit
   const [editingTitle, setEditingTitle] = useState(false);

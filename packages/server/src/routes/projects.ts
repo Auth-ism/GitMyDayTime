@@ -19,7 +19,7 @@ import {
   getProjectMembers, createInvitation, getInvitationByToken, acceptInvitation,
   removeMember, updateMemberRole, transferOwnership, getMemberCount, getUserProjectCount,
   getWorkflowStatuses, getDefaultStatus,
-  createWorkflowStatus, updateWorkflowStatus, deleteWorkflowStatus,
+  createWorkflowStatus, updateWorkflowStatus, deleteWorkflowStatus, reorderStatuses,
   createIssue, getIssues, getIssueById, updateIssue, archiveIssue, deleteIssuePermanent,
   getBoardData, invalidateBoardCache,
   getIssueDetail, invalidateIssueCache,
@@ -380,7 +380,7 @@ router.post("/:id/issues", canReport, wrap(async (req, res) => {
     dueDate: input.data.dueDate,
     estimatedHours: input.data.estimatedHours,
     sprintId: input.data.sprintId,
-    statusId: defaultStatus.id,
+    statusId: input.data.statusId ?? defaultStatus.id,
     parentId: input.data.parentId,
   });
 
@@ -765,6 +765,15 @@ router.post("/:id/statuses", isAdmin, wrap(async (req, res) => {
     { name: name.trim(), color, category: category as "todo" | "in_progress" | "done" }
   );
   res.status(201).json(status);
+}));
+
+router.patch("/:id/statuses/reorder", isAdmin, wrap(async (req, res) => {
+  const { orders } = req.body as { orders: Array<{ statusId: string; sortOrder: number }> };
+  if (!Array.isArray(orders) || orders.length === 0) {
+    res.status(400).json({ error: "Geçersiz sıralama verisi" }); return;
+  }
+  await reorderStatuses(req.params.id as string, orders);
+  res.json({ ok: true });
 }));
 
 router.patch("/:id/statuses/:sid", isAdmin, wrap(async (req, res) => {

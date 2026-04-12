@@ -522,6 +522,28 @@ export async function deleteWorkflowStatus(
   return { ok: true };
 }
 
+export async function reorderStatuses(
+  projectId: string,
+  orders: Array<{ statusId: string; sortOrder: number }>
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (const { statusId, sortOrder } of orders) {
+      await client.query(
+        "UPDATE workflow_statuses SET sort_order = $1 WHERE id = $2 AND project_id = $3",
+        [sortOrder, statusId, projectId]
+      );
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Issues
 // ─────────────────────────────────────────────────────────────────
@@ -1031,7 +1053,8 @@ export async function getMyAssignments(
      JOIN workflow_statuses ws ON ws.id = i.status_id
      WHERE i.assignee_id = $1
        AND i.archived = FALSE
-       AND ws.category <> 'done'
+       AND ws.category = 'todo'
+       AND i.resolved_at IS NULL
        ${date ? "AND (i.due_date IS NULL OR i.due_date = $2)" : ""}
      ORDER BY i.updated_at DESC
      LIMIT 50`,

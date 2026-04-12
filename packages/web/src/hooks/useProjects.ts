@@ -352,7 +352,16 @@ export function useStatusMutations(projectId: string) {
     onSuccess: invalidate,
   });
 
-  return { createStatus, updateStatus, deleteStatus };
+  const reorderStatuses = useMutation({
+    mutationFn: (orders: Array<{ statusId: string; sortOrder: number }>) =>
+      api.reorderStatuses(projectId, orders),
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["board", projectId] });
+    },
+  });
+
+  return { createStatus, updateStatus, deleteStatus, reorderStatuses };
 }
 
 // ── Sprints ───────────────────────────────────────────────────────

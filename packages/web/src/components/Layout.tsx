@@ -1,17 +1,17 @@
 import { useState, useEffect, useSyncExternalStore } from "react";
 import { NavLink, useLocation, Outlet } from "react-router-dom";
-import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, UserCircle, WifiOff, X, Layers, Bug } from "lucide-react";
+import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, UserCircle, WifiOff, X, Layers, Bug, Command } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
-import { AnimatePresence, motion } from "framer-motion";
 import { api } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
 import LogoutConfirmModal from "@/components/LogoutConfirmModal";
 import OnboardingModal from "@/components/OnboardingModal";
 import ChangelogModal, { shouldShowChangelog } from "@/components/ChangelogModal";
 import BugReportModal from "@/components/BugReportModal";
+import CommandPalette from "@/components/CommandPalette";
 
 function EmailVerifyBanner() {
   const { t } = useI18n();
@@ -95,6 +95,18 @@ export default function Layout() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowCommandPalette(v => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -210,9 +222,21 @@ export default function Layout() {
               <Clock size={13} className="text-bg" />
             </div>
             <span className="text-sm">GitMyDayTime</span>
-            <span className="text-[9px] text-text-tertiary font-normal -ml-1">v{__APP_VERSION__}</span>
           </NavLink>
+          <button
+            onClick={() => setShowChangelog(true)}
+            className="text-[9px] text-text-tertiary font-normal -ml-3 hover:text-accent transition-colors"
+          >
+            v{__APP_VERSION__}
+          </button>
           <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => setShowCommandPalette(true)}
+              aria-label="Issue ara"
+              className="btn-icon p-2 rounded-lg"
+            >
+              <Search size={16} />
+            </button>
             <NotificationBell />
             <button
               onClick={toggleLocale}
@@ -269,23 +293,16 @@ export default function Layout() {
       )}
 
       <main className="flex-1 pb-16 sm:pb-0 safe-main-bottom" id="main-content">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            className={cn(
-              "mx-auto px-4 sm:px-6 py-4 sm:py-6",
-              location.pathname === "/week" || location.pathname.includes("/board")
-                ? "max-w-7xl"
-                : "max-w-3xl"
-            )}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15 }}
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+        <div
+          className={cn(
+            "mx-auto px-4 sm:px-6 py-4 sm:py-6",
+            location.pathname === "/week" || location.pathname.includes("/board")
+              ? "max-w-7xl"
+              : "max-w-3xl"
+          )}
+        >
+          <Outlet />
+        </div>
       </main>
 
       {/* Footer — desktop only, minimal */}
@@ -328,6 +345,7 @@ export default function Layout() {
       {showBugReport && (
         <BugReportModal onClose={() => setShowBugReport(false)} />
       )}
+      <CommandPalette open={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
 
       {/* Mobile bottom tab bar */}
       <nav

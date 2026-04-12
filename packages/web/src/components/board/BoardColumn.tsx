@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Plus, GripVertical } from "lucide-react";
+import { Reorder, useDragControls, type DragControls } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import IssueCard from "./IssueCard";
-import type { BoardColumn as BoardColumnType } from "@gmd/shared";
+import type { BoardColumn as BoardColumnType, WorkflowStatus, Issue } from "@gmd/shared";
 
 interface Props {
   column: BoardColumnType;
@@ -18,13 +19,61 @@ interface Props {
   archivePending?: boolean;
   onDropIssue?: (issueId: string, targetStatusId: string, targetIndex: number) => void;
   onReorder?: (orders: Array<{ issueId: string; sortOrder: number }>) => void;
+  allStatuses?: WorkflowStatus[];
+  onStatusChange?: (issueId: string, statusId: string) => void;
 }
 
-export default function BoardColumn({ column, projectId, currentUserId, onCreateIssue, canCreate, canEdit, onAddToPlan, addToPlanPending, onArchive, archivePending, onDropIssue, onReorder }: Props) {
+function DraggableIssueRow({ issue, listRef, onDragEnd, children }: {
+  issue: Issue;
+  listRef: React.RefObject<HTMLDivElement | null>;
+  onDragEnd: () => void;
+  children: (controls: DragControls) => React.ReactNode;
+}) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      key={issue.id}
+      value={issue}
+      as="div"
+      layout="position"
+      dragListener={false}
+      dragControls={controls}
+      dragConstraints={listRef}
+      dragElastic={0.1}
+      onDragEnd={onDragEnd}
+    >
+      {children(controls)}
+    </Reorder.Item>
+  );
+}
+
+export default function BoardColumn({ column, projectId, currentUserId, onCreateIssue, canCreate, canEdit, onAddToPlan, addToPlanPending, onArchive, archivePending, onDropIssue, onReorder, allStatuses, onStatusChange }: Props) {
   const { t } = useI18n();
   const { status, issues } = column;
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Touch drag reorder state (Framer Motion)
+  const listRef = useRef<HTMLDivElement>(null);
+  const [dragOrder, setDragOrder] = useState<Issue[] | null>(null);
+  const dragOrderRef = useRef<Issue[] | null>(null);
+  const issueIds = issues.map(i => i.id).join();
+  useEffect(() => { setDragOrder(null); dragOrderRef.current = null; }, [issueIds]);
+  const displayIssues = dragOrder ?? issues;
+
+  const handleTouchReorder = useCallback((newOrder: Issue[]) => {
+    dragOrderRef.current = newOrder;
+    setDragOrder(newOrder);
+  }, []);
+
+  const handleTouchDragEnd = useCallback(() => {
+    const order = dragOrderRef.current;
+    if (order) {
+      onReorder?.(order.map((issue, idx) => ({ issueId: issue.id, sortOrder: idx })));
+    }
+    setDragOrder(null);
+    dragOrderRef.current = null;
+  }, [onReorder]);
 
   const categoryDot: Record<string, string> = {
     todo:        "bg-border",
@@ -95,7 +144,14 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
         )}
       </div>
 
-      <div className="flex flex-col flex-1 min-h-[60px]">
+      <Reorder.Group
+        ref={listRef}
+        axis="y"
+        values={displayIssues}
+        onReorder={handleTouchReorder}
+        className="flex flex-col flex-1 min-h-[60px]"
+        as="div"
+      >
         {issues.length === 0 && (
           <div className={cn(
             "border border-dashed rounded-lg p-4 text-center text-[11px] text-text-tertiary transition-colors",
@@ -105,32 +161,53 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
           </div>
         )}
 
-        {issues.map((issue, idx) => (
-          <div
+        {displayIssues.map((issue, idx) => (
+          <DraggableIssueRow
             key={issue.id}
-            onDragEnter={(e) => { e.preventDefault(); setDragOverIndex(idx); }}
+            issue={issue}
+            listRef={listRef}
+            onDragEnd={handleTouchDragEnd}
           >
-            {/* Drop zone before each card — highlighted when this card is hovered */}
-            <div
-              className={cn(
-                "rounded transition-all",
-                dragOverIndex === idx ? "bg-accent/40 h-1.5 my-1" : "h-px my-0.5 bg-transparent"
-              )}
-              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(idx); }}
-              onDrop={(e) => handleColumnDrop(e, idx)}
-            />
-            <IssueCard
-              issue={issue}
-              projectId={projectId}
-              currentUserId={currentUserId}
-              canEdit={canEdit}
-              onAddToPlan={onAddToPlan}
-              addToPlanPending={addToPlanPending}
-              onArchive={onArchive}
-              archivePending={archivePending}
-              onDragStart={() => setDragOverIndex(null)}
-            />
-          </div>
+            {(controls) => (
+              <div
+                onDragEnter={(e) => { e.preventDefault(); setDragOverIndex(idx); }}
+              >
+                {/* Drop zone before each card — highlighted when this card is hovered */}
+                <div
+                  className={cn(
+                    "rounded transition-all",
+                    dragOverIndex === idx ? "bg-accent/40 h-1.5 my-1" : "h-px my-0.5 bg-transparent"
+                  )}
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(idx); }}
+                  onDrop={(e) => handleColumnDrop(e, idx)}
+                />
+                <IssueCard
+                  issue={issue}
+                  projectId={projectId}
+                  currentUserId={currentUserId}
+                  canEdit={canEdit}
+                  onAddToPlan={onAddToPlan}
+                  addToPlanPending={addToPlanPending}
+                  onArchive={onArchive}
+                  archivePending={archivePending}
+                  onDragStart={() => setDragOverIndex(null)}
+                  allStatuses={allStatuses}
+                  onStatusChange={onStatusChange}
+                  dragHandle={
+                    <button
+                      onPointerDown={(e) => { e.preventDefault(); controls.start(e); }}
+                      style={{ touchAction: "none" }}
+                      tabIndex={-1}
+                      aria-label="Sürükle"
+                      className="p-1 rounded-lg flex-shrink-0 cursor-grab active:cursor-grabbing text-text-tertiary/40 hover:text-text-tertiary transition-colors"
+                    >
+                      <GripVertical size={12} />
+                    </button>
+                  }
+                />
+              </div>
+            )}
+          </DraggableIssueRow>
         ))}
 
         {/* Drop zone at end */}
@@ -143,7 +220,7 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
           onDragLeave={() => setDragOverIndex(null)}
           onDrop={(e) => handleColumnDrop(e, issues.length)}
         />
-      </div>
+      </Reorder.Group>
 
     </div>
   );

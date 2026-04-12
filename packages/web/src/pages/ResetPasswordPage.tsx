@@ -99,7 +99,10 @@ export default function ResetPasswordPage() {
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setError(""); }}
                 autoFocus
-                autoComplete="new-password"
+                autoComplete="off"
+                data-1p-ignore
+                data-lpignore="true"
+                data-protonpass-ignore="true"
               />
             </div>
 
@@ -113,7 +116,10 @@ export default function ResetPasswordPage() {
                 placeholder={t("reset.confirmPlace" as any)}
                 value={confirm}
                 onChange={(e) => { setConfirm(e.target.value); setError(""); }}
-                autoComplete="new-password"
+                autoComplete="off"
+                data-1p-ignore
+                data-lpignore="true"
+                data-protonpass-ignore="true"
               />
             </div>
 

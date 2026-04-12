@@ -440,6 +440,7 @@ export const CreateIssueInput = z.object({
   priority: IssuePriority.default("medium"),
   labels: z.array(z.string()).default([]),
   assigneeId: z.string().uuid().nullable().optional(),
+  statusId: z.string().uuid().optional(),
   dueDate: z.string().nullable().optional(),
   estimatedHours: z.number().min(0).nullable().optional(),
   storyPoints: z.number().int().min(0).max(9999).nullable().optional(),
