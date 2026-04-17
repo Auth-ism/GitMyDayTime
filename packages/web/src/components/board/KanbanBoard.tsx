@@ -56,6 +56,28 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
     scrollRef.current?.scrollBy({ left: dir === "right" ? 300 : -300, behavior: "smooth" });
   };
 
+  // Convert vertical mouse wheel to horizontal board scroll,
+  // unless the cursor is over a column list that still has room to scroll vertically.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // native horizontal input (trackpad)
+      if (e.deltaY === 0) return;
+      const target = e.target as Element;
+      const colList = target.closest("[data-col-scroll]") as HTMLElement | null;
+      if (colList) {
+        const atTop = colList.scrollTop <= 0;
+        const atBottom = colList.scrollTop + colList.clientHeight >= colList.scrollHeight - 1;
+        if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) return;
+      }
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   useProjectEvents(projectId);
 
   const activeSprint_ = sprints.find(s => s.id === activeSprint && s.status === "active");

@@ -150,6 +150,7 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
         values={displayIssues}
         onReorder={handleTouchReorder}
         className="flex flex-col flex-1 min-h-0 overflow-y-auto pb-3 pr-0.5"
+        data-col-scroll=""
         as="div"
       >
         {issues.length === 0 && (
