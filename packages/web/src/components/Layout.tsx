@@ -298,7 +298,7 @@ export default function Layout() {
             "mx-auto px-4 sm:px-6 py-4 sm:py-6",
             location.pathname === "/week" || location.pathname.includes("/board")
               ? "max-w-7xl"
-              : "max-w-3xl"
+              : "max-w-5xl"
           )}
         >
           <Outlet />

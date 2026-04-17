@@ -219,14 +219,14 @@ async function processProjectNotifications(): Promise<number> {
       if (!targetUserId) continue;
 
       const { rows } = await pool.query(
-        `SELECT push_subscription, email, plan_push_notifications, plan_email_notifications
+        `SELECT push_subscription
          FROM users
          WHERE id = $1`, [targetUserId]
       );
       if (!rows.length) continue;
       const user = rows[0];
 
-      if (user.plan_push_notifications && user.push_subscription && process.env.VAPID_PUBLIC_KEY) {
+      if (user.push_subscription && process.env.VAPID_PUBLIC_KEY) {
         const sub = typeof user.push_subscription === "string"
           ? JSON.parse(user.push_subscription) : user.push_subscription;
         const { title, body, tag } = buildProjectPushPayload(ev);

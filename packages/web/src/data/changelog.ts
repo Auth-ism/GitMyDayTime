@@ -15,6 +15,67 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.5.2",
+    date: "2026-04-06",
+    bump: "patch",
+    changes: [
+      { type: "fix", text: "Giriş ekranı changelog popup'ı artık yalnızca minor/major güncellemelerde açılıyor" },
+    ],
+  },
+  {
+    version: "4.5.1",
+    date: "2026-04-06",
+    bump: "patch",
+    changes: [
+      { type: "fix", text: "Backlog sayfası mobilde başlık ve arama alanı üst üste biniyordu, düzeltildi" },
+      { type: "fix", text: "Board kartı hover durum menüsü ekran solunda açılınca görünmez oluyordu, sağa açılacak şekilde düzeltildi" },
+    ],
+  },
+  {
+    version: "4.5.0",
+    date: "2026-04-06",
+    bump: "minor",
+    summary: "Cmd+K Global Arama & Hızlı Durum Değişimi",
+    changes: [
+      { type: "feat", text: "Cmd/Ctrl+K ile tüm projelerde issue arama — ok tuşları + Enter ile hızlı geziş" },
+      { type: "feat", text: "Board kartlarında hover ile hızlı durum değiştirme — sürüklemeye gerek yok" },
+      { type: "feat", text: "Mobil header'da arama butonu — Cmd+K paleti mobilde de açılıyor" },
+    ],
+  },
+  {
+    version: "4.4.7",
+    date: "2026-04-06",
+    bump: "patch",
+    changes: [
+      { type: "feat", text: "Mobilde versiyon numarasına tıklayınca changelog açılıyor" },
+      { type: "fix", text: "DayView banner yalnızca 'yapılacak' (todo) issue'ları gösteriyor — tamamlanmış ve devam edenler çıkarıldı" },
+      { type: "fix", text: "Plan tamamlama barı mobil klavyenin altında kalıyordu — Visual Viewport API ile klavye üstüne oturuyor" },
+      { type: "fix", text: "Süre giriş alanında autofill önerileri (passkey, kredi kartı vb.) artık çıkmıyor" },
+    ],
+  },
+  {
+    version: "4.4.4",
+    date: "2026-04-06",
+    bump: "patch",
+    changes: [
+      { type: "fix", text: "Mobilde plan öğesi işaretlenince 'something went wrong' hatası giderildi" },
+      { type: "fix", text: "Plan tamamlama süre girişi sayfayı kaydırmıyor (preventScroll), autofill kapalı" },
+    ],
+  },
+  {
+    version: "4.4.3",
+    date: "2026-04-06",
+    bump: "patch",
+    changes: [
+      { type: "fix", text: "Plan öğesi tamamlanınca diğer öğeler artık üst üste binmiyor — süre girişi sayfadan bağımsız sabit bar olarak açılıyor" },
+      { type: "fix", text: "Takvim 'Bugün' butonu sayfa köşesine taşındı, nav okunabilir kaldı" },
+      { type: "fix", text: "Issue değişiklik geçmişi ham UUID yerine okunabilir isim gösteriyor (durum, atanan, sprint)" },
+      { type: "fix", text: "Mobilde issue değişiklik geçmişi sekmesi erişilebilir hale getirildi" },
+      { type: "fix", text: "Board sütun başlığına 'Issue Ekle' butonu taşındı — uzun listelerde kaydırmak gerekmiyor" },
+      { type: "fix", text: "@mention bildirimleri anlık güncelleniyor (SSE tetiklemeli + kısa poll aralığı)" },
+    ],
+  },
+  {
     version: "4.4.0",
     date: "2026-04-06",
     bump: "minor",

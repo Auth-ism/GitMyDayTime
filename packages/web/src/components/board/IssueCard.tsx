@@ -59,6 +59,7 @@ export default function IssueCard({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
   const [dragging, setDragging] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const statusMenuRef = useRef<HTMLDivElement>(null);
 
   const TypeIcon = TYPE_ICONS[issue.issueType] ?? CheckSquare;
@@ -71,6 +72,7 @@ export default function IssueCard({
   const handleAddToPlan = async () => {
     await onAddToPlan?.(issue.id, planDate);
     setShowPlanModal(false);
+    showSuccessToast(`${issue.issueKey} plana eklendi → Bugün`);
   };
 
   return (
@@ -205,13 +207,22 @@ export default function IssueCard({
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  if (confirm(t("issue.archiveConfirm" as any) || "Bu issue arşivlensin mi?")) {
+                  if (confirmArchive) {
                     onArchive?.(issue.id);
+                    setConfirmArchive(false);
+                  } else {
+                    setConfirmArchive(true);
+                    setTimeout(() => setConfirmArchive(false), 3000);
                   }
                 }}
                 disabled={archivePending}
-                className="p-1 text-text-tertiary hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors disabled:opacity-50"
-                title={t("issue.archive" as any) || "Arşivle"}
+                className={cn(
+                  "p-1 rounded transition-colors disabled:opacity-50",
+                  confirmArchive
+                    ? "bg-amber-400/15 text-amber-400"
+                    : "text-text-tertiary hover:text-amber-400 hover:bg-amber-400/10"
+                )}
+                title={confirmArchive ? "Onayla" : (t("issue.archive" as any) || "Arşivle")}
               >
                 <Archive size={11} />
               </button>

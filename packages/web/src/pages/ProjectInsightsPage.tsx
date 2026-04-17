@@ -142,12 +142,12 @@ export default function ProjectInsightsPage() {
           <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Durum</h2>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
-              <Pie data={statusData} cx="50%" cy="50%" outerRadius={65} dataKey="value" label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={10}>
+              <Pie data={statusData} cx="50%" cy="50%" outerRadius={65} dataKey="value" label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={10} activeShape={() => <g />}>
                 {statusData.map((entry) => (
                   <Cell key={entry.cat} fill={STATUS_CAT_COLORS[entry.cat] ?? "#6b7280"} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
+              <Tooltip cursor={false} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -158,8 +158,8 @@ export default function ProjectInsightsPage() {
             <BarChart data={priorityData} layout="vertical" margin={{ left: isSmall() ? 20 : 40 }}>
               <XAxis type="number" hide />
               <YAxis type="category" dataKey="name" tickFormatter={k => LABEL_PRIORITY[k] ?? k} width={60} tick={{ fontSize: 11 }} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} formatter={(v, _, p) => [v, LABEL_PRIORITY[p.payload.name] ?? p.payload.name]} />
-              <Bar dataKey="value" radius={4}>
+              <Tooltip cursor={false} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} formatter={(v, _, p) => [v, LABEL_PRIORITY[p.payload.name] ?? p.payload.name]} />
+              <Bar dataKey="value" radius={4} activeBar={false}>
                 {priorityData.map(entry => (
                   <Cell key={entry.name} fill={PRIORITY_COLORS[entry.name] ?? "#6b7280"} />
                 ))}
@@ -177,8 +177,8 @@ export default function ProjectInsightsPage() {
             <BarChart data={typeData} layout="vertical" margin={{ left: isSmall() ? 25 : 50 }}>
               <XAxis type="number" hide />
               <YAxis type="category" dataKey="name" tickFormatter={k => LABEL_TYPE[k] ?? k} width={65} tick={{ fontSize: 11 }} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} formatter={(v, _, p) => [v, LABEL_TYPE[p.payload.name] ?? p.payload.name]} />
-              <Bar dataKey="value" radius={4}>
+              <Tooltip cursor={false} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} formatter={(v, _, p) => [v, LABEL_TYPE[p.payload.name] ?? p.payload.name]} />
+              <Bar dataKey="value" radius={4} activeBar={false}>
                 {typeData.map(entry => (
                   <Cell key={entry.name} fill={TYPE_COLORS[entry.name] ?? "#6b7280"} />
                 ))}
@@ -194,8 +194,8 @@ export default function ProjectInsightsPage() {
               <BarChart data={assigneeData} layout="vertical" margin={{ left: isSmall() ? 30 : 55 }}>
                 <XAxis type="number" hide />
                 <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
-                <Bar dataKey="value" fill="var(--color-accent)" radius={4} />
+                <Tooltip cursor={false} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
+                <Bar dataKey="value" fill="var(--color-accent)" radius={4} activeBar={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -210,10 +210,10 @@ export default function ProjectInsightsPage() {
             <BarChart data={velocityData}>
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
+              <Tooltip cursor={false} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
               <Legend wrapperStyle={{ fontSize: "11px" }} />
-              <Bar dataKey="issues" name="Toplam" fill="#60a5fa" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="done" name="Tamamlandı" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="issues" name="Toplam" fill="#60a5fa" radius={[4, 4, 0, 0]} activeBar={false} />
+              <Bar dataKey="done" name="Tamamlandı" fill="#22c55e" radius={[4, 4, 0, 0]} activeBar={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>

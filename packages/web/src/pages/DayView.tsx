@@ -73,6 +73,19 @@ export default function DayView() {
   const [copyingDay, setCopyingDay] = useState(false);
   const [pendingComplete, setPendingComplete] = useState<{ id: string; desc: string } | null>(null);
   const [durationInput, setDurationInput] = useState("");
+  const [barOffset, setBarOffset] = useState(0);
+  const durationInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!pendingComplete) { setBarOffset(0); return; }
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setBarOffset(Math.max(0, window.innerHeight - vv.offsetTop - vv.height));
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    update();
+    return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
+  }, [pendingComplete]);
 
   const dayLog = query.data;
   const today = todayStr();
@@ -92,6 +105,7 @@ export default function DayView() {
   const dragOrderRef = useRef<PlanItemData[] | null>(null);
   const planIds = filteredPlan.map((p) => p.id).join();
   useEffect(() => { setDragOrder(null); dragOrderRef.current = null; }, [planIds]);
+  useEffect(() => { setShowTimeline(false); }, [date]);
   const displayPlan = dragOrder ?? filteredPlan;
 
   const handleReorder = useCallback((newOrder: PlanItemData[]) => {
@@ -360,7 +374,7 @@ export default function DayView() {
           }
         />
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {showTimeline ? (
             <div key="timeline" className="mt-1.5">
               <TimelineView plans={filteredPlan} date={date} />
@@ -402,6 +416,7 @@ export default function DayView() {
                         onRequestComplete={() => {
                           setPendingComplete({ id: item.id, desc: item.description });
                           setDurationInput("");
+                          setTimeout(() => durationInputRef.current?.focus({ preventScroll: true }), 50);
                         }}
                         onDelete={() => handleDeletePlan(item.id, item.description)}
                         onUpdate={(data) => updatePlan.mutate({ id: item.id, ...data })}
@@ -522,15 +537,18 @@ export default function DayView() {
 
       {/* Duration overlay — fixed bottom bar, list layout etkilenmez */}
       {pendingComplete && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-bg-elevated border-t border-border shadow-xl p-4 flex items-center gap-2">
+        <div className="fixed left-0 right-0 z-50 bg-bg-elevated border-t border-border shadow-xl p-4 flex items-center gap-2" style={{ bottom: barOffset }}>
           <Timer size={15} className="text-text-tertiary flex-shrink-0" />
           <input
+            ref={durationInputRef}
             type="text"
             className="input flex-1 !text-sm"
             placeholder="1h 30m"
             value={durationInput}
             onChange={(e) => setDurationInput(e.target.value)}
-            autoFocus
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 const dur = durationInput ? parseDuration(durationInput) : undefined;

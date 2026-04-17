@@ -164,21 +164,19 @@ export default function BacklogPage() {
     <div className="space-y-4 max-w-5xl">
       {/* Header */}
       <div className="space-y-2">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-          <div className="flex items-center gap-2">
-            <Link to={`/projects/${projectId}/board`} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text transition-colors flex-shrink-0">
-              <ArrowLeft size={13} />
-              Board
-            </Link>
-            <span className="text-[10px] font-mono text-text-tertiary bg-accent-soft px-1.5 py-0.5 rounded flex-shrink-0 sm:order-last sm:ml-auto">
-              {project.projectKey}
-            </span>
-          </div>
+        <div className="space-y-1">
+          <Link to={`/projects/${projectId}/board`} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text transition-colors w-fit">
+            <ArrowLeft size={13} />
+            Board
+          </Link>
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
               <Layers size={13} className="text-accent" />
             </div>
-            <h1 className="font-semibold text-text text-base truncate min-w-0">{project.name}</h1>
+            <h1 className="font-semibold text-text text-base truncate flex-1 min-w-0">{project.name}</h1>
+            <span className="text-[10px] font-mono text-text-tertiary bg-accent-soft px-1.5 py-0.5 rounded flex-shrink-0">
+              {project.projectKey}
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-2">

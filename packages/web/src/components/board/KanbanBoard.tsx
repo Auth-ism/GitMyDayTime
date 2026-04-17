@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Flag } from "lucide-react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { Flag, ChevronLeft, ChevronRight } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useBoard, useProjectEvents, useIssueMutations, useSprints, useSprintMutations } from "@/hooks/useProjects";
 import { useAuth } from "@/lib/auth";
@@ -31,6 +31,30 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [completeIncompleteAction, setCompleteIncompleteAction] = useState<"backlog" | "next_sprint">("backlog");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollButtons = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateScrollButtons();
+    el.addEventListener("scroll", updateScrollButtons, { passive: true });
+    const ro = new ResizeObserver(updateScrollButtons);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", updateScrollButtons); ro.disconnect(); };
+  }, [updateScrollButtons]);
+
+  const scrollBoard = (dir: "left" | "right") => {
+    scrollRef.current?.scrollBy({ left: dir === "right" ? 300 : -300, behavior: "smooth" });
+  };
 
   useProjectEvents(projectId);
 
@@ -149,8 +173,34 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
 
       <BoardFilterBar projectId={projectId} filters={filters} onChange={setFilters} />
 
-      <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
-        <div className="flex gap-3 min-w-max snap-x snap-mandatory sm:snap-none">
+      <div className="relative">
+        {canScrollLeft && (
+          <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-bg-secondary to-transparent z-10 flex items-center pointer-events-none">
+            <button
+              onClick={() => scrollBoard("left")}
+              className="pointer-events-auto w-7 h-7 flex items-center justify-center rounded-full bg-bg-elevated/80 border border-border/50 shadow-sm text-text-tertiary hover:text-text hover:bg-bg-elevated transition-all"
+              aria-label="Sola kaydır"
+            >
+              <ChevronLeft size={13} />
+            </button>
+          </div>
+        )}
+        {canScrollRight && (
+          <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-bg-secondary to-transparent z-10 flex items-center justify-end pointer-events-none">
+            <button
+              onClick={() => scrollBoard("right")}
+              className="pointer-events-auto w-7 h-7 flex items-center justify-center rounded-full bg-bg-elevated/80 border border-border/50 shadow-sm text-text-tertiary hover:text-text hover:bg-bg-elevated transition-all"
+              aria-label="Sağa kaydır"
+            >
+              <ChevronRight size={13} />
+            </button>
+          </div>
+        )}
+      <div
+        ref={scrollRef}
+        className="overflow-x-auto overflow-y-hidden pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 max-h-[calc(100dvh-220px)] sm:max-h-[calc(100dvh-200px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <div className="flex gap-3 min-w-max h-full">
           {filteredBoard.statuses.map(status => {
             const column = filteredBoard.columns[status.id];
             if (!column) return null;
@@ -177,10 +227,13 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
                   }
                 }}
                 onReorder={(orders) => reorderIssues.mutate(orders)}
+                allStatuses={filteredBoard.statuses}
+                onStatusChange={(issueId, statusId) => updateIssueStatus.mutate({ issueId, statusId })}
               />
             );
           })}
         </div>
+      </div>
       </div>
 
       {createStatusId && (

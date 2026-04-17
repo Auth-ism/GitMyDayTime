@@ -157,6 +157,14 @@ const translations = {
     "search.searchAll": "Search across all your days",
     "search.minChars": "Type at least 2 characters",
 
+    // Command palette
+    "cmd.placeholder": "Search issues… (key or title)",
+    "cmd.noResults": "No results found",
+    "cmd.hint": "Type an issue key or title",
+    "cmd.navigate": "Navigate",
+    "cmd.open": "Open",
+    "cmd.close": "Close",
+
     // Recurring
     "recurring.title": "Recurring Tasks",
     "recurring.desc": "Auto-added to your daily plan",
@@ -681,6 +689,14 @@ const translations = {
     "search.noResults": "Sonuç bulunamadı",
     "search.tryDifferent": "Farklı bir arama terimi dene",
     "search.searchAll": "Tüm günlerde ara",
+
+    // Command palette
+    "cmd.placeholder": "Issue ara… (key veya başlık)",
+    "cmd.noResults": "Sonuç bulunamadı",
+    "cmd.hint": "Issue key veya başlık yazın",
+    "cmd.navigate": "Gezin",
+    "cmd.open": "Aç",
+    "cmd.close": "Kapat",
     "search.minChars": "En az 2 karakter yaz",
 
     // Recurring

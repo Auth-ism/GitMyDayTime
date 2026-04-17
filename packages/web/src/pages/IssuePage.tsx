@@ -401,6 +401,9 @@ export default function IssuePage() {
   // Priority dropdown
   const [priorityOpen, setPriorityOpen] = useState(false);
 
+  // Type dropdown
+  const [typeOpen, setTypeOpen] = useState(false);
+
   // Assignee dropdown
   const [assigneeOpen, setAssigneeOpen] = useState(false);
 
@@ -480,6 +483,7 @@ export default function IssuePage() {
   const handleAddToPlan = async () => {
     await addIssueToPlan.mutateAsync({ issueId: issue.id, data: { date: planDate } });
     setShowPlanModal(false);
+    showSuccessToast(`${issue.issueKey} plana eklendi → Bugün`);
   };
 
   const currentStatus = statuses.find(s => s.id === issue.statusId);
@@ -830,6 +834,47 @@ export default function IssuePage() {
               <span className={cn("text-xs font-medium px-1.5 py-0.5 rounded inline-block", PRIORITY_BG[issue.priority])}>
                 {t(`issue.priority.${issue.priority}` as any)}
               </span>
+            )}
+          </div>
+
+          {/* Type */}
+          <div className="card p-3 space-y-1.5">
+            <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wide">{t("projects.issueType" as any)}</span>
+            {canEdit ? (
+              <div className="relative">
+                <button
+                  onClick={() => setTypeOpen(v => !v)}
+                  className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-border hover:border-accent/50 transition-colors text-sm"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <TypeIcon size={13} className={TYPE_COLORS[issue.issueType]} />
+                    <span className="text-xs text-text">{t(`issue.type.${issue.issueType}` as any)}</span>
+                  </span>
+                  <ChevronDown size={12} className="text-text-tertiary flex-shrink-0" />
+                </button>
+                {typeOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-bg-elevated border border-border rounded-xl shadow-lg z-20 overflow-hidden min-w-[180px]">
+                    {(["epic", "story", "task", "bug", "sub_task"] as const).map(tp => {
+                      const Icon = TYPE_ICONS[tp] ?? CheckSquare;
+                      return (
+                        <button
+                          key={tp}
+                          onClick={() => { updateIssue.mutate({ issueId: issue.id, data: { issueType: tp } }); setTypeOpen(false); }}
+                          className={cn("w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent/10 transition-colors", tp === issue.issueType && "bg-accent/5 font-medium")}
+                        >
+                          <Icon size={13} className={TYPE_COLORS[tp]} />
+                          {t(`issue.type.${tp}` as any)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-sm text-text px-1">
+                <TypeIcon size={13} className={TYPE_COLORS[issue.issueType]} />
+                <span className="text-xs">{t(`issue.type.${issue.issueType}` as any)}</span>
+              </div>
             )}
           </div>
 

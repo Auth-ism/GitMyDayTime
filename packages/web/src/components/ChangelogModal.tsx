@@ -36,7 +36,7 @@ interface Props {
 }
 
 export default function ChangelogModal({ version, onClose }: Props) {
-  const latest = CHANGELOG[0];
+  const latest = CHANGELOG.find(e => e.bump !== "patch")!;
 
   const handleClose = () => {
     markChangelogSeen(version);

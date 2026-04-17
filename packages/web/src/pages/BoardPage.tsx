@@ -39,28 +39,29 @@ export default function BoardPage() {
   return (
     <div className="space-y-4 max-w-none">
       {/* Header */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link
-          to="/projects"
-          className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text transition-colors"
-        >
-          <ArrowLeft size={13} />
-          {t("projects.title" as any)}
-        </Link>
-
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        {/* Project identity row */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-            <Layers size={13} className="text-accent" />
+          <Link
+            to="/projects"
+            className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text transition-colors flex-shrink-0"
+          >
+            <ArrowLeft size={13} />
+            <span className="hidden sm:inline">{t("projects.title" as any)}</span>
+          </Link>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+              <Layers size={13} className="text-accent" />
+            </div>
+            <h1 className="font-semibold text-text text-base truncate flex-1 min-w-0">{project.name}</h1>
+            <span className="text-[10px] font-mono text-text-tertiary bg-accent-soft px-1.5 py-0.5 rounded flex-shrink-0">
+              {project.projectKey}
+            </span>
           </div>
-          <div className="min-w-0">
-            <h1 className="font-semibold text-text text-base truncate">{project.name}</h1>
-          </div>
-          <span className="text-[10px] font-mono text-text-tertiary bg-accent-soft px-1.5 py-0.5 rounded">
-            {project.projectKey}
-          </span>
         </div>
 
-        <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+        {/* Action buttons — second row on mobile, inline on desktop */}
+        <div className="flex items-center gap-1 sm:flex-shrink-0">
           <Link
             to={`/projects/${projectId}/backlog`}
             className="btn-icon p-2 rounded-lg text-text-tertiary hover:text-text"
@@ -103,7 +104,7 @@ export default function BoardPage() {
           {canCreate && (
             <button
               onClick={() => setShowCreate(true)}
-              className="btn-primary flex items-center gap-1 px-3 py-2 text-xs ml-1"
+              className="btn-primary flex items-center gap-1 px-3 py-2 text-xs sm:ml-1"
             >
               <Plus size={13} />
               <span className="hidden sm:inline">{t("projects.addIssue" as any)}</span>

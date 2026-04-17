@@ -246,7 +246,9 @@ export function useIssueMutations(projectId: string) {
       invalidate();
       qc.invalidateQueries({ queryKey: ["issue", issueId] });
       qc.invalidateQueries({ queryKey: ["my-assignments"] });
-      qc.invalidateQueries({ queryKey: ["daylog", data.date] });
+      // refetchType:'all' → DayView açık olmasa bile cache'i şimdiden günceller,
+      // böylece sayfaya geçince anında görünür (eski stale data sorunu yok)
+      qc.invalidateQueries({ queryKey: ["daylog", data.date], refetchType: "all" } as any);
     },
   });
 

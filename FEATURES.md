@@ -69,8 +69,8 @@ Son güncelleme: 2026-04-06
 | 3 | ~~Kolon issue sayısı~~ | Başlıkta badge | XS | ✅ |
 | 4 | ~~Issue linki kopyala~~ | Clipboard + toast bildirimi | XS | ✅ |
 | 5 | ~~Sprint tamamla butonu~~ | Tamamlanmayanlar için "backlog'a taşı" dialog | S | ✅ |
-| 6 | **Cmd/Ctrl+K global arama** | Tüm projeler arası issue arama | M | ⏳ |
-| 7 | **Hover context menüsü** | Kart üzerinde hızlı atama/durum değişimi | S | ⏳ |
+| 6 | ~~Cmd/Ctrl+K global arama~~ | Tüm projeler arası issue arama | M | ✅ |
+| 7 | ~~Hover context menüsü~~ | Kart üzerinde hızlı durum değişimi | S | ✅ |
 
 ### UX/Bug Düzeltmeleri (2026-04-06)
 - [x] DayView banner: tamamlanmış issue'lar artık "plana eklenmemiş" uyarısı göstermiyor
