@@ -109,7 +109,7 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
   return (
     <div
       className={cn(
-        "flex flex-col min-w-[82vw] sm:min-w-[260px] max-w-[92vw] sm:max-w-[300px] w-full rounded-xl transition-colors snap-start max-h-full",
+        "flex flex-col min-w-[82vw] sm:min-w-[260px] max-w-[92vw] sm:max-w-[300px] w-full rounded-xl transition-colors snap-start h-full overflow-hidden",
         isDragOver && "bg-accent/5 ring-1 ring-accent/30"
       )}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setIsDragOver(true); }}
@@ -149,7 +149,7 @@ export default function BoardColumn({ column, projectId, currentUserId, onCreate
         axis="y"
         values={displayIssues}
         onReorder={handleTouchReorder}
-        className="flex flex-col flex-1 min-h-[60px] overflow-y-auto"
+        className="flex flex-col flex-1 min-h-0 overflow-y-auto pr-0.5"
         as="div"
       >
         {issues.length === 0 && (
