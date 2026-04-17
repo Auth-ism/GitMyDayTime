@@ -198,9 +198,8 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
         )}
       <div
         ref={scrollRef}
-        className="overflow-x-auto overflow-y-hidden pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 h-[calc(100dvh-220px)] sm:h-[calc(100dvh-200px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-3 overflow-x-auto overflow-y-hidden -mx-4 px-4 sm:mx-0 sm:px-0 h-[calc(100dvh-220px)] sm:h-[calc(100dvh-200px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        <div className="flex gap-3 min-w-max h-full">
           {filteredBoard.statuses.map(status => {
             const column = filteredBoard.columns[status.id];
             if (!column) return null;
@@ -232,7 +231,6 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
               />
             );
           })}
-        </div>
       </div>
       </div>
 
