@@ -15,6 +15,20 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.5.4",
+    date: "2026-04-17",
+    bump: "patch",
+    changes: [
+      { type: "fix", text: "Board mobilde proje adı ve ikon üst üste biniyordu — iki satıra alındı" },
+      { type: "fix", text: "Board yatay scroll: alt scrollbar kalktı, solda/sağda gradient + ok butonlarıyla rahat kaydırma" },
+      { type: "fix", text: "Tüm sayfalar artık daha geniş (max-w-5xl) — PC'de boş kenar alanı azaldı" },
+      { type: "fix", text: "Proje istatistikleri mobilde pasta grafiğe dokununca beyaz kare çıkıyordu, düzeltildi" },
+      { type: "fix", text: "@mention bildirimleri karşılıklı çalışmıyordu — push bildirim filtresi kaldırıldı" },
+      { type: "fix", text: "Board'dan 'Plana Ekle' yapılınca Today'de anında görünüyor, not eklemek gerekmiyordu" },
+      { type: "fix", text: "Today zaman/timeline butonu farklı günlere gidip dönünce çalışmıyordu — animasyon kiliti kaldırıldı" },
+    ],
+  },
+  {
     version: "4.5.2",
     date: "2026-04-06",
     bump: "patch",
