@@ -1,19 +1,22 @@
 {
   "name": "gitmydaytime",
-  "version": "4.5.13",
+  "version": "4.5.14",
   "private": true,
   "workspaces": [
     "packages/shared",
     "packages/server",
-    "packages/web"
+    "packages/web",
+    "packages/pm-web"
   ],
   "scripts": {
     "build": "npm run build --workspaces",
     "build:shared": "npm run build -w packages/shared",
     "build:server": "npm run build -w packages/server",
     "build:web": "npm run build -w packages/web",
+    "build:pm-web": "npm run build -w packages/pm-web",
     "dev:server": "npm run dev -w packages/server",
     "dev:web": "npm run dev -w packages/web",
+    "dev:pm-web": "npm run dev -w packages/pm-web",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:web\""
   },
   "devDependencies": {
