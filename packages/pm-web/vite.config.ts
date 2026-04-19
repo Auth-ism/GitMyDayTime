@@ -31,6 +31,10 @@ export default defineConfig({
             purpose: "any maskable",
           },
         ],
+        shortcuts: [
+          { name: "Projelerim", short_name: "Projeler", description: "Proje listesi", url: "/projects" },
+          { name: "Görevlerim", short_name: "Görevler", description: "GMD günlük görevler", url: "https://gmd.byfeb.com/" },
+        ],
       },
       workbox: {
         navigateFallback: "index.html",

@@ -12,20 +12,22 @@ import helmet from "helmet";
 import { authMiddleware, authRouter, getAuthLimiter, getGlobalLimiter, createRateLimiter, IS_PROD } from "./auth.js";
 import { pool, runMigrations } from "./db.js";
 import { connectRedis, redis, isRedisConnected, rebuildReminderIndex } from "./redis.js";
-import taskRoutes from "./routes/tasks.js";
-import planRoutes from "./routes/plan.js";
-import statsRoutes from "./routes/stats.js";
-import searchRoutes from "./routes/search.js";
-import recurringRoutes from "./routes/recurring.js";
-import profileRoutes from "./routes/profile.js";
-import categoryRoutes from "./routes/categories.js";
-import journalRoutes from "./routes/journal.js";
-import templateRoutes from "./routes/templates.js";
-import exportRoutes from "./routes/export.js";
-import pushRoutes from "./routes/push.js";
-import projectRoutes from "./routes/projects.js";
-import spaceRoutes from "./routes/spaces.js";
-import notificationRoutes from "./routes/notifications.js";
+import {
+  tasksRouter as taskRoutes,
+  planRouter as planRoutes,
+  statsRouter as statsRoutes,
+  searchRouter as searchRoutes,
+  recurringRouter as recurringRoutes,
+  categoriesRouter as categoryRoutes,
+  journalRouter as journalRoutes,
+  templatesRouter as templateRoutes,
+  exportRouter as exportRoutes,
+  pushRouter as pushRoutes,
+} from "./modules/tasks/index.js";
+import { profileRouter as profileRoutes } from "./modules/profile/index.js";
+import projectRoutes from "./modules/pm/routes.js";
+import spaceRoutes from "./modules/spaces/routes.js";
+import notificationRoutes from "./modules/notifications/routes.js";
 import { startScheduler } from "./scheduler.js";
 
 const app = express();

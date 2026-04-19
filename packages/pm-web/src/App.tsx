@@ -13,6 +13,7 @@ import ProjectSettingsPage from "@/pages/ProjectSettingsPage";
 import ProjectInsightsPage from "@/pages/ProjectInsightsPage";
 import ProjectJoinPage from "@/pages/ProjectJoinPage";
 import BacklogPage from "@/pages/BacklogPage";
+import ProfilePage from "@/pages/ProfilePage";
 import { Clock } from "lucide-react";
 import { ToastContainer } from "@/components/Toast";
 
@@ -46,6 +47,7 @@ export default function App() {
           <>
             <Route element={<PmLayout />}>
               <Route path="/" element={<Navigate to="/projects" replace />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/projects/:projectId" element={<Navigate to="board" replace />} />
               <Route path="/projects/:projectId/board" element={<BoardPage />} />

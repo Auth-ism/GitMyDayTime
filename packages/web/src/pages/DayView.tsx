@@ -87,6 +87,26 @@ export default function DayView() {
     return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
   }, [pendingComplete]);
 
+  // PWA share_target + quickAdd entry points — open the add form pre-filled
+  const [sharedDraft, setSharedDraft] = useState<string>("");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("share") || params.has("quickAdd")) {
+      const title = params.get("title") ?? "";
+      const text = params.get("text") ?? "";
+      const url = params.get("url") ?? "";
+      const parts = [title, text, url].filter(Boolean);
+      if (parts.length > 0) setSharedDraft(parts.join(" — "));
+      params.delete("share");
+      params.delete("quickAdd");
+      params.delete("title");
+      params.delete("text");
+      params.delete("url");
+      const qs = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    }
+  }, []);
+
   const dayLog = query.data;
   const today = todayStr();
   const isToday = date === today;
@@ -365,6 +385,7 @@ export default function DayView() {
         <TaskForm
           type="plan"
           loading={addPlan.isPending}
+          initialDescription={sharedDraft}
           onSubmit={(data) =>
             addPlan.mutate({
               ...data,

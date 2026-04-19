@@ -1,3 +1,11 @@
-// Tasks modülü — route'lar mevcut routes/ dizininde, storage storage.ts'de
-// İleride modules/tasks/storage.ts ve modules/tasks/routes.ts'e taşınacak
-export * from "../../routes/tasks.js";
+export { default as tasksRouter } from "./routes/tasks.js";
+export { default as planRouter } from "./routes/plan.js";
+export { default as statsRouter } from "./routes/stats.js";
+export { default as searchRouter } from "./routes/search.js";
+export { default as recurringRouter } from "./routes/recurring.js";
+export { default as categoriesRouter } from "./routes/categories.js";
+export { default as templatesRouter } from "./routes/templates.js";
+export { default as exportRouter } from "./routes/export.js";
+export { default as journalRouter } from "./routes/journal.js";
+export { default as pushRouter } from "./routes/push.js";
+export * from "./storage.js";

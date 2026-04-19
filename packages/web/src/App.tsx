@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import Layout from "@/components/Layout";
 import DayView from "@/pages/DayView";
@@ -12,17 +12,17 @@ import LoginPage from "@/pages/LoginPage";
 import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import NotFoundPage from "@/pages/NotFoundPage";
-import ProjectsPage from "@/pages/ProjectsPage";
-import BoardPage from "@/pages/BoardPage";
-import IssuePage from "@/pages/IssuePage";
-import ProjectMembersPage from "@/pages/ProjectMembersPage";
-import ProjectSettingsPage from "@/pages/ProjectSettingsPage";
-import ProjectInsightsPage from "@/pages/ProjectInsightsPage";
-import ProjectJoinPage from "@/pages/ProjectJoinPage";
-import BacklogPage from "@/pages/BacklogPage";
 import ChangelogPage from "@/pages/ChangelogPage";
 import { Clock } from "lucide-react";
 import { ToastContainer } from "@/components/Toast";
+
+function PmRedirect() {
+  if (typeof window !== "undefined") {
+    const path = window.location.pathname + window.location.search;
+    window.location.replace(`https://pm.byfeb.com${path}`);
+  }
+  return <LoadingScreen />;
+}
 
 function LoadingScreen() {
   return (
@@ -61,15 +61,7 @@ export default function App() {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/recurring" element={<RecurringPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/projects/:projectId" element={<Navigate to="board" replace />} />
-            <Route path="/projects/:projectId/board" element={<BoardPage />} />
-            <Route path="/projects/:projectId/backlog" element={<BacklogPage />} />
-            <Route path="/projects/:projectId/issues/:issueId" element={<IssuePage />} />
-            <Route path="/projects/:projectId/members" element={<ProjectMembersPage />} />
-            <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
-            <Route path="/projects/:projectId/insights" element={<ProjectInsightsPage />} />
-            <Route path="/projects/join/:token" element={<ProjectJoinPage />} />
+            <Route path="/projects/*" element={<PmRedirect />} />
             <Route path="/changelog" element={<ChangelogPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />

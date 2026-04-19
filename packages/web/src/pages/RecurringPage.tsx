@@ -8,6 +8,7 @@ import { type RecurrencePattern, type CreateRecurringTaskInput } from "@gmd/shar
 import { cn } from "@/lib/cn";
 import { Plus, Trash2, Repeat, Power, Clock, Timer } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { showUndoToast } from "@/components/Toast";
 const recurrenceKeys: RecurrencePattern[] = ["daily", "weekdays", "weekly", "custom"];
 
 const QUICK_DURATIONS = [
@@ -24,6 +25,22 @@ export default function RecurringPage() {
   const dayLabels = useDayLabels();
   const getRecLabel = useRecurrenceLabel();
   const { query, create, update, remove } = useRecurringTasks();
+
+  const handleDelete = (task: { id: string; description: string; category: string; recurrencePattern: RecurrencePattern; weekDay?: number | null; customDays?: number[] | null; duration?: number | null; scheduledTime?: string | null; active: boolean }) => {
+    remove.mutate(task.id);
+    showUndoToast(`"${task.description}" kaldırıldı`, () => {
+      create.mutate({
+        description: task.description,
+        category: task.category as CreateRecurringTaskInput["category"],
+        recurrencePattern: task.recurrencePattern,
+        weekDay: task.weekDay ?? undefined,
+        customDays: task.customDays ?? undefined,
+        duration: task.duration ?? undefined,
+        scheduledTime: task.scheduledTime ?? undefined,
+      });
+    });
+  };
+
   const { allCategories, createCategory } = useCategories();
   const { profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
@@ -319,7 +336,7 @@ export default function RecurringPage() {
               key={task.id}
               task={task}
               onToggle={() => update.mutate({ id: task.id, active: false })}
-              onDelete={() => remove.mutate(task.id)}
+              onDelete={() => handleDelete(task)}
             />
           ))}
         </AnimatePresence>
@@ -345,7 +362,7 @@ export default function RecurringPage() {
                   key={task.id}
                   task={task}
                   onToggle={() => update.mutate({ id: task.id, active: true })}
-                  onDelete={() => remove.mutate(task.id)}
+                  onDelete={() => handleDelete(task)}
                 />
               ))}
             </AnimatePresence>

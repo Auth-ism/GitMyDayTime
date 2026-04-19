@@ -15,6 +15,20 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.5.17",
+    date: "2026-04-19",
+    bump: "patch",
+    summary: "Kullanıcı dostu polish — PWA kısayolları, paylaş menüsü, undo, bildirim sayacı",
+    changes: [
+      { type: "feat", text: "Ana ekran kısayolları — uygulama ikonuna uzun basınca Bugün / Hızlı ekle / Haftalık / İstatistikler doğrudan açılıyor" },
+      { type: "feat", text: "Diğer uygulamalardan 'Paylaş' → GMD seçerek başlığı otomatik görev olarak ekleme" },
+      { type: "feat", text: "Okunmamış bildirim sayısı uygulama ikonu ve tarayıcı sekmesinde görünüyor" },
+      { type: "feat", text: "Tekrarlayan görevi silince 'Geri al' bildirimi çıkıyor" },
+      { type: "feat", text: "Issue arşivlenince 'Geri al' bildirimi ile hatayı anında geri alabilirsiniz" },
+      { type: "fix", text: "pm.byfeb.com PWA'sının home screen ikonundan hızlıca proje listesine/GMD'ye geçiş" },
+    ],
+  },
+  {
     version: "4.5.16",
     date: "2026-04-19",
     bump: "patch",
@@ -26,6 +40,34 @@ export const CHANGELOG: VersionEntry[] = [
       { type: "fix", text: "Eski `apple-mobile-web-app-capable` meta uyarısı — modern `mobile-web-app-capable` eklendi" },
       { type: "perf", text: "Subdomain geçişinde tekrar login gerekmiyor — cookie artık `.byfeb.com` domain'inde paylaşımlı" },
       { type: "perf", text: "DB connection pool 10→20'ye çıkarıldı, idle/connect timeout eklendi" },
+    ],
+  },
+  {
+    version: "4.5.8",
+    date: "2026-04-18",
+    bump: "patch",
+    changes: [
+      { type: "fix", text: "Board'da fare tekerleği yatay kaydırıyor, kolon içinde dikey kaydırmaya ihtiyaç varsa ona geçiyor" },
+      { type: "fix", text: "Kanban kolonları `h-full` zinciriyle düzgün hizalandı, flex-shrink sorunları giderildi" },
+    ],
+  },
+  {
+    version: "4.5.6",
+    date: "2026-04-17",
+    bump: "patch",
+    changes: [
+      { type: "fix", text: "Board kolonları çok fazla issue olunca dikey kaydırma çalışmıyordu, düzeltildi" },
+    ],
+  },
+  {
+    version: "4.5.5",
+    date: "2026-04-17",
+    bump: "patch",
+    changes: [
+      { type: "fix", text: "Today'de çek-listesi onaylama çubuğu mobil klavye açılınca gizleniyordu — visual viewport ile klavye üstünde kalıyor" },
+      { type: "fix", text: "Gün değiştirince timeline görünümü açık kalmıyor, otomatik kapanıyor" },
+      { type: "feat", text: "IssuePage alt issue (subtask) listesi iyileştirildi — başlık, durum ve atanan kişi tek satırda" },
+      { type: "fix", text: "Board IssueCard ve kolon başlıkları küçük ekranda düzgün sarıyor" },
     ],
   },
   {

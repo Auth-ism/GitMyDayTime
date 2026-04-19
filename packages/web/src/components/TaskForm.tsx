@@ -11,6 +11,8 @@ interface Props {
   onSubmit: (data: { description: string; category: Category; duration?: number; tags: string[]; scheduledTime?: string; itemType?: ItemType; priority?: PriorityType }) => void;
   loading?: boolean;
   type: "task" | "plan" | "reminder";
+  initialDescription?: string;
+  autoFocus?: boolean;
 }
 
 const QUICK_DURATIONS = [
@@ -28,12 +30,12 @@ export const PRESET_COLORS = [
 
 const randomColor = () => PRESET_COLORS[Math.floor(Math.random() * (PRESET_COLORS.length - 2))];
 
-export default function TaskForm({ onSubmit, loading, type }: Props) {
+export default function TaskForm({ onSubmit, loading, type, initialDescription, autoFocus }: Props) {
   const { t } = useI18n();
   const getCatLabel = useCategoryLabel();
   const { allCategories, createCategory } = useCategories();
   const { profile } = useAuth();
-  const [desc, setDesc] = useState("");
+  const [desc, setDesc] = useState(initialDescription ?? "");
   const [cat, setCat] = useState<Category>(profile?.defaultCategory || "dev");
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -46,6 +48,16 @@ export default function TaskForm({ onSubmit, loading, type }: Props) {
   const [expanded, setExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (initialDescription) {
+      setDesc(initialDescription);
+      setExpanded(true);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [initialDescription]);
+  useEffect(() => {
+    if (autoFocus) setTimeout(() => inputRef.current?.focus(), 50);
+  }, [autoFocus]);
 
   const isPlan = type === "plan";
   const isReminder = type === "reminder";

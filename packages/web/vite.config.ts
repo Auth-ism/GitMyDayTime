@@ -31,6 +31,17 @@ export default defineConfig({
             purpose: "any maskable",
           },
         ],
+        shortcuts: [
+          { name: "Bugün", short_name: "Bugün", description: "Bugünkü planı aç", url: "/" },
+          { name: "Hızlı Ekle", short_name: "Ekle", description: "Yeni görev ekle", url: "/?quickAdd=1" },
+          { name: "Haftalık", short_name: "Hafta", description: "Haftalık görünüm", url: "/week" },
+          { name: "İstatistikler", short_name: "Stats", description: "İstatistikler", url: "/stats" },
+        ],
+        share_target: {
+          action: "/?share=1",
+          method: "GET",
+          params: { title: "title", text: "text", url: "url" },
+        },
       },
       workbox: {
         importScripts: ["/sw-push.js"],

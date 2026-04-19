@@ -67,13 +67,14 @@ const navIcons = {
   "/stats": BarChart3,
   "/search": Search,
   "/recurring": Repeat,
-  "/projects": Layers,
 } as const;
 
+const PM_URL = "https://pm.byfeb.com";
+
 // Desktop nav: all items
-const navKeys = ["/", "/week", "/calendar", "/stats", "/search", "/recurring", "/projects"] as const;
-// Mobile tab bar: Home / Week / Cal / Projects / Stats (5 items)
-const mobileNavKeys = ["/", "/week", "/calendar", "/projects", "/stats"] as const;
+const navKeys = ["/", "/week", "/calendar", "/stats", "/search", "/recurring"] as const;
+// Mobile tab bar: Home / Week / Cal / Stats (4 items, Projects is external)
+const mobileNavKeys = ["/", "/week", "/calendar", "/stats"] as const;
 
 const navLabelKeys = {
   "/": "nav.today",
@@ -82,7 +83,6 @@ const navLabelKeys = {
   "/stats": "nav.stats",
   "/search": "nav.search",
   "/recurring": "nav.recurring",
-  "/projects": "nav.projects",
 } as const;
 
 export default function Layout() {
@@ -163,6 +163,15 @@ export default function Layout() {
                 </NavLink>
               );
             })}
+
+            <a
+              href={PM_URL}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text hover:bg-accent-soft transition-colors"
+              title="GMD Projects"
+            >
+              <Layers size={16} />
+              <span>{t("nav.projects" as any)}</span>
+            </a>
 
             <div className="w-px h-5 bg-border mx-1.5" role="separator" />
 
@@ -386,6 +395,13 @@ export default function Layout() {
               </NavLink>
             );
           })}
+          <a
+            href={PM_URL}
+            className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-[60px] text-text-tertiary"
+          >
+            <Layers size={20} />
+            <span className="text-[10px] font-medium">{t("nav.projects" as any)}</span>
+          </a>
         </div>
       </nav>
     </div>

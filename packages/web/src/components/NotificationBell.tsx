@@ -69,6 +69,21 @@ export default function NotificationBell() {
   const notifications: Notification[] = data?.notifications ?? [];
   const unread = data?.unread ?? 0;
 
+  // Browser tab badge + title — unread counter across app icon / tab
+  useEffect(() => {
+    const nav = navigator as Navigator & {
+      setAppBadge?: (count?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+    if (unread > 0) {
+      nav.setAppBadge?.(unread).catch(() => {});
+    } else {
+      nav.clearAppBadge?.().catch(() => {});
+    }
+    const baseTitle = document.title.replace(/^\(\d+\)\s*/, "");
+    document.title = unread > 0 ? `(${unread > 99 ? "99+" : unread}) ${baseTitle}` : baseTitle;
+  }, [unread]);
+
   const handleClick = async (n: Notification) => {
     if (!n.read) await markRead.mutateAsync(n.id);
     setOpen(false);

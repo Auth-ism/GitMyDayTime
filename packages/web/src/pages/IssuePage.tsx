@@ -4,7 +4,7 @@ import {
   ArrowLeft, Bug, Zap, BookOpen, CheckSquare, Minus,
   CalendarDays, Trash2, Edit2, Check, X, ChevronDown, Link2, Plus, Tag, CornerDownRight, ChevronRight, Copy,
 } from "lucide-react";
-import { showSuccessToast } from "@/components/Toast";
+import { showSuccessToast, showUndoToast } from "@/components/Toast";
 import type { IssueLinkType, WorkflowStatus, ProjectMember, Sprint } from "@gmd/shared";
 
 // ── History helpers ────────────────────────────────────────────────
@@ -376,7 +376,7 @@ export default function IssuePage() {
 
   const { data: project } = useProject(projectId);
   const { data: issue, isLoading } = useIssue(projectId, issueId);
-  const { updateIssue, deleteIssue, addIssueToPlan, removeIssueFromPlan } = useIssueMutations(projectId!);
+  const { updateIssue, deleteIssue, restoreIssue, addIssueToPlan, removeIssueFromPlan } = useIssueMutations(projectId!);
   const { addComment, updateComment, deleteComment } = useCommentMutations(projectId!, issueId!);
   const { data: sprints = [] } = useSprints(projectId);
   const { setIssueSprint } = useSprintMutations(projectId!);
@@ -464,8 +464,11 @@ export default function IssuePage() {
   };
 
   const handleDelete = async () => {
-    await deleteIssue.mutateAsync(issue.id);
+    const id = issue.id;
+    const key = issue.issueKey;
+    await deleteIssue.mutateAsync(id);
     navigate(`/projects/${projectId}/board`);
+    showUndoToast(`${key} arşivlendi`, () => { restoreIssue.mutate(id); });
   };
 
   const handleAddComment = async () => {
