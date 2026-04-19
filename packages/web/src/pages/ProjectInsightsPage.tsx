@@ -142,7 +142,7 @@ export default function ProjectInsightsPage() {
           <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Durum</h2>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
-              <Pie data={statusData} cx="50%" cy="50%" outerRadius={65} dataKey="value" label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={10} activeShape={() => <g />}>
+              <Pie data={statusData} cx="50%" cy="50%" outerRadius={65} dataKey="value" label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={10} activeIndex={-1}>
                 {statusData.map((entry) => (
                   <Cell key={entry.cat} fill={STATUS_CAT_COLORS[entry.cat] ?? "#6b7280"} />
                 ))}

@@ -34,7 +34,7 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-const ASSIGNABLE_ROLES: { role: ProjectRole; label: string; desc: string; Icon: React.FC<{ size?: number; className?: string }> }[] = [
+const ASSIGNABLE_ROLES: { role: "admin" | "developer" | "reporter" | "viewer"; label: string; desc: string; Icon: React.FC<{ size?: number; className?: string }> }[] = [
   { role: "admin",     label: "Admin",      desc: "Her şeyi yönetir, üye ekler",       Icon: Shield  },
   { role: "developer", label: "Developer",  desc: "Issue oluşturur ve düzenler",         Icon: Code2   },
   { role: "reporter",  label: "Reporter",   desc: "Issue açar, yorum yapar",             Icon: FileText },
@@ -53,7 +53,7 @@ export default function ProjectMembersPage() {
   // Invite modal
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<ProjectRole>("developer");
+  const [inviteRole, setInviteRole] = useState<"admin" | "developer" | "reporter" | "viewer">("developer");
   const [inviteStatus, setInviteStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   // Role change dropdown per member
@@ -90,7 +90,7 @@ export default function ProjectMembersPage() {
     }
   };
 
-  const handleRoleChange = async (userId: string, role: ProjectRole) => {
+  const handleRoleChange = async (userId: string, role: "admin" | "developer" | "reporter" | "viewer") => {
     setOpenRoleMenuFor(null);
     if (!projectId) return;
     await updateMemberRole.mutateAsync({ id: projectId, userId, data: { role } });

@@ -287,7 +287,7 @@ export default function StatsPage() {
             <h3 className="text-sm font-medium text-text-secondary mb-4">{t("stats.byCategory")}</h3>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={categoryData} dataKey="count" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} strokeWidth={0}>
+                <Pie data={categoryData} dataKey="count" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} strokeWidth={0} activeIndex={-1}>
                   {categoryData.map((entry) => (
                     <Cell key={entry.name} fill={entry.fill} />
                   ))}
@@ -308,18 +308,19 @@ export default function StatsPage() {
           <div className="card">
             <h3 className="text-sm font-medium text-text-secondary mb-4">{t("stats.timeByCategory")}</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={categoryData} layout="vertical">
+              <BarChart data={categoryData} layout="vertical" style={{ cursor: "default" }}>
                 <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--color-border)" />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={yAxisWidth} stroke="var(--color-border)" />
                 <Tooltip
+                  cursor={false}
                   formatter={(v: number) => formatDuration(v)}
                   contentStyle={tooltipStyle}
                   labelStyle={tooltipLabelStyle}
                   itemStyle={tooltipItemStyle}
                 />
-                <Bar dataKey="minutes" radius={[0, 6, 6, 0]}>
+                <Bar dataKey="minutes" radius={[0, 6, 6, 0]} activeBar={{ strokeWidth: 0 }} isAnimationActive={false}>
                   {categoryData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.fill} />
+                    <Cell key={entry.name} fill={entry.fill} strokeWidth={0} />
                   ))}
                 </Bar>
               </BarChart>

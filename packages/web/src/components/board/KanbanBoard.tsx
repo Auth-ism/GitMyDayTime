@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { Flag, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { Flag } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useBoard, useProjectEvents, useIssueMutations, useSprints, useSprintMutations } from "@/hooks/useProjects";
 import { useAuth } from "@/lib/auth";
@@ -32,29 +32,6 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [completeIncompleteAction, setCompleteIncompleteAction] = useState<"backlog" | "next_sprint">("backlog");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const updateScrollButtons = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    updateScrollButtons();
-    el.addEventListener("scroll", updateScrollButtons, { passive: true });
-    const ro = new ResizeObserver(updateScrollButtons);
-    ro.observe(el);
-    return () => { el.removeEventListener("scroll", updateScrollButtons); ro.disconnect(); };
-  }, [updateScrollButtons]);
-
-  const scrollBoard = (dir: "left" | "right") => {
-    scrollRef.current?.scrollBy({ left: dir === "right" ? 300 : -300, behavior: "smooth" });
-  };
 
   // Convert vertical mouse wheel to horizontal board scroll,
   // unless the cursor is over a column list that still has room to scroll vertically.
@@ -136,10 +113,10 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
     : 0;
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       {/* Sprint selector */}
       {(sprints.length > 0 || onSprintChange) && (
-        <div className="flex flex-wrap items-center gap-2 mb-3">
+        <div className="flex-shrink-0 flex flex-wrap items-center gap-2 mb-3">
           <span className="text-[11px] text-text-tertiary flex-shrink-0">Sprint:</span>
           <div className="flex items-center gap-1 flex-wrap flex-1">
             <button
@@ -193,34 +170,13 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
         </div>
       )}
 
-      <BoardFilterBar projectId={projectId} filters={filters} onChange={setFilters} />
+      <div className="flex-shrink-0">
+        <BoardFilterBar projectId={projectId} filters={filters} onChange={setFilters} />
+      </div>
 
-      <div className="relative">
-        {canScrollLeft && (
-          <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-bg-secondary to-transparent z-10 flex items-center pointer-events-none">
-            <button
-              onClick={() => scrollBoard("left")}
-              className="pointer-events-auto w-7 h-7 flex items-center justify-center rounded-full bg-bg-elevated/80 border border-border/50 shadow-sm text-text-tertiary hover:text-text hover:bg-bg-elevated transition-all"
-              aria-label="Sola kaydır"
-            >
-              <ChevronLeft size={13} />
-            </button>
-          </div>
-        )}
-        {canScrollRight && (
-          <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-bg-secondary to-transparent z-10 flex items-center justify-end pointer-events-none">
-            <button
-              onClick={() => scrollBoard("right")}
-              className="pointer-events-auto w-7 h-7 flex items-center justify-center rounded-full bg-bg-elevated/80 border border-border/50 shadow-sm text-text-tertiary hover:text-text hover:bg-bg-elevated transition-all"
-              aria-label="Sağa kaydır"
-            >
-              <ChevronRight size={13} />
-            </button>
-          </div>
-        )}
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto overflow-y-hidden -mx-4 px-4 sm:mx-0 sm:px-0 h-[calc(100dvh-220px)] sm:h-[calc(100dvh-200px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-3 overflow-x-auto overflow-y-hidden flex-1 min-h-0 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:thin] [scrollbar-color:var(--color-border)_transparent] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
       >
           {filteredBoard.statuses.map(status => {
             const column = filteredBoard.columns[status.id];
@@ -253,7 +209,6 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
               />
             );
           })}
-      </div>
       </div>
 
       {createStatusId && (
@@ -328,6 +283,6 @@ export default function KanbanBoard({ projectId, myRole, activeSprint, onSprintC
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

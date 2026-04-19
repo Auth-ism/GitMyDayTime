@@ -36,7 +36,7 @@ interface Props {
   projectId: string;
   currentUserId: string;
   canEdit?: boolean;
-  onAddToPlan?: (issueId: string, date: string) => Promise<void>;
+  onAddToPlan?: (issueId: string, date: string) => Promise<unknown>;
   addToPlanPending?: boolean;
   onArchive?: (issueId: string) => void;
   archivePending?: boolean;

@@ -37,9 +37,9 @@ export default function BoardPage() {
   const canCreate = project.myRole !== "viewer";
 
   return (
-    <div className="space-y-4 max-w-none">
+    <div className="flex flex-col h-full gap-3">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+      <div className="flex-shrink-0 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
         {/* Project identity row */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Link
@@ -114,17 +114,19 @@ export default function BoardPage() {
         </div>
       </div>
 
-      {/* Kanban board — full width, horizontal scroll */}
-      <KanbanBoard
-        projectId={projectId!}
-        myRole={project.myRole}
-        activeSprint={activeSprint}
-        onSprintChange={setActiveSprint}
-      />
+      {/* Kanban board — fills remaining height */}
+      <div className="flex-1 min-h-0">
+        <KanbanBoard
+          projectId={projectId!}
+          myRole={project.myRole}
+          activeSprint={activeSprint}
+          onSprintChange={setActiveSprint}
+        />
+      </div>
 
       {/* Archived issues panel */}
       {showArchive && (
-        <div className="card p-4 space-y-2">
+        <div className="flex-shrink-0 card p-4 space-y-2">
           <p className="text-xs font-semibold text-text-secondary">{t("issue.archivedIssues")} ({archivedData?.total ?? 0})</p>
           {!archivedData?.issues.length ? (
             <p className="text-xs text-text-tertiary italic py-2">{t("issue.noArchived")}</p>

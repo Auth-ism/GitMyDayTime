@@ -15,6 +15,20 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.5.16",
+    date: "2026-04-19",
+    bump: "patch",
+    summary: "pm.byfeb.com yayında — proje yönetimi ayrı subdomain'de",
+    changes: [
+      { type: "feat", text: "pm.byfeb.com ayrı frontend olarak yayında — proje yönetimi kendi subdomain'inde, GMD Projects header'ıyla" },
+      { type: "fix", text: "pm.byfeb.com'da Inter fontu CSP tarafından bloke ediliyordu, düzeltildi" },
+      { type: "fix", text: "pm.byfeb.com'da favicon ve ikonlar 404 dönüyordu — web public dizini paylaşılır hale getirildi" },
+      { type: "fix", text: "Eski `apple-mobile-web-app-capable` meta uyarısı — modern `mobile-web-app-capable` eklendi" },
+      { type: "perf", text: "Subdomain geçişinde tekrar login gerekmiyor — cookie artık `.byfeb.com` domain'inde paylaşımlı" },
+      { type: "perf", text: "DB connection pool 10→20'ye çıkarıldı, idle/connect timeout eklendi" },
+    ],
+  },
+  {
     version: "4.5.4",
     date: "2026-04-17",
     bump: "patch",

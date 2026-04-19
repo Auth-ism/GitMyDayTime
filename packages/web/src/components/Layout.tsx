@@ -123,7 +123,7 @@ export default function Layout() {
   const toggleLocale = () => setLocale(locale === "en" ? "tr" : "en" as Locale);
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg-secondary">
+    <div className={cn("flex flex-col bg-bg-secondary", location.pathname.includes("/board") ? "h-dvh overflow-hidden" : "min-h-screen")}>
       {/* Desktop header */}
       <header className="border-b border-border sticky top-0 z-40 bg-bg/90 backdrop-blur-md hidden sm:block">
         <div className="px-4 sm:px-6 h-14 flex items-center">
@@ -292,12 +292,23 @@ export default function Layout() {
         <EmailVerifyBanner />
       )}
 
-      <main className="flex-1 pb-16 sm:pb-0 safe-main-bottom" id="main-content">
+      <main
+        className={cn(
+          "pb-16 sm:pb-0 safe-main-bottom",
+          location.pathname.includes("/board")
+            ? "flex flex-col overflow-hidden flex-1"
+            : "flex-1"
+        )}
+        id="main-content"
+      >
         <div
           className={cn(
-            "mx-auto px-4 sm:px-6 py-4 sm:py-6",
+            "mx-auto px-4 sm:px-6",
+            location.pathname.includes("/board")
+              ? "flex flex-col flex-1 min-h-0 pt-4 sm:pt-6 w-full"
+              : "py-4 sm:py-6",
             location.pathname === "/week" || location.pathname.includes("/board")
-              ? "max-w-7xl"
+              ? "max-w-[1800px]"
               : "max-w-5xl"
           )}
         >

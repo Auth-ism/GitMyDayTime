@@ -234,9 +234,20 @@ spec:
   tls:
     - hosts:
         - gmd.byfeb.com
+        - pm.byfeb.com
       secretName: gitmydaytime-tls
   rules:
     - host: gmd.byfeb.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gitmydaytime-service
+                port:
+                  number: 80
+    - host: pm.byfeb.com
       http:
         paths:
           - path: /

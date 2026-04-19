@@ -126,7 +126,7 @@ export default function BacklogPage() {
   );
 
   // Fetch all non-archived issues
-  const { data: allIssuesData } = useIssues(projectId, { archived: false });
+  const { data: allIssuesData } = useIssues(projectId, { archived: "false" });
   const allIssues: Issue[] = (allIssuesData as any)?.issues ?? [];
 
   const activeSprint = sprintsData.find(s => s.status === "active");

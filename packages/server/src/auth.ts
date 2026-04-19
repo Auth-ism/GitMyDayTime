@@ -35,6 +35,7 @@ const COOKIE_BASE = {
   secure: IS_PROD,
   sameSite: "lax" as const,
   path: "/",
+  ...(IS_PROD ? { domain: ".byfeb.com" } : {}),
 };
 
 function setAccessCookie(res: Response, token: string): void {

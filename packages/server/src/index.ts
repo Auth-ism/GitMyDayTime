@@ -40,10 +40,10 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:"],
       connectSrc: ["'self'", "https://fcm.googleapis.com", "https://*.push.services.mozilla.com"],
-      fontSrc: ["'self'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
       workerSrc: ["'self'"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
@@ -65,7 +65,14 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || (IS_PROD ? "https://gmd.byfeb.com" : true),
+  origin: process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(",").map(s => s.trim())
+    : IS_PROD
+      ? (origin: string | undefined, cb: (e: Error | null, allow?: boolean) => void) => {
+          if (!origin || origin === "null" || origin.endsWith(".byfeb.com")) cb(null, true);
+          else cb(new Error("CORS: origin not allowed"));
+        }
+      : true,
   credentials: true,
 }));
 // Default body limit — tighter than before (was 1mb)
@@ -183,11 +190,22 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   }
 });
 
-// Serve frontend in production
+// Serve frontend in production — host-based routing for subdomains
 const webDist = path.resolve(__dirname, "../../web/dist");
-app.use(express.static(webDist));
-app.get("*", (_req, res) => {
-  res.sendFile(path.join(webDist, "index.html"));
+const pmWebDist = path.resolve(__dirname, "../../pm-web/dist");
+const serveWeb = express.static(webDist);
+const servePmWeb = express.static(pmWebDist);
+
+app.use((req, res, next) => {
+  if (req.hostname === "pm.byfeb.com") return servePmWeb(req, res, next);
+  return serveWeb(req, res, next);
+});
+
+app.get("*", (req, res) => {
+  if (req.hostname === "pm.byfeb.com") {
+    return res.sendFile(path.join(pmWebDist, "index.html"));
+  }
+  return res.sendFile(path.join(webDist, "index.html"));
 });
 
 // Notification scheduler — runs every minute
