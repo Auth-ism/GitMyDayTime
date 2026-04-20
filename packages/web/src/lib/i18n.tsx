@@ -375,6 +375,24 @@ const translations = {
     "oneYearAgo.title": "One year ago today",
     "oneYearAgo.summary": "{count} plan · {completed} completed · {duration}",
 
+    // Calendar subscribe
+    "calendar.title": "Calendar Subscription",
+    "calendar.desc": "Subscribe to your plans and issue due dates from Google Calendar, Apple Calendar, or any iCal client.",
+    "calendar.createNew": "Create subscription link",
+    "calendar.creating": "Creating...",
+    "calendar.copy": "Copy",
+    "calendar.copied": "Copied",
+    "calendar.done": "Done",
+    "calendar.copyFailed": "Could not copy to clipboard",
+    "calendar.createFailed": "Failed to create link",
+    "calendar.revoked": "Link revoked",
+    "calendar.revokeFailed": "Failed to revoke link",
+    "calendar.revoke": "Revoke",
+    "calendar.onceWarning": "Save this URL now — you will not see it again. Paste it into your calendar client's \"Add by URL\" option.",
+    "calendar.createdAt": "Created {date}",
+    "calendar.lastUsedAt": "Last used {date}",
+    "calendar.neverUsed": "Never used yet",
+
     // Stats new
     "stats.estimateVsActual": "Estimate vs Actual",
     "stats.avgEstimate": "Avg Estimate",
@@ -922,6 +940,24 @@ const translations = {
     // One year ago
     "oneYearAgo.title": "Bir yıl önce bugün",
     "oneYearAgo.summary": "{count} plan · {completed} tamamlandı · {duration}",
+
+    // Calendar subscribe
+    "calendar.title": "Takvim Aboneliği",
+    "calendar.desc": "Planlarınız ve issue bitiş tarihlerinizi Google Calendar, Apple Calendar veya herhangi bir iCal uygulamasından takip edin.",
+    "calendar.createNew": "Abonelik linki oluştur",
+    "calendar.creating": "Oluşturuluyor...",
+    "calendar.copy": "Kopyala",
+    "calendar.copied": "Kopyalandı",
+    "calendar.done": "Tamam",
+    "calendar.copyFailed": "Panoya kopyalanamadı",
+    "calendar.createFailed": "Link oluşturulamadı",
+    "calendar.revoked": "Link iptal edildi",
+    "calendar.revokeFailed": "Link iptal edilemedi",
+    "calendar.revoke": "İptal et",
+    "calendar.onceWarning": "Bu URL'yi şimdi kaydedin — bir daha gösterilmeyecek. Takvim uygulamanızın \"URL ile ekle\" seçeneğine yapıştırın.",
+    "calendar.createdAt": "Oluşturuldu {date}",
+    "calendar.lastUsedAt": "Son kullanım {date}",
+    "calendar.neverUsed": "Henüz kullanılmadı",
 
     // Stats new
     "stats.estimateVsActual": "Tahmin vs Gerçek",

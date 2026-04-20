@@ -415,4 +415,16 @@ export const api = {
 
   reorderStatuses: (id: string, orders: Array<{ statusId: string; sortOrder: number }>) =>
     request<{ ok: boolean }>(`/projects/${id}/statuses/reorder`, { method: "PATCH", body: JSON.stringify({ orders }) }),
+
+  // Calendar subscribe tokens
+  listCalendarTokens: () =>
+    request<{ tokens: Array<{ id: string; createdAt: string; lastUsedAt: string | null }> }>(
+      `/calendar/tokens`,
+    ),
+
+  createCalendarToken: () =>
+    request<{ id: string; token: string; url: string }>(`/calendar/tokens`, { method: "POST" }),
+
+  revokeCalendarToken: (id: string) =>
+    request<void>(`/calendar/tokens/${id}`, { method: "DELETE" }),
 };

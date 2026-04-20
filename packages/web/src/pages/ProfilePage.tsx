@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { AnimatePresence, motion } from "framer-motion";
 import { CATEGORY_COLORS, type UpdateProfileInput } from "@gmd/shared";
 import { PRESET_COLORS } from "@/components/TaskForm";
+import CalendarSubscribeSection from "@/components/CalendarSubscribeSection";
 
 const TIMEZONES = [
   "Europe/Istanbul", "Europe/London", "Europe/Berlin", "Europe/Paris",
@@ -673,6 +674,9 @@ export default function ProfilePage() {
             <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
             {importResult && <p className={cn("text-[10px]", importResult.includes("basarisiz") ? "text-danger" : "text-success")}>{importResult}</p>}
           </Section>
+
+          {/* Calendar subscribe */}
+          <CalendarSubscribeSection />
 
           <SaveBar onClick={handleSave} saving={saving} saved={saved} error={error} t={t} />
         </motion.div>

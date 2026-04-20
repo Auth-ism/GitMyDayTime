@@ -15,6 +15,18 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.7.0",
+    date: "2026-04-20",
+    bump: "minor",
+    summary: "Takvim aboneliği — planlarınızı Google/Apple Calendar'dan takip edin",
+    changes: [
+      { type: "feat", text: "iCal abonelik linki — Profil → Takvim Aboneliği'nden oluştur, Google/Apple Calendar'ın 'URL ile ekle' seçeneğine yapıştır" },
+      { type: "feat", text: "Plan items (son 30 gün + gelecek 90 gün) ve size atanmış issue due date'leri senkron" },
+      { type: "feat", text: "Token iptal edilebilir; son kullanım tarihi izleniyor" },
+      { type: "perf", text: "ETag desteği — değişiklik olmadığında 304 döner, client cache kullanır" },
+    ],
+  },
+  {
     version: "4.6.0",
     date: "2026-04-20",
     bump: "minor",

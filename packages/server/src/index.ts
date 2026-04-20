@@ -28,6 +28,7 @@ import { profileRouter as profileRoutes } from "./modules/profile/index.js";
 import projectRoutes from "./modules/pm/routes.js";
 import spaceRoutes from "./modules/spaces/routes.js";
 import notificationRoutes from "./modules/notifications/routes.js";
+import { publicRouter as calendarPublicRoutes, authedRouter as calendarAuthedRoutes } from "./modules/calendar/routes.js";
 import { startScheduler } from "./scheduler.js";
 
 const app = express();
@@ -117,6 +118,11 @@ app.use("/api/auth", getAuthLimiter({ skip: (req) => req.path === "/check" }), a
 // Global rate limiter for all API routes
 app.use("/api", getGlobalLimiter());
 
+// Public calendar feed — token in query, no session. Mounted BEFORE authMiddleware.
+// Own rate limit: 30 req/min per IP.
+const rlCalendarPublic = createRateLimiter(60_000, 30, { perUser: false, prefix: "ical" });
+app.use("/api", rlCalendarPublic, calendarPublicRoutes);
+
 // Protect all API routes
 app.use(authMiddleware);
 
@@ -183,6 +189,10 @@ app.use("/api/projects", projectRoutes);
 const rlSpaces = rl(60, 60_000, "spaces");
 app.use("/api/spaces", rlSpaces, spaceRoutes);
 app.use("/api/notifications", notificationRoutes);
+
+// Calendar token management (authed)
+const rlCalendarMgmt = rl(10, 60_000, "calendar-mgmt");
+app.use("/api/calendar", rlCalendarMgmt, calendarAuthedRoutes);
 
 // Global async error handler — Express 4 doesn't catch async errors
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
