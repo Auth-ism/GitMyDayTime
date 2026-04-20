@@ -269,6 +269,7 @@ export const UserProfileSchema = z.object({
   silentHoursEnd: z.string().nullable(),
   fontSize: z.enum(["small", "normal", "large", "xlarge"]),
   onboarded: z.boolean(),
+  weeklyRecapEnabled: z.boolean(),
   createdAt: z.string(),
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;
@@ -304,6 +305,7 @@ export const UpdateProfileInput = z.object({
   silentHoursEnd: z.string().nullable().optional(),
   fontSize: z.enum(["small", "normal", "large", "xlarge"]).optional(),
   onboarded: z.boolean().optional(),
+  weeklyRecapEnabled: z.boolean().optional(),
   email: z.string().email().optional(),
   username: z.string().min(2).max(32).optional(),
   currentPassword: z.string().min(1).optional(),

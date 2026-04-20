@@ -5,6 +5,7 @@ import { sendReminderEmail } from "./email.js";
 import { getDueReminders, isRedisConnected, redis } from "./redis.js";
 import { pool } from "./db.js";
 import type { ProjectNotificationEvent } from "./storage/projects.js";
+import { processWeeklyRecaps } from "./weeklyRecap.js";
 
 const twilioClient =
   process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
@@ -267,6 +268,8 @@ async function tick(): Promise<void> {
     sent += await processDbReminders();
     // Advance notifications (X minutes before scheduled time)
     sent += await processAdvanceNotifications();
+    // Weekly recap — runs every tick, internally filters to Mon 09:xx in user TZ
+    await processWeeklyRecaps().catch((err) => console.error("[scheduler] weekly recap error:", err));
     if (sent > 0) {
       console.log(`[scheduler] Sent ${sent} notification(s)`);
     }

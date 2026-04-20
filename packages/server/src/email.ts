@@ -274,3 +274,92 @@ export async function sendVerificationEmail(
     html: baseTemplate(body, "E-posta doğrulama linki"),
   });
 }
+
+// ── Weekly recap ─────────────────────────────────────────────────
+
+export interface WeeklyRecapEmailData {
+  weekStart: string; // ISO date
+  weekEnd: string;   // ISO date
+  totalCompleted: number;
+  totalMinutes: number;
+  mostProductiveDay: { date: string; count: number } | null;
+  topCategory: { label: string; count: number } | null;
+}
+
+function formatHourMin(min: number): string {
+  if (min <= 0) return "0d";
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m}d`;
+  if (m === 0) return `${h}s`;
+  return `${h}s ${m}d`;
+}
+
+function formatTrDate(iso: string): string {
+  return new Date(iso + "T12:00:00").toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "long",
+  });
+}
+
+function formatTrWeekday(iso: string): string {
+  return new Date(iso + "T12:00:00").toLocaleDateString("tr-TR", {
+    weekday: "long",
+  });
+}
+
+export async function sendWeeklyRecapEmail(
+  user: { email: string; username: string },
+  data: WeeklyRecapEmailData,
+): Promise<void> {
+  const range = `${formatTrDate(data.weekStart)} – ${formatTrDate(data.weekEnd)}`;
+
+  const bestDayRow = data.mostProductiveDay
+    ? `<tr>
+        <td style="padding:10px 0;color:#a1a1aa;font-size:13px;border-top:1px solid #27272a;">En verimli gün</td>
+        <td style="padding:10px 0;color:#f0f0f0;font-size:13px;font-weight:500;text-align:right;border-top:1px solid #27272a;">
+          ${formatTrWeekday(data.mostProductiveDay.date)} · ${data.mostProductiveDay.count} görev
+        </td>
+      </tr>`
+    : "";
+
+  const topCatRow = data.topCategory
+    ? `<tr>
+        <td style="padding:10px 0;color:#a1a1aa;font-size:13px;border-top:1px solid #27272a;">En çok kategori</td>
+        <td style="padding:10px 0;color:#f0f0f0;font-size:13px;font-weight:500;text-align:right;border-top:1px solid #27272a;">
+          ${data.topCategory.label} · ${data.topCategory.count}
+        </td>
+      </tr>`
+    : "";
+
+  const body = `
+    <p style="margin:0 0 4px;font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Haftalık Özet</p>
+    <p style="margin:0 0 6px;font-size:20px;font-weight:600;color:#f0f0f0;">Merhaba ${user.username}</p>
+    <p style="margin:0 0 24px;font-size:14px;color:#a1a1aa;">${range}</p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+      <tr>
+        <td style="padding:10px 0;color:#a1a1aa;font-size:13px;">Tamamlanan görev</td>
+        <td style="padding:10px 0;color:#f0f0f0;font-size:13px;font-weight:500;text-align:right;">${data.totalCompleted}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 0;color:#a1a1aa;font-size:13px;border-top:1px solid #27272a;">Harcanan süre</td>
+        <td style="padding:10px 0;color:#f0f0f0;font-size:13px;font-weight:500;text-align:right;border-top:1px solid #27272a;">${formatHourMin(data.totalMinutes)}</td>
+      </tr>
+      ${bestDayRow}
+      ${topCatRow}
+    </table>
+
+    ${button(APP_URL, "Bu haftayı planla")}
+    <p style="margin:20px 0 0;font-size:11px;color:#52525b;line-height:1.5;">
+      Haftalık özetleri artık almak istemiyorsan Profil → Bildirimler'den kapatabilirsin.
+    </p>
+  `;
+
+  await resend.emails.send({
+    from: FROM,
+    to: user.email,
+    subject: `Haftalık özet · ${range}`,
+    html: baseTemplate(body, `${data.totalCompleted} görev, ${formatHourMin(data.totalMinutes)} harcama`),
+  });
+}

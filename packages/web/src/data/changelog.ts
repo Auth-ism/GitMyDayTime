@@ -15,6 +15,17 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.8.0",
+    date: "2026-04-20",
+    bump: "minor",
+    summary: "Haftalık özet e-postası — Pazartesi 09:00 önceki haftanın raporu",
+    changes: [
+      { type: "feat", text: "Haftalık özet e-postası — Profil → Haftalık Özet'ten aç, Pazartesi 09:00'da kendi TZ'nde otomatik gelir" },
+      { type: "feat", text: "Özet: tamamlanan görev, harcanan saat, en verimli gün, en çok kullanılan kategori" },
+      { type: "feat", text: "Boş hafta (0 tamamlanmış görev) e-posta göndermez, spam olmaz" },
+    ],
+  },
+  {
     version: "4.7.0",
     date: "2026-04-20",
     bump: "minor",

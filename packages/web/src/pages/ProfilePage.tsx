@@ -137,6 +137,7 @@ export default function ProfilePage() {
         silentHoursStart: profile.silentHoursStart ?? null,
         silentHoursEnd: profile.silentHoursEnd ?? null,
         fontSize: profile.fontSize ?? "normal",
+        weeklyRecapEnabled: profile.weeklyRecapEnabled ?? false,
       });
       setPhoneDisplay(profile.phoneNumber ? formatPhoneInput(profile.phoneNumber) : "");
       if (profile.avatarUrl) setAvatarPreview(profile.avatarUrl);
@@ -500,6 +501,20 @@ export default function ProfilePage() {
               <NotifChip icon={<Smartphone size={12} />} label={t("profile.viaSms" as any)} checked={form.planSmsNotifications ?? false} onChange={(v) => setForm({ ...form, planSmsNotifications: v })} />
               <NotifChip icon={<Bell size={12} />} label={t("profile.viaPush" as any)} checked={form.planPushNotifications ?? true} onChange={(v) => setForm({ ...form, planPushNotifications: v })} />
             </div>
+          </Section>
+
+          {/* Weekly recap */}
+          <Section icon={<Mail size={14} className="text-text-secondary" />} title={t("profile.weeklyRecap" as any)}>
+            <p className="text-[10px] text-text-tertiary -mt-1 mb-2">{t("profile.weeklyRecapDesc" as any)}</p>
+            <label className="flex items-center gap-2 cursor-pointer text-xs">
+              <input
+                type="checkbox"
+                className="accent-accent"
+                checked={form.weeklyRecapEnabled ?? false}
+                onChange={(e) => setForm({ ...form, weeklyRecapEnabled: e.target.checked })}
+              />
+              <span className="text-text-secondary">{t("profile.weeklyRecapEnable" as any)}</span>
+            </label>
           </Section>
 
           {/* Reminder notifications */}

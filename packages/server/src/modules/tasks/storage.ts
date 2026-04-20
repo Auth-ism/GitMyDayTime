@@ -80,6 +80,7 @@ function toUserProfile(r: any): UserProfile {
     silentHoursEnd: r.silent_hours_end ? r.silent_hours_end.slice(0, 5) : null,
     fontSize: (r.font_size ?? "normal") as UserProfile["fontSize"],
     onboarded: r.onboarded ?? false,
+    weeklyRecapEnabled: r.weekly_recap_enabled ?? false,
     createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   };
 }
@@ -97,7 +98,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
             plan_email_notifications, plan_sms_notifications, plan_push_notifications,
             reminder_email_notifications, reminder_sms_notifications, reminder_push_notifications,
             hidden_categories, notify_before_minutes, silent_hours_start, silent_hours_end,
-            font_size, onboarded, created_at
+            font_size, onboarded, weekly_recap_enabled, created_at
      FROM users WHERE id = $1`,
     [userId]
   );
@@ -147,6 +148,7 @@ export async function updateUserProfile(
     silentHoursEnd: "silent_hours_end",
     fontSize: "font_size",
     onboarded: "onboarded",
+    weeklyRecapEnabled: "weekly_recap_enabled",
     email: "email",
     username: "username",
   });
@@ -165,7 +167,7 @@ export async function updateUserProfile(
                plan_email_notifications, plan_sms_notifications, plan_push_notifications,
                reminder_email_notifications, reminder_sms_notifications, reminder_push_notifications,
                hidden_categories, notify_before_minutes, silent_hours_start, silent_hours_end,
-               font_size, onboarded, created_at`,
+               font_size, onboarded, weekly_recap_enabled, created_at`,
     values
   );
 
@@ -1412,4 +1414,60 @@ export async function getEstimateAccuracy(userId: string, from: string, to: stri
     [userId, from, to]
   );
   return rows[0] as { avgEstimate: number; avgActual: number; count: number };
+}
+
+// ── Weekly Recap ──────────────────────────────────────────────────
+
+export interface WeeklyRecapStats {
+  totalCompleted: number;
+  totalMinutes: number;
+  mostProductiveDay: { date: string; count: number } | null;
+  topCategory: { key: string; count: number } | null;
+}
+
+export async function getWeeklyRecapStats(
+  userId: string,
+  fromDate: string,
+  toDate: string,
+): Promise<WeeklyRecapStats> {
+  const [totals, bestDayRes, topCatRes] = await Promise.all([
+    pool.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE completed)::int AS "totalCompleted",
+         COALESCE(SUM(actual_duration) FILTER (WHERE completed), 0)::int AS "totalMinutes"
+       FROM plan_items
+       WHERE user_id = $1 AND date BETWEEN $2 AND $3 AND item_type = 'plan'`,
+      [userId, fromDate, toDate],
+    ),
+    pool.query(
+      `SELECT date::text AS date, COUNT(*)::int AS count
+       FROM plan_items
+       WHERE user_id = $1 AND date BETWEEN $2 AND $3 AND item_type = 'plan' AND completed = TRUE
+       GROUP BY date
+       ORDER BY count DESC, date DESC
+       LIMIT 1`,
+      [userId, fromDate, toDate],
+    ),
+    pool.query(
+      `SELECT category, COUNT(*)::int AS count
+       FROM plan_items
+       WHERE user_id = $1 AND date BETWEEN $2 AND $3 AND item_type = 'plan' AND completed = TRUE
+       GROUP BY category
+       ORDER BY count DESC
+       LIMIT 1`,
+      [userId, fromDate, toDate],
+    ),
+  ]);
+
+  const t = totals.rows[0] ?? { totalCompleted: 0, totalMinutes: 0 };
+  return {
+    totalCompleted: t.totalCompleted ?? 0,
+    totalMinutes: t.totalMinutes ?? 0,
+    mostProductiveDay: bestDayRes.rows[0]
+      ? { date: bestDayRes.rows[0].date, count: bestDayRes.rows[0].count }
+      : null,
+    topCategory: topCatRes.rows[0]
+      ? { key: topCatRes.rows[0].category, count: topCatRes.rows[0].count }
+      : null,
+  };
 }
