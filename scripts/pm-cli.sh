@@ -103,58 +103,65 @@ cmd_list() {
   local res
   res=$(api GET "/api/projects/$GMD_PROJECT_ID/board")
 
-  # Parse board: {columns: [{status:{id,name,category}, issues:[...]}]}
+  # Parse board: {columns: {<statusId>: {status, issues}}}
   python3 -c '
-import json,sys,os
-data=json.load(sys.stdin)
-cols=data.get("columns", [])
-for col in cols:
-  status=col.get("status", {})
-  cat=status.get("category", "")
-  name=status.get("name", "")
-  if cat == "done":
-    continue
-  for issue in col.get("issues", []):
-    key=issue.get("issueKey", "")
-    title=issue.get("title", "")
-    print(f"[{name:>14}] {key}  {title}")
+import json, sys
+data = json.load(sys.stdin)
+cols = data.get("columns", {}) or {}
+# Sort by status.sortOrder so output is stable
+entries = list(cols.values())
+entries.sort(key=lambda c: c.get("status", {}).get("sortOrder", 0))
+for col in entries:
+    status = col.get("status", {})
+    cat = status.get("category", "")
+    if cat == "done":
+        continue
+    name = status.get("name", "")
+    for issue in col.get("issues", []):
+        key = issue.get("issueKey", "")
+        title = issue.get("title", "")
+        print("[%14s] %-8s  %s" % (name, key, title))
 ' <<<"$res"
 }
 
 cmd_statuses() {
   api GET "/api/projects/$GMD_PROJECT_ID/statuses" | \
-    python3 -c 'import json,sys
+    python3 -c '
+import json, sys
 for s in json.load(sys.stdin):
-  print(f"{s[\"name\"]:>14}  cat={s[\"category\"]:<12}  id={s[\"id\"]}")'
+    print("%14s  cat=%-12s  id=%s" % (s["name"], s["category"], s["id"]))
+'
 }
 
 # Resolve issue-key (GMD-42) to issue id via board scan
 resolve_key_to_id() {
   local key="$1"
   api GET "/api/projects/$GMD_PROJECT_ID/board" | \
-    python3 -c "
-import json,sys
-data=json.load(sys.stdin)
-for col in data.get('columns', []):
-  for i in col.get('issues', []):
-    if i.get('issueKey') == '$key':
-      print(i.get('id'))
-      break
-"
+    KEY="$key" python3 -c '
+import json, os, sys
+key = os.environ["KEY"]
+data = json.load(sys.stdin)
+cols = data.get("columns", {}) or {}
+for col in cols.values():
+    for i in col.get("issues", []):
+        if i.get("issueKey") == key:
+            print(i.get("id"))
+            sys.exit(0)
+'
 }
 
 # Resolve status name → id (case-insensitive, matches category fallback)
 resolve_status_id() {
   local target="$1"
   api GET "/api/projects/$GMD_PROJECT_ID/statuses" | \
-    python3 -c "
-import json,sys
-t='$target'.lower()
+    TARGET="$target" python3 -c '
+import json, os, sys
+t = os.environ["TARGET"].lower()
 for s in json.load(sys.stdin):
-  if s.get('name','').lower() == t or s.get('category','').lower() == t:
-    print(s.get('id'))
-    break
-"
+    if s.get("name","").lower() == t or s.get("category","").lower() == t:
+        print(s.get("id"))
+        sys.exit(0)
+'
 }
 
 cmd_done() {
@@ -168,10 +175,13 @@ cmd_done() {
 
   # Pick the first status with category='done'
   status_id=$(api GET "/api/projects/$GMD_PROJECT_ID/statuses" | \
-    python3 -c "import json,sys
+    python3 -c '
+import json, sys
 for s in json.load(sys.stdin):
-  if s.get('category') == 'done':
-    print(s.get('id')); break")
+    if s.get("category") == "done":
+        print(s.get("id"))
+        sys.exit(0)
+')
 
   if [ -z "$status_id" ]; then
     echo "ERROR: No 'done' status configured" >&2
