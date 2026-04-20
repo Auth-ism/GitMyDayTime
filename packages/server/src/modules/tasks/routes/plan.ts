@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { nanoid } from "nanoid";
 import { CreatePlanInput, CreateChecklistInput, PlanItemSchema } from "@gmd/shared";
 import { zodMsg } from "../../../validation.js";
-import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem, copyDayPlans, invalidateDayLog } from "../storage.js";
+import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem, copyDayPlans, invalidateDayLog, getOneYearAgoPlan } from "../storage.js";
 import { syncPlanItemCompletion } from "../../pm/storage.js";
 import { pool } from "../../../db.js";
 
@@ -72,6 +72,13 @@ router.put("/:date/plan/:id/move", wrap(async (req, res) => {
   const moved = await movePlanItem(req.userId!, req.params.id as string, newDate);
   if (!moved) { res.status(404).json({ error: "Plan item not found" }); return; }
   res.json(moved);
+}));
+
+router.get("/:date/one-year-ago", wrap(async (req, res) => {
+  const date = req.params.date as string;
+  if (!DATE_RE.test(date)) { res.status(400).json({ error: "Invalid date format" }); return; }
+  const result = await getOneYearAgoPlan(req.userId!, date);
+  res.json(result);
 }));
 
 router.post("/:date/copy-from/:fromDate", wrap(async (req, res) => {

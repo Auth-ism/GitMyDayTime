@@ -5,7 +5,6 @@ interface Handlers {
   onPlan: () => void;
   onReminder: () => void;
   onSearch: () => void;
-  onHelp: () => void;
 }
 
 export function useKeyboardShortcuts(handlers: Handlers) {
@@ -26,9 +25,6 @@ export function useKeyboardShortcuts(handlers: Handlers) {
         case "/":
           e.preventDefault();
           handlers.onSearch();
-          break;
-        case "?":
-          handlers.onHelp();
           break;
       }
     };

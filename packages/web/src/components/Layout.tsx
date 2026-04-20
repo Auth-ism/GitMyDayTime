@@ -12,6 +12,8 @@ import OnboardingModal from "@/components/OnboardingModal";
 import ChangelogModal, { shouldShowChangelog } from "@/components/ChangelogModal";
 import BugReportModal from "@/components/BugReportModal";
 import CommandPalette from "@/components/CommandPalette";
+import ShortcutHelp from "@/components/ShortcutHelp";
+import { AnimatePresence } from "framer-motion";
 
 function EmailVerifyBanner() {
   const { t } = useI18n();
@@ -96,12 +98,20 @@ export default function Layout() {
   const [showChangelog, setShowChangelog] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setShowCommandPalette(v => !v);
+        return;
+      }
+      if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const target = e.target as HTMLElement | null;
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable) return;
+        e.preventDefault();
+        setShowShortcutHelp(v => !v);
       }
     };
     window.addEventListener("keydown", handler);
@@ -366,6 +376,11 @@ export default function Layout() {
         <BugReportModal onClose={() => setShowBugReport(false)} />
       )}
       <CommandPalette open={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+      <AnimatePresence>
+        {showShortcutHelp && (
+          <ShortcutHelp onClose={() => setShowShortcutHelp(false)} />
+        )}
+      </AnimatePresence>
 
       {/* Mobile bottom tab bar */}
       <nav

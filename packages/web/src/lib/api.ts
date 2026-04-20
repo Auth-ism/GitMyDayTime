@@ -157,6 +157,10 @@ export const api = {
   copyDayPlans: (date: string, fromDate: string) =>
     request<{ copied: number }>(`/days/${date}/copy-from/${fromDate}`, { method: "POST" }),
 
+  // One year ago
+  getOneYearAgo: (date: string) =>
+    request<{ date: string; plan: PlanItem[] }>(`/days/${date}/one-year-ago`),
+
   // Export / Import
   exportData: () => fetch("/api/export", { credentials: "include" }),
 

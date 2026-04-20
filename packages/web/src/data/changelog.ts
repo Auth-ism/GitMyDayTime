@@ -15,6 +15,19 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.6.0",
+    date: "2026-04-20",
+    bump: "minor",
+    summary: "Geri al genişledi, `?` kısayol ekranı global, bir yıl önce bandı",
+    changes: [
+      { type: "feat", text: "Plan tamamla / geri al — swipe sağ veya tamamla butonu sonrası 'Geri Al' toast ile 5 sn içinde düzeltme" },
+      { type: "feat", text: "Plan silindiğinde checklist içeriği de Geri Al ile birlikte geri geliyor" },
+      { type: "feat", text: "`?` tuşu artık her sayfada çalışıyor — kategorize kısayol ekranı, Esc ile kapanıyor" },
+      { type: "feat", text: "DayView üstünde 'Bir yıl önce bugün' bandı — aynı tarih 1 yıl önceki planlarını aç/kapa" },
+      { type: "perf", text: "Geri Al toast süresi 4sn → 5sn uzatıldı" },
+    ],
+  },
+  {
     version: "4.5.17",
     date: "2026-04-19",
     bump: "patch",

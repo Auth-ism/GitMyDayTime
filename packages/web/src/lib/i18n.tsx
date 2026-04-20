@@ -360,6 +360,20 @@ const translations = {
 
     // Shortcuts
     "shortcuts.title": "Keyboard Shortcuts",
+    "shortcut.sectionActions": "Actions",
+    "shortcut.sectionNavigation": "Navigation",
+    "shortcut.sectionGeneral": "General",
+    "shortcut.plan": "Add plan",
+    "shortcut.note": "Add note",
+    "shortcut.reminder": "Add reminder",
+    "shortcut.search": "Search",
+    "shortcut.palette": "Command palette",
+    "shortcut.showHelp": "Show this help",
+    "shortcut.closeModal": "Close dialog",
+
+    // One year ago
+    "oneYearAgo.title": "One year ago today",
+    "oneYearAgo.summary": "{count} plan · {completed} completed · {duration}",
 
     // Stats new
     "stats.estimateVsActual": "Estimate vs Actual",
@@ -894,6 +908,20 @@ const translations = {
 
     // Shortcuts
     "shortcuts.title": "Klavye Kısayolları",
+    "shortcut.sectionActions": "Eylemler",
+    "shortcut.sectionNavigation": "Gezinti",
+    "shortcut.sectionGeneral": "Genel",
+    "shortcut.plan": "Plan ekle",
+    "shortcut.note": "Not ekle",
+    "shortcut.reminder": "Hatırlatıcı ekle",
+    "shortcut.search": "Arama",
+    "shortcut.palette": "Komut paleti",
+    "shortcut.showHelp": "Bu ekranı göster",
+    "shortcut.closeModal": "Modalı kapat",
+
+    // One year ago
+    "oneYearAgo.title": "Bir yıl önce bugün",
+    "oneYearAgo.summary": "{count} plan · {completed} tamamlandı · {duration}",
 
     // Stats new
     "stats.estimateVsActual": "Tahmin vs Gerçek",

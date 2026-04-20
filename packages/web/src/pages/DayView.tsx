@@ -9,16 +9,16 @@ import TaskItem from "@/components/TaskItem";
 import PlanItem from "@/components/PlanItem";
 import ReminderItem from "@/components/ReminderItem";
 import CarryOverBanner from "@/components/CarryOverBanner";
+import OneYearAgoBanner from "@/components/OneYearAgoBanner";
 import DayViewProjectBanner from "@/components/projects/DayViewProjectBanner";
 import StandupExport from "@/components/StandupExport";
 import PomodoroTimer from "@/components/PomodoroTimer";
 import JournalSection from "@/components/JournalSection";
 import TimelineView from "@/components/TimelineView";
 import TemplatesModal from "@/components/TemplatesModal";
-import ShortcutHelp from "@/components/ShortcutHelp";
 import { showUndoToast } from "@/components/Toast";
 import { AnimatePresence, Reorder, useDragControls, type DragControls } from "framer-motion";
-import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, Keyboard, GripVertical, Timer } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, GripVertical, Timer } from "lucide-react";
 import { todayStr, parseDuration, type PlanItem as PlanItemData } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { useSwipe } from "@/hooks/useSwipe";
@@ -69,7 +69,6 @@ export default function DayView() {
   const [pomodoroTask, setPomodoroTask] = useState<{ id: string; name: string } | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
-  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [copyingDay, setCopyingDay] = useState(false);
   const [pendingComplete, setPendingComplete] = useState<{ id: string; desc: string } | null>(null);
   const [durationInput, setDurationInput] = useState("");
@@ -138,18 +137,39 @@ export default function DayView() {
     const item = dayLog?.plan.find((p) => p.id === id);
     deletePlan.mutate(id);
     if (item) {
-      showUndoToast(`"${description}" silindi`, () => {
-        addPlan.mutate({
+      const snapshotChecklist = item.checklist ?? [];
+      showUndoToast(`"${description}" silindi`, async () => {
+        const newItem = await addPlan.mutateAsync({
           description: item.description,
           category: item.category,
           duration: item.duration ?? undefined,
           scheduledTime: item.scheduledTime ?? undefined,
           itemType: item.itemType ?? "plan",
           priority: item.priority ?? "normal",
-        });
+        }).catch(() => null);
+        if (newItem && snapshotChecklist.length > 0) {
+          for (const c of snapshotChecklist) {
+            addChecklist.mutate({ planId: newItem.id, description: c.description });
+          }
+        }
       });
     }
-  }, [dayLog, deletePlan, addPlan]);
+  }, [dayLog, deletePlan, addPlan, addChecklist]);
+
+  // Complete/uncomplete with undo — snapshots previous state
+  const handleToggleComplete = useCallback((item: PlanItemData, actualDuration?: number) => {
+    const nextCompleted = !item.completed;
+    const payload: Partial<PlanItemData> & { id: string } = { id: item.id, completed: nextCompleted };
+    if (actualDuration !== undefined) payload.actualDuration = actualDuration;
+    updatePlan.mutate(payload);
+
+    const message = nextCompleted
+      ? `"${item.description}" tamamlandı`
+      : `"${item.description}" geri alındı`;
+    showUndoToast(message, () => {
+      updatePlan.mutate({ id: item.id, completed: item.completed });
+    });
+  }, [updatePlan]);
 
   const handleDeleteTask = useCallback((id: string, description: string) => {
     const task = dayLog?.tasks.find((t) => t.id === id);
@@ -222,7 +242,6 @@ export default function DayView() {
       if (el) (el as HTMLInputElement).focus();
     },
     onSearch: () => navigate("/search"),
-    onHelp: () => setShowShortcutHelp((v) => !v),
   }), [navigate]);
 
   useKeyboardShortcuts(shortcutHandlers);
@@ -257,9 +276,6 @@ export default function DayView() {
         </div>
 
         <div className="flex items-center gap-0.5">
-          <button onClick={() => setShowShortcutHelp(true)} className="btn btn-ghost p-2 text-text-tertiary hidden sm:flex" aria-label="Keyboard shortcuts">
-            <Keyboard size={14} />
-          </button>
           <button onClick={handleCopyYesterday} disabled={copyingDay} className="btn btn-ghost p-2 text-text-tertiary" title="Dunden kopyala">
             <Copy size={14} />
           </button>
@@ -348,6 +364,9 @@ export default function DayView() {
       {/* Carry over banner */}
       <CarryOverBanner date={date} />
 
+      {/* One year ago banner */}
+      <OneYearAgoBanner date={date} />
+
       {/* Pomodoro timer */}
       <AnimatePresence>
         {pomodoroTask && (
@@ -424,16 +443,12 @@ export default function DayView() {
                 >
                   {(controls) => (
                     <SwipeableItem
-                      onSwipeRight={() => updatePlan.mutate({ id: item.id, completed: !item.completed })}
+                      onSwipeRight={() => handleToggleComplete(item)}
                       onSwipeLeft={() => handleDeletePlan(item.id, item.description)}
                     >
                       <PlanItem
                         item={item}
-                        onToggle={(actualDuration) => updatePlan.mutate({
-                          id: item.id,
-                          completed: !item.completed,
-                          ...(actualDuration !== undefined ? { actualDuration } : {}),
-                        })}
+                        onToggle={(actualDuration) => handleToggleComplete(item, actualDuration)}
                         onRequestComplete={() => {
                           setPendingComplete({ id: item.id, desc: item.description });
                           setDurationInput("");
@@ -551,9 +566,6 @@ export default function DayView() {
             }}
           />
         )}
-        {showShortcutHelp && (
-          <ShortcutHelp onClose={() => setShowShortcutHelp(false)} />
-        )}
       </AnimatePresence>
 
       {/* Duration overlay — fixed bottom bar, list layout etkilenmez */}
@@ -573,7 +585,8 @@ export default function DayView() {
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 const dur = durationInput ? parseDuration(durationInput) : undefined;
-                updatePlan.mutate({ id: pendingComplete.id, completed: true, ...(dur !== undefined ? { actualDuration: dur } : {}) });
+                const pending = dayLog?.plan.find((p) => p.id === pendingComplete.id);
+                if (pending) handleToggleComplete(pending, dur);
                 setPendingComplete(null);
                 setDurationInput("");
               }
@@ -586,7 +599,8 @@ export default function DayView() {
           <button
             onClick={() => {
               const dur = durationInput ? parseDuration(durationInput) : undefined;
-              updatePlan.mutate({ id: pendingComplete.id, completed: true, ...(dur !== undefined ? { actualDuration: dur } : {}) });
+              const pending = dayLog?.plan.find((p) => p.id === pendingComplete.id);
+              if (pending) handleToggleComplete(pending, dur);
               setPendingComplete(null);
               setDurationInput("");
             }}
@@ -596,7 +610,8 @@ export default function DayView() {
           </button>
           <button
             onClick={() => {
-              updatePlan.mutate({ id: pendingComplete.id, completed: true });
+              const pending = dayLog?.plan.find((p) => p.id === pendingComplete.id);
+              if (pending) handleToggleComplete(pending);
               setPendingComplete(null);
               setDurationInput("");
             }}

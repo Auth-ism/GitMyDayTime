@@ -29,7 +29,7 @@ export function showToast(message: string, type: ToastType = "info", duration = 
 export function showUndoToast(message: string, onUndo: () => void) {
   const id = makeId();
   _addToast?.({ id, message, type: "undo", onUndo });
-  _timers.set(id, setTimeout(() => _dismissToast?.(id), 4000));
+  _timers.set(id, setTimeout(() => _dismissToast?.(id), 5000));
 }
 
 export function showErrorToast(message: string) {

@@ -485,6 +485,36 @@ export async function moveTask(
   return { ...rows[0], timestamp: serializeTimestamp(rows[0].timestamp) } as TaskEntry;
 }
 
+export async function getOneYearAgoPlan(userId: string, date: string): Promise<{ date: string; plan: PlanItem[] }> {
+  const { rows } = await pool.query(
+    `SELECT id, description, category, estimated_duration AS "duration",
+            completed, sort_order AS "order",
+            scheduled_time AS "scheduledTime",
+            actual_duration AS "actualDuration",
+            item_type AS "itemType",
+            priority,
+            ($1::date - INTERVAL '1 year')::date AS _one_year_ago
+     FROM plan_items
+     WHERE user_id = $2
+       AND date = ($1::date - INTERVAL '1 year')::date
+       AND item_type = 'plan'
+     ORDER BY sort_order`,
+    [date, userId]
+  );
+  const oneYearAgoDate = rows[0]?._one_year_ago
+    ? formatDate(rows[0]._one_year_ago)
+    : computeOneYearAgoStr(date);
+  return { date: oneYearAgoDate, plan: rows.map(toPlanItem) };
+}
+
+function computeOneYearAgoStr(date: string): string {
+  const [y, m, d] = date.split("-").map((s) => parseInt(s, 10));
+  const prevYear = y - 1;
+  // Feb 29 → Feb 28 previous year
+  if (m === 2 && d === 29) return `${prevYear}-02-28`;
+  return `${prevYear}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 export async function getIncompleteItems(userId: string, date: string): Promise<PlanItem[]> {
   const { rows } = await pool.query(
     `SELECT id, description, category, estimated_duration AS "duration",
