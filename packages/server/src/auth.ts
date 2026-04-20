@@ -195,6 +195,20 @@ export async function authMiddleware(
     }
   }
 
+  // 3. Try Authorization: Bearer <personal_access_token>
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const raw = authHeader.slice(7).trim();
+    const { resolveApiToken, touchApiToken } = await import("./modules/apiTokens/storage.js");
+    const resolved = await resolveApiToken(raw);
+    if (resolved) {
+      req.userId = resolved.userId;
+      touchApiToken(resolved.tokenId); // fire-and-forget
+      next();
+      return;
+    }
+  }
+
   res.status(401).json({ error: "Unauthorized" });
 }
 

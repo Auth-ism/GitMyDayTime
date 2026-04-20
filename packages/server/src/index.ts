@@ -29,6 +29,7 @@ import projectRoutes from "./modules/pm/routes.js";
 import spaceRoutes from "./modules/spaces/routes.js";
 import notificationRoutes from "./modules/notifications/routes.js";
 import { publicRouter as calendarPublicRoutes, authedRouter as calendarAuthedRoutes } from "./modules/calendar/routes.js";
+import apiTokenRoutes from "./modules/apiTokens/routes.js";
 import { startScheduler } from "./scheduler.js";
 
 const app = express();
@@ -193,6 +194,10 @@ app.use("/api/notifications", notificationRoutes);
 // Calendar token management (authed)
 const rlCalendarMgmt = rl(10, 60_000, "calendar-mgmt");
 app.use("/api/calendar", rlCalendarMgmt, calendarAuthedRoutes);
+
+// Personal Access Tokens — session auth only (cannot manage tokens via token)
+const rlApiTokens = rl(10, 60_000, "api-tokens");
+app.use("/api/profile/api-tokens", rlApiTokens, apiTokenRoutes);
 
 // Global async error handler — Express 4 doesn't catch async errors
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -427,4 +427,19 @@ export const api = {
 
   revokeCalendarToken: (id: string) =>
     request<void>(`/calendar/tokens/${id}`, { method: "DELETE" }),
+
+  // Personal Access Tokens
+  listApiTokens: () =>
+    request<{ tokens: Array<{ id: string; name: string; createdAt: string; lastUsedAt: string | null }> }>(
+      `/profile/api-tokens`,
+    ),
+
+  createApiToken: (name: string) =>
+    request<{ id: string; token: string; name: string }>(`/profile/api-tokens`, {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+
+  revokeApiToken: (id: string) =>
+    request<void>(`/profile/api-tokens/${id}`, { method: "DELETE" }),
 };

@@ -15,6 +15,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CATEGORY_COLORS, type UpdateProfileInput } from "@gmd/shared";
 import { PRESET_COLORS } from "@/components/TaskForm";
 import CalendarSubscribeSection from "@/components/CalendarSubscribeSection";
+import ApiTokensSection from "@/components/ApiTokensSection";
 
 const TIMEZONES = [
   "Europe/Istanbul", "Europe/London", "Europe/Berlin", "Europe/Paris",
@@ -692,6 +693,9 @@ export default function ProfilePage() {
 
           {/* Calendar subscribe */}
           <CalendarSubscribeSection />
+
+          {/* API Tokens (PAT) */}
+          <ApiTokensSection />
 
           <SaveBar onClick={handleSave} saving={saving} saved={saved} error={error} t={t} />
         </motion.div>

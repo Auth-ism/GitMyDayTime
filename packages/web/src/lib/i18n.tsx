@@ -394,6 +394,26 @@ const translations = {
     "calendar.neverUsed": "Never used yet",
     "calendar.rateLimited": "Too many requests — please wait a minute and try again",
 
+    // API tokens (PAT)
+    "apiToken.title": "API Tokens",
+    "apiToken.desc": "Use these tokens to call the GMD API from scripts or integrations (e.g. Claude). Send as 'Authorization: Bearer <token>' header.",
+    "apiToken.namePlaceholder": "Token name (e.g. 'Claude PM')",
+    "apiToken.createNew": "Create",
+    "apiToken.creating": "Creating...",
+    "apiToken.copy": "Copy",
+    "apiToken.copied": "Copied",
+    "apiToken.done": "Done",
+    "apiToken.copyFailed": "Could not copy to clipboard",
+    "apiToken.createFailed": "Failed to create token",
+    "apiToken.revoked": "Token revoked",
+    "apiToken.revokeFailed": "Failed to revoke token",
+    "apiToken.revoke": "Revoke",
+    "apiToken.rateLimited": "Too many requests — please wait a minute",
+    "apiToken.onceWarning": "Copy this token now — it will only be shown once. Treat it like a password.",
+    "apiToken.createdAt": "Created {date}",
+    "apiToken.lastUsedAt": "Last used {date}",
+    "apiToken.neverUsed": "Never used yet",
+
     // Stats new
     "stats.estimateVsActual": "Estimate vs Actual",
     "stats.avgEstimate": "Avg Estimate",
@@ -963,6 +983,26 @@ const translations = {
     "calendar.lastUsedAt": "Son kullanım {date}",
     "calendar.neverUsed": "Henüz kullanılmadı",
     "calendar.rateLimited": "Çok fazla istek — 1 dakika bekleyip tekrar deneyin",
+
+    // API tokens (PAT)
+    "apiToken.title": "API Token'ları",
+    "apiToken.desc": "Script veya entegrasyonlardan (örn. Claude) GMD API'sini çağırmak için bu token'ları kullan. 'Authorization: Bearer <token>' header olarak gönder.",
+    "apiToken.namePlaceholder": "Token adı (örn. 'Claude PM')",
+    "apiToken.createNew": "Oluştur",
+    "apiToken.creating": "Oluşturuluyor...",
+    "apiToken.copy": "Kopyala",
+    "apiToken.copied": "Kopyalandı",
+    "apiToken.done": "Tamam",
+    "apiToken.copyFailed": "Panoya kopyalanamadı",
+    "apiToken.createFailed": "Token oluşturulamadı",
+    "apiToken.revoked": "Token iptal edildi",
+    "apiToken.revokeFailed": "Token iptal edilemedi",
+    "apiToken.revoke": "İptal et",
+    "apiToken.rateLimited": "Çok fazla istek — 1 dakika bekle",
+    "apiToken.onceWarning": "Bu token'ı şimdi kopyala — sadece bir kez gösterilir. Şifre gibi sakla.",
+    "apiToken.createdAt": "Oluşturuldu {date}",
+    "apiToken.lastUsedAt": "Son kullanım {date}",
+    "apiToken.neverUsed": "Henüz kullanılmadı",
 
     // Stats new
     "stats.estimateVsActual": "Tahmin vs Gerçek",

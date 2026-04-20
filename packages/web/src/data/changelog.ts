@@ -15,6 +15,18 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.9.0",
+    date: "2026-04-20",
+    bump: "minor",
+    summary: "API Token sistemi — Claude PM entegrasyonu için Personal Access Token",
+    changes: [
+      { type: "feat", text: "Profile → API Tokens: isimlendirilmiş kişisel erişim token'ları oluştur, iptal et" },
+      { type: "feat", text: "Authorization: Bearer <token> ile tüm API endpoint'leri kullanılabilir" },
+      { type: "feat", text: "Token yönetimi sadece browser session üzerinden — stolen PAT başka token oluşturamaz" },
+      { type: "feat", text: "scripts/pm-cli.sh — Claude'un bug raporlarını otomatik PM issue'ya çevirmesi için CLI" },
+    ],
+  },
+  {
     version: "4.8.1",
     date: "2026-04-20",
     bump: "patch",
