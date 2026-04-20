@@ -694,8 +694,8 @@ export default function ProfilePage() {
           {/* Calendar subscribe */}
           <CalendarSubscribeSection />
 
-          {/* API Tokens (PAT) */}
-          <ApiTokensSection />
+          {/* API Tokens (PAT) — admin only */}
+          {profile?.isAdmin && <ApiTokensSection />}
 
           <SaveBar onClick={handleSave} saving={saving} saved={saved} error={error} t={t} />
         </motion.div>

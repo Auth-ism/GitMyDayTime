@@ -81,6 +81,9 @@ function toUserProfile(r: any): UserProfile {
     fontSize: (r.font_size ?? "normal") as UserProfile["fontSize"],
     onboarded: r.onboarded ?? false,
     weeklyRecapEnabled: r.weekly_recap_enabled ?? false,
+    isAdmin: typeof r.email === "string"
+      && typeof process.env.ADMIN_EMAIL === "string"
+      && r.email.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase(),
     createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   };
 }

@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod";
 import { zodMsg } from "../../validation.js";
+import { pool } from "../../db.js";
 import { listApiTokens, createApiToken, revokeApiToken } from "./storage.js";
 
 const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
@@ -20,6 +21,19 @@ router.use((req, res, next) => {
   }
   next();
 });
+
+// Admin-only — private app, no public PAT usage
+const adminOnly = wrap(async (req, res, next) => {
+  const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
+  if (!adminEmail) { res.status(403).json({ error: "Admin not configured" }); return; }
+  const { rows } = await pool.query("SELECT email FROM users WHERE id = $1", [req.userId]);
+  if (!rows[0] || (rows[0].email as string).toLowerCase() !== adminEmail) {
+    res.status(403).json({ error: "Admin only" });
+    return;
+  }
+  next();
+});
+router.use(adminOnly);
 
 router.get("/", wrap(async (req, res) => {
   const tokens = await listApiTokens(req.userId!);

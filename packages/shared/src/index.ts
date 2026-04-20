@@ -270,6 +270,7 @@ export const UserProfileSchema = z.object({
   fontSize: z.enum(["small", "normal", "large", "xlarge"]),
   onboarded: z.boolean(),
   weeklyRecapEnabled: z.boolean(),
+  isAdmin: z.boolean(),
   createdAt: z.string(),
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;

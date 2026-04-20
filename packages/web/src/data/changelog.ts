@@ -15,6 +15,16 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.9.2",
+    date: "2026-04-20",
+    bump: "patch",
+    summary: "API Token bölümü admin'e özel — diğer kullanıcılarda gizli",
+    changes: [
+      { type: "fix", text: "Profile → API Tokens bölümü artık sadece admin hesabında görünüyor" },
+      { type: "fix", text: "Backend PAT yönetimi endpoint'leri admin-only — defense in depth" },
+    ],
+  },
+  {
     version: "4.9.0",
     date: "2026-04-20",
     bump: "minor",
