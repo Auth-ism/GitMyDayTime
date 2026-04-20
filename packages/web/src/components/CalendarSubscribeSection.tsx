@@ -34,7 +34,12 @@ export default function CalendarSubscribeSection() {
       setCreatedUrl(res.url);
       qc.invalidateQueries({ queryKey: ["calendar-tokens"] });
     },
-    onError: () => showErrorToast(t("calendar.createFailed" as any)),
+    onError: (err: unknown) => {
+      const msg = err instanceof Error && err.message.startsWith("429")
+        ? t("calendar.rateLimited" as any)
+        : t("calendar.createFailed" as any);
+      showErrorToast(msg);
+    },
   });
 
   const revokeMutation = useMutation({
@@ -43,7 +48,12 @@ export default function CalendarSubscribeSection() {
       qc.invalidateQueries({ queryKey: ["calendar-tokens"] });
       showSuccessToast(t("calendar.revoked" as any));
     },
-    onError: () => showErrorToast(t("calendar.revokeFailed" as any)),
+    onError: (err: unknown) => {
+      const msg = err instanceof Error && err.message.startsWith("429")
+        ? t("calendar.rateLimited" as any)
+        : t("calendar.revokeFailed" as any);
+      showErrorToast(msg);
+    },
   });
 
   const handleCopy = async () => {

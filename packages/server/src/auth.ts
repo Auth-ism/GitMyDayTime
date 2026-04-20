@@ -152,7 +152,8 @@ export function getAuthLimiter(opts?: { skip?: (req: Request) => boolean }) {
 }
 
 export function getGlobalLimiter() {
-  return createRateLimiter(60 * 1000, 300, { prefix: "global" });
+  // 800/min per IP — covers notifications polling + SSE reconnects + multi-tab (gmd + pm)
+  return createRateLimiter(60 * 1000, 800, { prefix: "global" });
 }
 
 // Verify JWT and return userId, or null

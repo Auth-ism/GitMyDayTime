@@ -392,6 +392,7 @@ const translations = {
     "calendar.createdAt": "Created {date}",
     "calendar.lastUsedAt": "Last used {date}",
     "calendar.neverUsed": "Never used yet",
+    "calendar.rateLimited": "Too many requests — please wait a minute and try again",
 
     // Stats new
     "stats.estimateVsActual": "Estimate vs Actual",
@@ -961,6 +962,7 @@ const translations = {
     "calendar.createdAt": "Oluşturuldu {date}",
     "calendar.lastUsedAt": "Son kullanım {date}",
     "calendar.neverUsed": "Henüz kullanılmadı",
+    "calendar.rateLimited": "Çok fazla istek — 1 dakika bekleyip tekrar deneyin",
 
     // Stats new
     "stats.estimateVsActual": "Tahmin vs Gerçek",

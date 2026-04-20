@@ -15,6 +15,16 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.8.1",
+    date: "2026-04-20",
+    bump: "patch",
+    summary: "Rate limit düzeltmesi — 300 → 800/dk, takvim abonelik 429 hatası giderildi",
+    changes: [
+      { type: "fix", text: "Global rate limit 300 → 800 req/dk/IP — polling + multi-tab (gmd+pm) için gerçekçi limit" },
+      { type: "fix", text: "Takvim abonelik linki oluşturmada 429 hatası düzeldi — kullanıcıya özel mesaj gösteriliyor" },
+    ],
+  },
+  {
     version: "4.8.0",
     date: "2026-04-20",
     bump: "minor",
