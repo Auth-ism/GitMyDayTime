@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../../auth.js";
+import { subscribeUserEvents } from "../../redis.js";
 import {
   getUserNotifications, getUnreadCount,
   markNotificationRead, markAllRead,
@@ -31,5 +32,21 @@ router.patch("/read-all", wrap(async (req: any, res: any) => {
   await markAllRead(req.userId!);
   res.json({ ok: true });
 }));
+
+// SSE — per-user notification stream
+router.get("/events", (req: any, res: any) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+  res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+
+  const unsub = subscribeUserEvents(req.userId!, (msg) => {
+    res.write(`data: ${msg}\n\n`);
+  });
+  const hb = setInterval(() => res.write(": heartbeat\n\n"), 30_000);
+  req.on("close", () => { clearInterval(hb); unsub(); });
+});
 
 export default router;

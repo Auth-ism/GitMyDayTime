@@ -1,6 +1,61 @@
 import crypto from "node:crypto";
 import { pool } from "../../db.js";
 
+export type ApiKeyRequestStatus = "pending" | "approved" | "rejected";
+
+export interface ApiKeyRequest {
+  id: string;
+  userId: string;
+  reason: string | null;
+  status: ApiKeyRequestStatus;
+  requestedAt: string;
+  reviewedAt: string | null;
+}
+
+export async function getApiKeyRequest(userId: string): Promise<ApiKeyRequest | null> {
+  const { rows } = await pool.query(
+    `SELECT id, user_id AS "userId", reason, status,
+            requested_at AS "requestedAt", reviewed_at AS "reviewedAt"
+     FROM api_key_requests
+     WHERE user_id = $1
+     ORDER BY requested_at DESC LIMIT 1`,
+    [userId],
+  );
+  if (!rows[0]) return null;
+  return {
+    ...rows[0],
+    requestedAt: rows[0].requestedAt instanceof Date ? rows[0].requestedAt.toISOString() : String(rows[0].requestedAt),
+    reviewedAt: rows[0].reviewedAt ? (rows[0].reviewedAt instanceof Date ? rows[0].reviewedAt.toISOString() : String(rows[0].reviewedAt)) : null,
+  };
+}
+
+export async function createApiKeyRequest(userId: string, reason?: string): Promise<{ id: string; reviewToken: string }> {
+  const reviewToken = crypto.randomBytes(32).toString("hex");
+  const { rows } = await pool.query(
+    `INSERT INTO api_key_requests (user_id, reason, review_token)
+     VALUES ($1, $2, $3)
+     RETURNING id`,
+    [userId, reason ?? null, reviewToken],
+  );
+  return { id: rows[0].id, reviewToken };
+}
+
+export async function approveApiKeyRequest(requestId: string, reviewToken: string): Promise<{ userId: string; username: string; email: string } | null> {
+  const { rows } = await pool.query(
+    `UPDATE api_key_requests SET status = 'approved', reviewed_at = NOW(), review_token = NULL
+     WHERE id = $1 AND review_token = $2 AND status = 'pending'
+     RETURNING user_id AS "userId"`,
+    [requestId, reviewToken],
+  );
+  if (!rows[0]) return null;
+  const { rows: userRows } = await pool.query(
+    `SELECT username, email FROM users WHERE id = $1`,
+    [rows[0].userId],
+  );
+  if (!userRows[0]) return null;
+  return { userId: rows[0].userId, username: userRows[0].username, email: userRows[0].email };
+}
+
 export interface ApiTokenRow {
   id: string;
   name: string;
@@ -67,9 +122,10 @@ export async function resolveApiToken(raw: string): Promise<{ userId: string; to
   if (!isApiTokenShape(raw)) return null;
   const hash = hashToken(raw);
   const { rows } = await pool.query(
-    `SELECT id, user_id AS "userId"
-     FROM user_api_tokens
-     WHERE token_hash = $1 AND revoked_at IS NULL
+    `SELECT t.id, t.user_id AS "userId"
+     FROM user_api_tokens t
+     JOIN users u ON u.id = t.user_id
+     WHERE t.token_hash = $1 AND t.revoked_at IS NULL AND u.deleted_at IS NULL
      LIMIT 1`,
     [hash],
   );

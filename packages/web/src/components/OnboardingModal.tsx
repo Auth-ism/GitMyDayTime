@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { Clock, CalendarDays, Layers, BarChart3, Search, X, ChevronRight, ChevronLeft } from "lucide-react";
+import { Clock, CalendarDays, BarChart3, Search, X, ChevronRight, ChevronLeft, Tag } from "lucide-react";
+import { DEFAULT_CATEGORIES, CATEGORY_COLORS, type Category } from "@gmd/shared";
+import { useCategoryLabel } from "@/lib/i18n";
+import { cn } from "@/lib/cn";
 
 const STEPS = [
   {
@@ -17,13 +20,6 @@ const STEPS = [
     desc: "Tüm haftana tek ekranda bak. Günler arası taşı, geçmiş günleri gözden geçir.",
   },
   {
-    icon: Layers,
-    color: "text-purple-400",
-    bg: "bg-purple-400/10",
-    title: "Projeler",
-    desc: "Jira benzeri proje yönetimi. Kanban board, sprint'ler, issue'lar ve takım üyeleri. Görevleri kişisel planına da ekleyebilirsin.",
-  },
-  {
     icon: BarChart3,
     color: "text-green-400",
     bg: "bg-green-400/10",
@@ -37,20 +33,38 @@ const STEPS = [
     title: "Arama",
     desc: "Tüm günlerdeki plan ve notlarında ara. Geçmişte ne yaptığını kolayca bul.",
   },
+  {
+    icon: Tag,
+    color: "text-pink-400",
+    bg: "bg-pink-400/10",
+    title: "Kategoriler",
+    desc: "Hangi default kategorileri kullanmak istersin? İhtiyacın olmayanları kapat — istediğin zaman profilinden tekrar açabilirsin. Kendi kategorilerini de istediğin gibi ekleyebilirsin.",
+    isCategoryStep: true as const,
+  },
 ];
 
 interface Props {
-  onClose: () => void;
+  // Resolves with the list of category keys the user opted out of (empty array = keep all).
+  onClose: (hiddenCategories?: string[]) => void;
 }
 
 export default function OnboardingModal({ onClose }: Props) {
+  const getCatLabel = useCategoryLabel();
   const [step, setStep] = useState(0);
+  // All defaults selected by default → user deselects ones they don't want.
+  const [selectedDefaults, setSelectedDefaults] = useState<string[]>(DEFAULT_CATEGORIES as unknown as string[]);
   const current = STEPS[step];
   const Icon = current.icon;
   const isLast = step === STEPS.length - 1;
+  const isCategoryStep = "isCategoryStep" in current && current.isCategoryStep;
+
+  const toggleDefault = (key: string) => {
+    setSelectedDefaults(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  };
 
   const finish = () => {
-    onClose();
+    const hidden = (DEFAULT_CATEGORIES as unknown as string[]).filter(k => !selectedDefaults.includes(k));
+    onClose(hidden);
   };
 
   return (
@@ -74,6 +88,33 @@ export default function OnboardingModal({ onClose }: Props) {
           <h2 className="font-bold text-text text-lg">{current.title}</h2>
           <p className="text-sm text-text-secondary leading-relaxed">{current.desc}</p>
         </div>
+
+        {isCategoryStep && (
+          <div className="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto px-1">
+            {(DEFAULT_CATEGORIES as unknown as string[]).map((key) => {
+              const isOn = selectedDefaults.includes(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleDefault(key)}
+                  className={cn(
+                    "flex items-center gap-2 px-2.5 py-2 rounded-md text-xs font-medium border transition-colors text-left",
+                    isOn
+                      ? "border-accent bg-accent/10 text-text"
+                      : "border-border bg-bg-secondary text-text-tertiary hover:text-text-secondary"
+                  )}
+                >
+                  <span
+                    className={cn("w-2.5 h-2.5 rounded-full shrink-0", !isOn && "opacity-50")}
+                    style={{ backgroundColor: CATEGORY_COLORS[key as Category] }}
+                  />
+                  <span className={cn("flex-1 truncate", !isOn && "line-through")}>{getCatLabel(key)}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Dots */}
         <div className="flex items-center justify-center gap-1.5">

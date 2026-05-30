@@ -47,6 +47,13 @@ export default defineConfig({
         importScripts: ["/sw-push.js"],
         runtimeCaching: [
           {
+            // All API requests always go to network — never cache
+            // Using a function so workbox matches ALL methods (not just GET)
+            // and checks pathname instead of full URL (regex can't match full URL)
+            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
+            handler: "NetworkOnly",
+          },
+          {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",
             options: {

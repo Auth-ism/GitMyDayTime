@@ -1,32 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Bug, Zap, BookOpen, CheckSquare, Minus, X } from "lucide-react";
+import { Search, X, Calendar } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import { motion } from "framer-motion";
 
-const TYPE_ICONS = {
-  epic:     Zap,
-  story:    BookOpen,
-  task:     CheckSquare,
-  bug:      Bug,
-  sub_task: Minus,
-} as const;
-
-const TYPE_COLORS = {
-  epic:     "text-purple-400",
-  story:    "text-blue-400",
-  task:     "text-green-400",
-  bug:      "text-red-400",
-  sub_task: "text-text-tertiary",
-} as const;
-
-interface SearchIssue {
-  id: string; issueKey: string; title: string;
-  projectId: string; projectName: string;
-  priority: string; issueType: string;
-  statusName: string; statusColor: string;
+interface SearchResult {
+  id: string;
+  description: string;
+  category: string;
+  date: string;
 }
 
 interface Props {
@@ -36,7 +20,7 @@ interface Props {
 
 export default function CommandPalette({ open, onClose }: Props) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchIssue[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [selected, setSelected] = useState(0);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -58,7 +42,15 @@ export default function CommandPalette({ open, onClose }: Props) {
       setLoading(true);
       try {
         const data = await api.search(query);
-        setResults(data.issues.slice(0, 8));
+        const combined: SearchResult[] = [
+          ...(data.plans ?? []).map((p: { id: string; description: string; category: string; date: string }) => ({
+            id: p.id, description: p.description, category: p.category, date: p.date,
+          })),
+          ...(data.tasks ?? []).map((t: { id: string; description: string; category: string; date: string }) => ({
+            id: t.id, description: t.description, category: t.category, date: t.date,
+          })),
+        ].slice(0, 8);
+        setResults(combined);
         setSelected(0);
       } catch {
         setResults([]);
@@ -69,8 +61,8 @@ export default function CommandPalette({ open, onClose }: Props) {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const go = useCallback((issue: SearchIssue) => {
-    navigate(`/projects/${issue.projectId}/issues/${issue.id}`);
+  const go = useCallback((item: SearchResult) => {
+    navigate(`/day/${item.date}`);
     onClose();
   }, [navigate, onClose]);
 
@@ -95,7 +87,6 @@ export default function CommandPalette({ open, onClose }: Props) {
         className="w-full max-w-lg bg-bg-elevated border border-border rounded-xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        {/* Search input */}
         <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-border">
           <Search size={15} className="text-text-tertiary flex-shrink-0" />
           <input
@@ -116,38 +107,24 @@ export default function CommandPalette({ open, onClose }: Props) {
           </button>
         </div>
 
-        {/* Results */}
         {results.length > 0 && (
           <ul className="py-1 max-h-[55vh] overflow-y-auto" role="listbox">
-            {results.map((issue, i) => {
-              const Icon = TYPE_ICONS[issue.issueType as keyof typeof TYPE_ICONS] ?? CheckSquare;
-              const colorCls = TYPE_COLORS[issue.issueType as keyof typeof TYPE_COLORS] ?? "text-text-tertiary";
-              return (
-                <li key={issue.id} role="option" aria-selected={i === selected}>
-                  <button
-                    onClick={() => go(issue)}
-                    onMouseEnter={() => setSelected(i)}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors",
-                      i === selected ? "bg-accent/10" : "hover:bg-bg-secondary"
-                    )}
-                  >
-                    <Icon size={12} className={cn("flex-shrink-0 mt-px", colorCls)} />
-                    <span className="text-[10px] font-mono text-text-tertiary flex-shrink-0 w-[4.5rem]">{issue.issueKey}</span>
-                    <span className="text-xs text-text flex-1 truncate">{issue.title}</span>
-                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                      <span className="text-[10px] text-text-tertiary hidden sm:inline">{issue.projectName}</span>
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded border border-border/60 font-medium"
-                        style={{ color: issue.statusColor }}
-                      >
-                        {issue.statusName}
-                      </span>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
+            {results.map((item, i) => (
+              <li key={item.id} role="option" aria-selected={i === selected}>
+                <button
+                  onClick={() => go(item)}
+                  onMouseEnter={() => setSelected(i)}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors",
+                    i === selected ? "bg-accent/10" : "hover:bg-bg-secondary"
+                  )}
+                >
+                  <Calendar size={12} className="flex-shrink-0 text-text-tertiary mt-px" />
+                  <span className="text-xs text-text flex-1 truncate">{item.description}</span>
+                  <span className="text-[10px] text-text-tertiary flex-shrink-0">{item.date}</span>
+                </button>
+              </li>
+            ))}
           </ul>
         )}
 
@@ -159,7 +136,6 @@ export default function CommandPalette({ open, onClose }: Props) {
           <p className="px-4 py-4 text-xs text-text-tertiary text-center">{t("cmd.hint" as any)}</p>
         )}
 
-        {/* Footer hints — desktop only */}
         <div className="px-3.5 py-2 border-t border-border hidden sm:flex items-center gap-4 text-[10px] text-text-tertiary">
           <span><kbd className="font-mono bg-bg-secondary border border-border rounded px-1 py-0.5">↑↓</kbd> {t("cmd.navigate" as any)}</span>
           <span><kbd className="font-mono bg-bg-secondary border border-border rounded px-1 py-0.5">↵</kbd> {t("cmd.open" as any)}</span>

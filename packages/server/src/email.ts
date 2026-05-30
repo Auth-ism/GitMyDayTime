@@ -255,6 +255,64 @@ export async function sendFeedbackEmail(data: {
   });
 }
 
+export async function sendApiKeyRequestEmail(
+  user: { email: string; username: string },
+  requestId: string,
+  reviewToken: string,
+  reason?: string | null,
+): Promise<void> {
+  const approveUrl = `${APP_URL}/api/profile/api-key-requests/${requestId}/approve?token=${reviewToken}`;
+  const body = `
+    <p style="margin:0 0 4px;font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:1px;font-weight:600;">API Key Talebi</p>
+    <p style="margin:0 0 20px;font-size:18px;font-weight:600;color:#f0f0f0;">${user.username} API key istiyor</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:20px;width:100%;">
+      <tr>
+        <td style="padding:8px 0;color:#a1a1aa;font-size:13px;width:100px;">Kullanıcı</td>
+        <td style="padding:8px 0;color:#f0f0f0;font-size:13px;font-weight:500;">${user.username}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:#a1a1aa;font-size:13px;border-top:1px solid #27272a;">Email</td>
+        <td style="padding:8px 0;color:#71717a;font-size:13px;border-top:1px solid #27272a;">${user.email}</td>
+      </tr>
+      ${reason ? `
+      <tr>
+        <td style="padding:8px 0;color:#a1a1aa;font-size:13px;border-top:1px solid #27272a;vertical-align:top;">Amaç</td>
+        <td style="padding:8px 0;color:#f0f0f0;font-size:13px;line-height:1.6;border-top:1px solid #27272a;">${reason}</td>
+      </tr>` : ""}
+    </table>
+    ${button(approveUrl, "API Key Onayla", "#4ade80", "#09090b")}
+  `;
+  await resend.emails.send({
+    from: FROM,
+    to: ADMIN_EMAIL,
+    subject: `GMD API Key Talebi: ${user.username}`,
+    html: baseTemplate(body, `${user.username} API key talep etti`),
+  });
+}
+
+export async function sendApiKeyApprovedEmail(
+  user: { email: string; username: string },
+  rawToken: string,
+): Promise<void> {
+  const body = `
+    <p style="margin:0 0 4px;font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:1px;font-weight:600;">API Key Onaylandı</p>
+    <p style="margin:0 0 12px;font-size:18px;font-weight:600;color:#f0f0f0;">API key'in hazır, ${user.username}!</p>
+    <p style="margin:0 0 16px;font-size:13px;color:#a1a1aa;line-height:1.6;">API key'ini aşağıda görebilirsin. Güvenli bir yere kaydet — bu mail tekrar gönderilmeyecek.</p>
+    <div style="background:#09090b;border:1px solid #27272a;border-radius:8px;padding:14px;margin-bottom:20px;">
+      <p style="margin:0 0 6px;font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;">API Key</p>
+      <p style="margin:0;font-size:12px;color:#4ade80;font-family:monospace;word-break:break-all;">${rawToken}</p>
+    </div>
+    <p style="margin:0 0 16px;font-size:12px;color:#71717a;">Ayarlar → API Tokens bölümünden token'larını yönetebilirsin.</p>
+    ${button(APP_URL + "/profile", "Ayarlara Git")}
+  `;
+  await resend.emails.send({
+    from: FROM,
+    to: user.email,
+    subject: "GMD API Key'in Hazır",
+    html: baseTemplate(body, "API key'in onaylandı"),
+  });
+}
+
 export async function sendVerificationEmail(
   user: { email: string; username: string },
   token: string

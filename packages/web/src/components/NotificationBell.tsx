@@ -42,9 +42,47 @@ export default function NotificationBell() {
   const { data } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => api.getNotifications(),
-    staleTime: 5_000,
-    refetchInterval: 10_000,
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000, // güvenlik ağı; SSE event'leri canlı invalidate ediyor
   });
+
+  // SSE — server pushes on create/read so we don't poll.
+  // Manual reconnect with exponential backoff so a transient 429 doesn't loop
+  // (browser default reconnects every 3s which would spam any rate limiter).
+  useEffect(() => {
+    let es: EventSource | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
+    let cancelled = false;
+
+    const connect = () => {
+      if (cancelled) return;
+      es = new EventSource("/api/notifications/events", { withCredentials: true });
+      es.onopen = () => { attempt = 0; };
+      es.onmessage = (e) => {
+        try {
+          const ev = JSON.parse(e.data);
+          if (ev.type === "connected") return;
+          qc.invalidateQueries({ queryKey: ["notifications"] });
+        } catch { /* ignore malformed */ }
+      };
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        if (cancelled) return;
+        attempt++;
+        const delay = Math.min(60_000, 2_000 * 2 ** Math.min(attempt - 1, 5)); // 2s,4s,8s,16s,32s,60s cap
+        retryTimer = setTimeout(connect, delay);
+      };
+    };
+
+    connect();
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      es?.close();
+    };
+  }, [qc]);
 
   const markRead = useMutation({
     mutationFn: (id: string) => api.markRead(id),

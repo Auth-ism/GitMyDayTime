@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Clock, Timer, MessageSquare, ListTodo, Bell, ChevronDown } from "lucide-react";
-import { parseDuration, type Category, type ItemType, type PriorityType } from "@gmd/shared";
-import { useI18n, useCategoryLabel } from "@/lib/i18n";
-import { useCategories } from "@/hooks/useCategories";
+import { Plus, Clock, MessageSquare, ListTodo, Bell, ChevronDown } from "lucide-react";
+import { type Category, type ItemType, type PriorityType } from "@gmd/shared";
+import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
+import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/cn";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -15,54 +15,45 @@ interface Props {
   autoFocus?: boolean;
 }
 
-const QUICK_DURATIONS = [
-  { label: "15m", value: 15 },
-  { label: "30m", value: 30 },
-  { label: "1h", value: 60 },
-  { label: "1.5h", value: 90 },
-  { label: "2h", value: 120 },
-];
-
 export const PRESET_COLORS = [
   "#ef4444", "#f97316", "#f59e0b", "#22c55e", "#06b6d4",
   "#3b82f6", "#8b5cf6", "#ec4899", "#6b7280", "#78716c",
 ];
 
-const randomColor = () => PRESET_COLORS[Math.floor(Math.random() * (PRESET_COLORS.length - 2))];
-
 export default function TaskForm({ onSubmit, loading, type, initialDescription, autoFocus }: Props) {
   const { t } = useI18n();
-  const getCatLabel = useCategoryLabel();
-  const { allCategories, createCategory } = useCategories();
   const { profile } = useAuth();
+  const { allCategories } = useCategories();
   const [desc, setDesc] = useState(initialDescription ?? "");
-  const [cat, setCat] = useState<Category>(profile?.defaultCategory || "dev");
-  const [showNewCat, setShowNewCat] = useState(false);
-  const [newCatName, setNewCatName] = useState("");
-  const [newCatColor, setNewCatColor] = useState(randomColor);
-  const [dur, setDur] = useState("");
-  const [durMinutes, setDurMinutes] = useState<number | null>(null);
+  const [category, setCategory] = useState<Category>(profile?.defaultCategory || "dev");
   const [time, setTime] = useState("");
+  const [duration, setDuration] = useState("");
   const [priority, setPriority] = useState<PriorityType>("normal");
-  const [justAdded, setJustAdded] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
   useEffect(() => {
     if (initialDescription) {
       setDesc(initialDescription);
-      setExpanded(true);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [initialDescription]);
+
   useEffect(() => {
     if (autoFocus) setTimeout(() => inputRef.current?.focus(), 50);
   }, [autoFocus]);
 
+  // Sync category default with profile
+  useEffect(() => {
+    if (profile?.defaultCategory) setCategory(profile.defaultCategory);
+  }, [profile?.defaultCategory]);
+
   const isPlan = type === "plan";
   const isReminder = type === "reminder";
+  const hasOptions = isPlan || isReminder;
 
-  // Collapse on click outside
   useEffect(() => {
     if (!expanded) return;
     const handler = (e: MouseEvent) => {
@@ -74,72 +65,39 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
     return () => document.removeEventListener("mousedown", handler);
   }, [expanded, desc]);
 
-  const submitWith = (category: Category) => {
-    const parsed = dur ? parseDuration(dur) : undefined;
-    const duration = isPlan ? (durMinutes ?? (parsed && parsed > 0 ? parsed : undefined)) : undefined;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!desc.trim() || loading) return;
     onSubmit({
       description: desc.trim(),
       category: isPlan ? category : "other",
-      duration,
       tags: [],
-      ...((isPlan || isReminder) && time ? { scheduledTime: time } : {}),
+      ...(time ? { scheduledTime: time } : {}),
       ...(isReminder ? { itemType: "reminder" as ItemType } : {}),
       ...(isPlan ? { priority } : {}),
+      ...(isPlan && duration ? { duration: parseInt(duration, 10) } : {}),
     });
     setDesc("");
-    setDur("");
-    setDurMinutes(null);
     setTime("");
+    setDuration("");
     setPriority("normal");
-    setNewCatName("");
-    setNewCatColor(randomColor());
-    setShowNewCat(false);
-    setJustAdded(true);
     setExpanded(false);
+    setJustAdded(true);
     inputRef.current?.focus();
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!desc.trim() || loading || createCategory.isPending) return;
-
-    // Auto-create pending new category and use it
-    if (showNewCat && newCatName.trim() && isPlan) {
-      try {
-        const created = await createCategory.mutateAsync({ name: newCatName.trim(), color: newCatColor });
-        submitWith(created.id);
-      } catch {
-        submitWith(cat);
-      }
-      return;
-    }
-
-    submitWith(cat);
-  };
-
-  const selectQuickDuration = (mins: number) => {
-    if (durMinutes === mins) {
-      setDurMinutes(null);
-      setDur("");
-    } else {
-      setDurMinutes(mins);
-      setDur("");
-    }
   };
 
   useEffect(() => {
     if (justAdded) {
-      const t = setTimeout(() => setJustAdded(false), 2000);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setJustAdded(false), 2000);
+      return () => clearTimeout(timer);
     }
   }, [justAdded]);
 
   const Icon = isPlan ? ListTodo : isReminder ? Bell : MessageSquare;
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="card !py-2.5 !px-3" aria-label={isPlan ? t("form.addPlan") : isReminder ? t("reminder.add" as any) : t("form.addNote")}>
-      {/* Compact input row */}
-      <div className="flex items-center gap-2">
+    <form ref={formRef} onSubmit={handleSubmit} aria-label={isPlan ? t("form.addPlan") : isReminder ? t("reminder.add" as any) : t("form.addNote")}>
+      <div className="flex items-center gap-2 px-1">
         <Icon size={14} className="text-text-tertiary flex-shrink-0" />
         <input
           ref={inputRef}
@@ -148,197 +106,123 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
           placeholder={isPlan ? t("form.whatWillYouDo") : isReminder ? t("reminder.placeholder" as any) : t("form.addNotePlace")}
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
-          onFocus={() => setExpanded(true)}
           autoComplete="off"
         />
-        {isPlan && (
+        {hasOptions && (
           <button
             type="button"
-            onClick={() => setExpanded(!expanded)}
+            onClick={() => setExpanded((v) => !v)}
             className={cn(
-              "p-1 rounded transition-transform text-text-tertiary hover:text-text-secondary",
-              expanded && "rotate-180"
+              "p-1 rounded transition-colors",
+              expanded ? "text-text" : "text-text-tertiary hover:text-text"
             )}
           >
-            <ChevronDown size={14} />
+            <ChevronDown size={14} className={cn("transition-transform duration-150", expanded && "rotate-180")} />
           </button>
         )}
         <button
           type="submit"
-          disabled={loading || !desc.trim() || createCategory.isPending}
+          disabled={loading || !desc.trim()}
           className={cn(
             "p-1.5 rounded-lg transition-colors",
-            desc.trim()
-              ? "bg-accent text-bg hover:opacity-90"
-              : "text-text-tertiary"
+            desc.trim() ? "bg-accent text-bg hover:opacity-90" : "text-text-tertiary"
           )}
         >
           <Plus size={16} />
         </button>
       </div>
 
-      {/* Time — only for reminders (required) */}
-      {isReminder && expanded && (
-        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
-          <Clock size={13} className="text-text-tertiary flex-shrink-0" />
-          <span className="text-xs text-text-tertiary">{t("form.start")}</span>
-          <input
-            type="time"
-            className="input !w-[7rem] !text-xs !py-1"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            required
-          />
-        </div>
-      )}
-
-      {/* Expanded plan options */}
       <AnimatePresence>
-        {isPlan && expanded && (
+        {expanded && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="pt-2 mt-2 border-t border-border space-y-2.5">
-              {/* Category + Priority in one row */}
-              <div className="flex flex-wrap items-center gap-1">
-                {allCategories.map(({ key, label, isCustom }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setCat(key)}
-                    className={cn(
-                      "px-2 py-1 rounded-md text-[11px] font-medium transition-all",
-                      cat === key
-                        ? "bg-accent text-bg"
-                        : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
-                    )}
-                  >
-                    {isCustom ? label : getCatLabel(key)}
-                  </button>
-                ))}
-                {showNewCat ? (
-                  <div className="flex items-center gap-1">
+            <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-border px-1">
+              {isPlan && (
+                <div className="flex flex-wrap gap-1.5">
+                  {allCategories.map((cat) => (
                     <button
+                      key={cat.key}
                       type="button"
-                      className="w-7 h-7 rounded-full shrink-0 ring-1 ring-border"
-                      style={{ backgroundColor: newCatColor }}
-                      onClick={() => {
-                        const idx = PRESET_COLORS.indexOf(newCatColor);
-                        setNewCatColor(PRESET_COLORS[(idx + 1) % PRESET_COLORS.length]);
-                      }}
-                      title={t("cat.changeColor" as any)}
-                    />
-                    <input
-                      autoFocus
-                      className="input !w-20 !text-[11px] !py-0.5 !px-1.5"
-                      placeholder={t("cat.placeholder" as any)}
-                      value={newCatName}
-                      onChange={(e) => setNewCatName(e.target.value)}
-                      onBlur={() => { if (!newCatName.trim()) setShowNewCat(false); }}
-                      onKeyDown={async (e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (newCatName.trim()) {
-                            try {
-                              const created = await createCategory.mutateAsync({ name: newCatName.trim(), color: newCatColor });
-                              setCat(created.id);
-                            } catch {}
-                            setNewCatName("");
-                            setNewCatColor(randomColor());
-                            setShowNewCat(false);
-                          }
-                        }
-                        if (e.key === "Escape") setShowNewCat(false);
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowNewCat(true)}
-                    className="px-1.5 py-1 rounded-md text-[11px] text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary transition-all"
-                    title={t("cat.addNew" as any)}
-                  >
-                    <Plus size={12} />
-                  </button>
-                )}
-                <span className="w-px h-4 bg-border mx-0.5" />
-                {(["normal", "high", "urgent"] as PriorityType[]).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPriority(p)}
-                    className={cn(
-                      "px-2 py-1 rounded-md text-[11px] font-medium transition-all",
-                      priority === p
-                        ? p === "urgent"
-                          ? "bg-red-500 text-white"
-                          : p === "high"
-                          ? "bg-orange-400 text-white"
-                          : "bg-accent text-bg"
-                        : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
-                    )}
-                  >
-                    {t(`priority.${p}` as any)}
-                  </button>
-                ))}
-              </div>
-
-              {/* Time + Duration compact row */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <Clock size={12} className="text-text-tertiary" />
+                      onClick={() => setCategory(cat.key)}
+                      className={cn(
+                        "px-2 py-0.5 rounded-full text-xs font-medium border transition-all",
+                        category === cat.key
+                          ? "border-transparent text-white"
+                          : "border-border text-text-secondary hover:border-text-tertiary"
+                      )}
+                      style={category === cat.key ? { backgroundColor: cat.color } : {}}
+                    >
+                      {cat.isCustom ? cat.label : t(`cat.${cat.key}` as any)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Clock size={13} className="text-text-tertiary flex-shrink-0" />
+                  <span className="text-xs text-text-tertiary">{t("form.start")}</span>
                   <input
                     type="time"
                     className="input !w-[7rem] !text-xs !py-1"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    placeholder="Saat"
+                    required={isReminder}
                   />
                 </div>
-                <div className="flex items-center gap-1">
-                  <Timer size={12} className="text-text-tertiary" />
-                  {QUICK_DURATIONS.map(({ label, value }) => (
+                {isPlan && (
+                  <div className="flex items-center gap-2">
+                    <Clock size={13} className="text-text-tertiary flex-shrink-0" />
+                    <span className="text-xs text-text-tertiary">{t("form.duration")}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={480}
+                      className="input !w-[5rem] !text-xs !py-1"
+                      placeholder="dk"
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+              {isPlan && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-text-tertiary">{t("projects.priority" as any)}</span>
+                  {(["urgent", "high", "normal"] as PriorityType[]).map((p) => (
                     <button
-                      key={value}
+                      key={p}
                       type="button"
-                      onClick={() => selectQuickDuration(value)}
+                      onClick={() => setPriority(p)}
                       className={cn(
-                        "px-1.5 py-0.5 rounded text-[11px] font-medium transition-all",
-                        durMinutes === value
-                          ? "bg-accent text-bg"
-                          : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
+                        "px-2 py-0.5 rounded-full text-xs font-medium border transition-all",
+                        priority === p
+                          ? p === "urgent" ? "bg-red-500 border-transparent text-white"
+                            : p === "high" ? "bg-orange-400 border-transparent text-white"
+                            : "bg-accent border-transparent text-bg"
+                          : "border-border text-text-secondary hover:border-text-tertiary"
                       )}
                     >
-                      {label}
+                      {t(`priority.${p}` as any)}
                     </button>
                   ))}
-                  <input
-                    className="input !w-20 !text-[11px] !py-1"
-                    placeholder={t("form.custom")}
-                    value={dur}
-                    onChange={(e) => { setDur(e.target.value); setDurMinutes(null); }}
-                  />
                 </div>
-              </div>
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Success feedback */}
       <AnimatePresence>
         {justAdded && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="text-[11px] text-success font-medium mt-1"
+            className="text-[11px] text-success font-medium mt-1 px-1"
             role="status"
           >
             {t("form.addedSuccess")}

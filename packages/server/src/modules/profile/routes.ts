@@ -5,7 +5,10 @@ import { UpdateProfileInput, ChangePasswordInput } from "@gmd/shared";
 import { zodMsg } from "../../validation.js";
 import { getUserProfile, updateUserProfile } from "../tasks/storage.js";
 import { pool } from "../../db.js";
-import { sendVerificationEmail, sendFeedbackEmail } from "../../email.js";
+import { sendVerificationEmail, sendFeedbackEmail, sendApiKeyRequestEmail } from "../../email.js";
+import { clearCookies } from "../../auth.js";
+import { logAuditEvent } from "../../audit.js";
+import { createApiKeyRequest, getApiKeyRequest } from "../apiTokens/storage.js";
 
 const router = Router();
 
@@ -195,6 +198,89 @@ router.post("/feedback", wrap(async (req: Request, res: Response) => {
     console.error("Feedback email failed");
   }
 
+  res.json({ ok: true });
+}));
+
+// GET /api/profile/api-key-request — current user's request status
+router.get("/api-key-request", wrap(async (req: Request, res: Response) => {
+  const request = await getApiKeyRequest(req.userId!);
+  res.json({ request });
+}));
+
+// POST /api/profile/api-key-request — submit a new request
+router.post("/api-key-request", wrap(async (req: Request, res: Response) => {
+  const { rows: userRows } = await pool.query(
+    `SELECT email, username, email_verified FROM users WHERE id = $1 AND deleted_at IS NULL`,
+    [req.userId],
+  );
+  const user = userRows[0];
+  if (!user) { res.status(404).json({ error: "Kullanıcı bulunamadı" }); return; }
+  if (!user.email_verified) { res.status(403).json({ error: "Email doğrulanmamış" }); return; }
+
+  const existing = await getApiKeyRequest(req.userId!);
+  if (existing && existing.status === "pending") {
+    res.status(409).json({ error: "Zaten bekleyen bir talebiniz var" });
+    return;
+  }
+
+  const reason = typeof req.body.reason === "string" ? req.body.reason.trim().slice(0, 500) : undefined;
+  const { id, reviewToken } = await createApiKeyRequest(req.userId!, reason || undefined);
+
+  sendApiKeyRequestEmail(
+    { email: user.email, username: user.username },
+    id,
+    reviewToken,
+    reason || null,
+  ).catch(console.error);
+
+  res.json({ ok: true });
+}));
+
+// DELETE /api/profile/account — soft-delete current account (requires password)
+// - Sets users.deleted_at = NOW() (data preserved, FKs intact)
+// - Removes active session, project memberships and PATs so the user is fully signed out
+//   and stops appearing in member lists; comments/audit/plan_items remain by user_id.
+// - Email/username freed via partial unique indexes (migration 032), so re-registration
+//   creates a fresh user with a new id.
+router.delete("/account", wrap(async (req: Request, res: Response) => {
+  const { password } = req.body as { password?: string };
+  if (!password || typeof password !== "string") {
+    res.status(400).json({ error: "Parola gerekli" });
+    return;
+  }
+
+  const { rows: pwRows } = await pool.query(
+    "SELECT password_hash, email FROM users WHERE id = $1 AND deleted_at IS NULL",
+    [req.userId]
+  );
+  if (pwRows.length === 0) {
+    res.status(404).json({ error: "Kullanıcı bulunamadı" });
+    return;
+  }
+  const valid = await argon2.verify(pwRows[0].password_hash, password);
+  if (!valid) {
+    res.status(400).json({ error: "Parola hatalı" });
+    return;
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("UPDATE users SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1", [req.userId]);
+    await client.query("DELETE FROM sessions WHERE user_id = $1", [req.userId]);
+    await client.query("DELETE FROM project_members WHERE user_id = $1", [req.userId]);
+    await client.query("UPDATE user_api_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL", [req.userId]);
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  await logAuditEvent("logout", req, req.userId, { reason: "account_deleted", email: pwRows[0].email });
+
+  clearCookies(res);
   res.json({ ok: true });
 }));
 

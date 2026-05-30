@@ -4,7 +4,6 @@ import { getPendingNotifications, markNotificationSent, markAdvanceNotificationS
 import { sendReminderEmail } from "./email.js";
 import { getDueReminders, isRedisConnected, redis } from "./redis.js";
 import { pool } from "./db.js";
-import type { ProjectNotificationEvent } from "./storage/projects.js";
 import { processWeeklyRecaps } from "./weeklyRecap.js";
 
 const twilioClient =
@@ -206,63 +205,12 @@ async function processAdvanceNotifications(): Promise<number> {
   return sent;
 }
 
-async function processProjectNotifications(): Promise<number> {
-  if (!isRedisConnected()) return 0;
-  let sent = 0;
-  for (let i = 0; i < 30; i++) {
-    const raw = await redis.rpop("gmd:pm:notify");
-    if (!raw) break;
-    try {
-      const ev: ProjectNotificationEvent = JSON.parse(raw);
-      const targetUserId = "assigneeId" in ev ? ev.assigneeId
-                         : "mentionedId" in ev ? ev.mentionedId
-                         : null;
-      if (!targetUserId) continue;
-
-      const { rows } = await pool.query(
-        `SELECT push_subscription
-         FROM users
-         WHERE id = $1`, [targetUserId]
-      );
-      if (!rows.length) continue;
-      const user = rows[0];
-
-      if (user.push_subscription && process.env.VAPID_PUBLIC_KEY) {
-        const sub = typeof user.push_subscription === "string"
-          ? JSON.parse(user.push_subscription) : user.push_subscription;
-        const { title, body, tag } = buildProjectPushPayload(ev);
-        await webpush.sendNotification(sub, JSON.stringify({ title, body, tag })).catch((e: any) => {
-          if (e.statusCode !== 410 && e.statusCode !== 404)
-            console.error("[scheduler] pm push failed:", e);
-        });
-      }
-      sent++;
-    } catch (err) {
-      console.error("[scheduler] pm notification error:", err);
-    }
-  }
-  return sent;
-}
-
-function buildProjectPushPayload(ev: ProjectNotificationEvent): { title: string; body: string; tag: string } {
-  switch (ev.type) {
-    case "issue_assigned":
-      return { title: `${ev.projectName}: Görev Atandı`, body: `${ev.assignerName}: ${ev.issueTitle}`, tag: `issue-${ev.issueId}` };
-    case "comment_mention":
-      return { title: `${ev.projectName}: ${ev.authorName} sizi etiketledi`, body: ev.commentPreview, tag: `comment-${ev.issueId}` };
-    case "issue_done":
-      return { title: `${ev.issueKey} tamamlandı`, body: `${ev.changerName} → ${ev.toStatus}`, tag: `done-${ev.issueId}` };
-    default:
-      return { title: "GMD", body: "", tag: "gmd" };
-  }
-}
 
 async function tick(): Promise<void> {
   try {
     let sent = 0;
     if (isRedisConnected()) {
       sent = await processRedisReminders();
-      sent += await processProjectNotifications();
     }
     // Always run DB fallback to catch items not in Redis (e.g. added before Redis was connected)
     sent += await processDbReminders();

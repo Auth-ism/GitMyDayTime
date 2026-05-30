@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { UserResponse, UserProfile } from "@gmd/shared";
-import { api } from "./api";
+import { api, setUnauthorizedHandler } from "./api";
 
 interface AuthContext {
   user: UserResponse | null;
@@ -36,6 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore — profile fetch is best-effort
     }
+  }, []);
+
+  // Register 401 handler — clears user state instead of hard redirect
+  useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
   }, []);
 
   // Check existing session on mount

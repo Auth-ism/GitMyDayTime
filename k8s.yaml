@@ -200,6 +200,11 @@ spec:
                 secretKeyRef:
                   name: gitmydaytime-secret
                   key: vapid-private-key
+            - name: CORS_ORIGIN
+              valueFrom:
+                secretKeyRef:
+                  name: gitmydaytime-secret
+                  key: cors-origin
             - name: VAPID_SUBJECT
               value: "mailto:admin@byfeb.com"
           resources:
@@ -222,38 +227,23 @@ spec:
     - port: 80
       targetPort: 3001
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
-  name: gitmydaytime-ingress
+  name: gmd
   namespace: feb
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - gmd.byfeb.com
-        - pm.byfeb.com
-      secretName: gitmydaytime-tls
+  hostnames:
+    - gmd.byfeb.com
+  parentRefs:
+    - name: front-gw-2
+      namespace: envoy-gateway-system
+      sectionName: https-gmd
   rules:
-    - host: gmd.byfeb.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: gitmydaytime-service
-                port:
-                  number: 80
-    - host: pm.byfeb.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: gitmydaytime-service
-                port:
-                  number: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: gitmydaytime-service
+          port: 80

@@ -128,43 +128,42 @@ export async function getDueReminders(): Promise<{ userId: string; itemId: strin
   }
 }
 
-// ── Project Management SSE ───────────────────────────────────────
-// Single subscriber connection shared across all projects.
+// ── Per-user SSE (notifications) ─────────────────────────────────
 
-let pmSubscriber: Redis | null = null;
-const pmListeners = new Map<string, Set<(msg: string) => void>>();
+let sseSubscriber: Redis | null = null;
+const sseListeners = new Map<string, Set<(msg: string) => void>>();
 
-function getPMSubscriber(): Redis {
-  if (!pmSubscriber) {
-    pmSubscriber = redis.duplicate();
-    pmSubscriber.on("message", (channel, msg) => {
-      pmListeners.get(channel)?.forEach((fn) => fn(msg));
+function getSSESubscriber(): Redis {
+  if (!sseSubscriber) {
+    sseSubscriber = redis.duplicate();
+    sseSubscriber.on("message", (channel, msg) => {
+      sseListeners.get(channel)?.forEach((fn) => fn(msg));
     });
   }
-  return pmSubscriber;
+  return sseSubscriber;
 }
 
-export function subscribeProjectEvents(projectId: string, fn: (msg: string) => void): () => void {
-  const ch = `gmd:pm:${projectId}:events`;
-  if (!pmListeners.has(ch)) {
-    pmListeners.set(ch, new Set());
-    getPMSubscriber().subscribe(ch).catch(() => {});
+export function subscribeUserEvents(userId: string, fn: (msg: string) => void): () => void {
+  const ch = `gmd:user:${userId}:events`;
+  if (!sseListeners.has(ch)) {
+    sseListeners.set(ch, new Set());
+    getSSESubscriber().subscribe(ch).catch(() => {});
   }
-  pmListeners.get(ch)!.add(fn);
+  sseListeners.get(ch)!.add(fn);
   return () => {
-    const set = pmListeners.get(ch);
+    const set = sseListeners.get(ch);
     if (!set) return;
     set.delete(fn);
     if (set.size === 0) {
-      pmListeners.delete(ch);
-      getPMSubscriber().unsubscribe(ch).catch(() => {});
+      sseListeners.delete(ch);
+      getSSESubscriber().unsubscribe(ch).catch(() => {});
     }
   };
 }
 
-export async function publishProjectEvent(projectId: string, event: object): Promise<void> {
+export async function publishUserEvent(userId: string, event: object): Promise<void> {
   if (!isRedisConnected()) return;
-  try { await redis.publish(`gmd:pm:${projectId}:events`, JSON.stringify(event)); }
+  try { await redis.publish(`gmd:user:${userId}:events`, JSON.stringify(event)); }
   catch { /* ignore */ }
 }
 

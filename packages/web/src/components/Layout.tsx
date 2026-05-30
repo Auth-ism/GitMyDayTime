@@ -363,9 +363,12 @@ export default function Layout() {
         <LogoutConfirmModal onConfirm={handleLogoutConfirm} onCancel={() => setShowLogoutConfirm(false)} />
       )}
       {showOnboarding && (
-        <OnboardingModal onClose={() => {
+        <OnboardingModal onClose={(hiddenCategories) => {
           setShowOnboarding(false);
-          api.updateProfile({ onboarded: true }).then(() => refreshProfile()).catch(() => {});
+          api.updateProfile({
+            onboarded: true,
+            ...(hiddenCategories && hiddenCategories.length > 0 ? { hiddenCategories } : {}),
+          }).then(() => refreshProfile()).catch(() => {});
           if (shouldShowChangelog(__APP_VERSION__)) setShowChangelog(true);
         }} />
       )}

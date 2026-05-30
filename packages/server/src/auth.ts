@@ -16,7 +16,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const JWT_EXPIRES = "15m";
 const SESSION_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const MAX_SESSIONS_PER_USER = 5;
+const MAX_SESSIONS_PER_USER = 20;
 
 export const IS_PROD = process.env.NODE_ENV === "production";
 
@@ -42,12 +42,24 @@ function setAccessCookie(res: Response, token: string): void {
   res.cookie("gmd_access", token, { ...COOKIE_BASE, maxAge: 15 * 60 * 1000 });
 }
 
+// Legacy domain-specific cookies (set before .byfeb.com domain was used) can
+// shadow the new shared cookies because browsers prefer more-specific Domain.
+// Always clear them on login so users don't get stuck.
+function clearLegacyDomainCookies(res: Response): void {
+  if (!IS_PROD) return;
+  for (const dom of ["gmd.byfeb.com", "pm.byfeb.com"]) {
+    res.clearCookie("gmd_access", { path: "/", domain: dom });
+    res.clearCookie("gmd_session", { path: "/", domain: dom });
+  }
+}
+
 function setCookies(res: Response, accessToken: string, sessionToken: string): void {
+  clearLegacyDomainCookies(res);
   setAccessCookie(res, accessToken);
   res.cookie("gmd_session", sessionToken, { ...COOKIE_BASE, maxAge: SESSION_EXPIRES_MS });
 }
 
-function clearCookies(res: Response): void {
+export function clearCookies(res: Response): void {
   res.clearCookie("gmd_access", COOKIE_BASE);
   res.clearCookie("gmd_session", COOKIE_BASE);
 }
@@ -78,7 +90,7 @@ async function resolveSession(
   const { rows } = await pool.query(
     `SELECT s.user_id, u.email FROM sessions s
      JOIN users u ON u.id = s.user_id
-     WHERE s.token_hash = $1 AND s.expires_at > NOW()`,
+     WHERE s.token_hash = $1 AND s.expires_at > NOW() AND u.deleted_at IS NULL`,
     [tokenHash]
   );
 
@@ -151,11 +163,6 @@ export function getAuthLimiter(opts?: { skip?: (req: Request) => boolean }) {
   return createRateLimiter(15 * 60 * 1000, 10, { skip: opts?.skip, prefix: "auth" });
 }
 
-export function getGlobalLimiter() {
-  // 800/min per IP — covers notifications polling + SSE reconnects + multi-tab (gmd + pm)
-  return createRateLimiter(60 * 1000, 800, { prefix: "global" });
-}
-
 // Verify JWT and return userId, or null
 function verifyJwt(token: string): string | null {
   try {
@@ -164,6 +171,26 @@ function verifyJwt(token: string): string | null {
   } catch {
     return null;
   }
+}
+
+// Browsers can hold multiple cookies with the same name but different Domain
+// scopes (e.g., legacy Domain=gmd.byfeb.com and new Domain=.byfeb.com). The
+// Cookie header then contains the name twice. cookie-parser only exposes one
+// of them, so a stale value can mask a valid one. Parse the raw header and
+// return all values for `name`.
+function getAllCookieValues(req: Request, name: string): string[] {
+  const header = req.headers.cookie;
+  if (!header) return [];
+  const out: string[] = [];
+  for (const part of header.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    const k = part.slice(0, eq).trim();
+    if (k !== name) continue;
+    const v = part.slice(eq + 1).trim();
+    if (v) out.push(v);
+  }
+  return out;
 }
 
 export async function authMiddleware(
@@ -176,17 +203,19 @@ export async function authMiddleware(
     return;
   }
 
-  // 1. Try JWT
-  const userId = req.cookies?.gmd_access ? verifyJwt(req.cookies.gmd_access) : null;
-  if (userId) {
-    req.userId = userId;
-    next();
-    return;
+  // 1. Try every gmd_access JWT (browser may hold duplicates from legacy
+  //    subdomain-scoped cookies and new .byfeb.com cookies — try all).
+  for (const token of getAllCookieValues(req, "gmd_access")) {
+    const userId = verifyJwt(token);
+    if (userId) {
+      req.userId = userId;
+      next();
+      return;
+    }
   }
 
-  // 2. Try session token
-  const sessionToken = req.cookies?.gmd_session;
-  if (sessionToken) {
+  // 2. Try every gmd_session token (same reason as above)
+  for (const sessionToken of getAllCookieValues(req, "gmd_session")) {
     const session = await resolveSession(sessionToken, res);
     if (session) {
       req.userId = session.userId;
@@ -296,7 +325,7 @@ authRouter.post("/login", async (req: Request, res: Response) => {
 
   const { email, password } = parsed.data;
   const { rows } = await pool.query(
-    "SELECT id, email, username, password_hash, approved, email_verified FROM users WHERE email = $1",
+    "SELECT id, email, username, password_hash, approved, email_verified FROM users WHERE email = $1 AND deleted_at IS NULL",
     [email]
   );
 
@@ -394,43 +423,41 @@ authRouter.get("/approve", async (req: Request, res: Response) => {
 </body></html>`);
 });
 
-// GET renders an auto-submitting form so the token moves from URL to POST body
-authRouter.get("/auto-login", (req: Request, res: Response) => {
-  const { token } = req.query as { token?: string };
-  if (!token) { res.redirect("/"); return; }
-
-  // Sanitize token — only hex chars allowed
+// One-shot login from the approval email link.
+// Was previously a GET form + POST submit dance to keep the token out of POST history,
+// but production CSP blocks the inline submit script and the user is left stranded.
+// Now the GET handler does the work directly: validate token, set session, redirect.
+// Token is one-shot (UPDATE clears the hash on first use) and we set Referrer-Policy
+// so it won't leak via subsequent resource loads on the redirect target.
+async function performAutoLogin(token: string, req: Request, res: Response): Promise<void> {
   if (!/^[0-9a-f]+$/i.test(token)) { res.redirect("/"); return; }
-
-  res.setHeader("Referrer-Policy", "no-referrer");
-  res.send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Giriş yapılıyor…</title></head>
-<body><p>Giriş yapılıyor…</p>
-<form id="f" method="POST" action="/api/auth/auto-login">
-<input type="hidden" name="token" value="${token}"/>
-</form><script>document.getElementById("f").submit();</script>
-</body></html>`);
-});
-
-// POST actually performs the login — token in body, not URL
-authRouter.post("/auto-login", async (req: Request, res: Response) => {
-  const token = req.body?.token as string | undefined;
-  if (!token) { res.redirect("/"); return; }
 
   const tokenHash = hashSessionToken(token);
   const { rows } = await pool.query(
     `UPDATE users SET approval_token_hash = NULL
-     WHERE approval_token_hash = $1 AND approved = TRUE
+     WHERE approval_token_hash = $1 AND approved = TRUE AND deleted_at IS NULL
      RETURNING id, email`,
     [tokenHash]
   );
-
   if (rows.length === 0) { res.redirect("/"); return; }
 
   const user = rows[0];
   await createSession(user.id, user.email, res, req);
   await logAuditEvent("auto_login", req, user.id, { email: user.email });
+  res.setHeader("Referrer-Policy", "no-referrer");
   res.redirect("/");
+}
+
+authRouter.get("/auto-login", async (req: Request, res: Response) => {
+  const { token } = req.query as { token?: string };
+  if (!token) { res.redirect("/"); return; }
+  await performAutoLogin(token, req, res);
+});
+
+authRouter.post("/auto-login", async (req: Request, res: Response) => {
+  const token = req.body?.token as string | undefined;
+  if (!token) { res.redirect("/"); return; }
+  await performAutoLogin(token, req, res);
 });
 
 authRouter.get("/verify-email", async (req: Request, res: Response) => {
@@ -480,7 +507,7 @@ authRouter.post("/forgot-password", forgotPasswordLimiter, async (req: Request, 
   }
 
   const { rows } = await pool.query(
-    "SELECT id, email, username, approved FROM users WHERE email = $1",
+    "SELECT id, email, username, approved FROM users WHERE email = $1 AND deleted_at IS NULL",
     [email.toLowerCase().trim()]
   );
 
@@ -518,7 +545,7 @@ authRouter.post("/reset-password", async (req: Request, res: Response) => {
 
   const tokenHash = hashSessionToken(token);
   const { rows } = await pool.query(
-    "SELECT id, email FROM users WHERE password_reset_token_hash = $1 AND password_reset_expires_at > NOW()",
+    "SELECT id, email FROM users WHERE password_reset_token_hash = $1 AND password_reset_expires_at > NOW() AND deleted_at IS NULL",
     [tokenHash]
   );
 
@@ -540,11 +567,15 @@ authRouter.post("/reset-password", async (req: Request, res: Response) => {
 });
 
 authRouter.get("/check", async (req: Request, res: Response) => {
-  // Try JWT
-  const userId = req.cookies?.gmd_access ? verifyJwt(req.cookies.gmd_access) : null;
-  if (userId) {
+  const accessCount = getAllCookieValues(req, "gmd_access").length;
+  const sessionCount = getAllCookieValues(req, "gmd_session").length;
+  console.log(`[auth/check] host=${req.hostname} access=${accessCount} session=${sessionCount}`);
+  // Try every gmd_access JWT (handle duplicate-domain cookies)
+  for (const token of getAllCookieValues(req, "gmd_access")) {
+    const userId = verifyJwt(token);
+    if (!userId) continue;
     const { rows } = await pool.query(
-      "SELECT id, email, username, email_verified FROM users WHERE id = $1",
+      "SELECT id, email, username, email_verified FROM users WHERE id = $1 AND deleted_at IS NULL",
       [userId]
     );
     if (rows.length > 0) {
@@ -554,20 +585,18 @@ authRouter.get("/check", async (req: Request, res: Response) => {
     }
   }
 
-  // Try session token
-  const sessionToken = req.cookies?.gmd_session;
-  if (sessionToken) {
+  // Try every gmd_session token
+  for (const sessionToken of getAllCookieValues(req, "gmd_session")) {
     const session = await resolveSession(sessionToken, res);
-    if (session) {
-      const { rows } = await pool.query(
-        "SELECT id, email, username, email_verified FROM users WHERE id = $1",
-        [session.userId]
-      );
-      if (rows.length > 0) {
-        const { email_verified, ...rest } = rows[0];
-        res.json({ authenticated: true, user: { ...rest, emailVerified: email_verified } as UserResponse });
-        return;
-      }
+    if (!session) continue;
+    const { rows } = await pool.query(
+      "SELECT id, email, username, email_verified FROM users WHERE id = $1 AND deleted_at IS NULL",
+      [session.userId]
+    );
+    if (rows.length > 0) {
+      const { email_verified, ...rest } = rows[0];
+      res.json({ authenticated: true, user: { ...rest, emailVerified: email_verified } as UserResponse });
+      return;
     }
   }
 

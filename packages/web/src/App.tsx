@@ -16,14 +16,6 @@ import ChangelogPage from "@/pages/ChangelogPage";
 import { Clock } from "lucide-react";
 import { ToastContainer } from "@/components/Toast";
 
-function PmRedirect() {
-  if (typeof window !== "undefined") {
-    const path = window.location.pathname + window.location.search;
-    window.location.replace(`https://pm.byfeb.com${path}`);
-  }
-  return <LoadingScreen />;
-}
-
 function LoadingScreen() {
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center">
@@ -61,7 +53,6 @@ export default function App() {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/recurring" element={<RecurringPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/projects/*" element={<PmRedirect />} />
             <Route path="/changelog" element={<ChangelogPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />

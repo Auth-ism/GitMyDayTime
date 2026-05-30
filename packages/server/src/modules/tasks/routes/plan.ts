@@ -3,7 +3,6 @@ import { nanoid } from "nanoid";
 import { CreatePlanInput, CreateChecklistInput, PlanItemSchema } from "@gmd/shared";
 import { zodMsg } from "../../../validation.js";
 import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem, copyDayPlans, invalidateDayLog, getOneYearAgoPlan } from "../storage.js";
-import { syncPlanItemCompletion } from "../../pm/storage.js";
 import { pool } from "../../../db.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -52,11 +51,6 @@ router.put("/:date/plan/reorder", wrap(async (req, res) => {
 router.put("/:date/plan/:id", wrap(async (req, res) => {
   const updated = await updatePlanItem(req.userId!, req.params.id as string, req.body);
   if (!updated) { res.status(404).json({ error: "Plan item not found" }); return; }
-
-  // Sync completion with linked issue if any
-  if (typeof req.body.completed === "boolean") {
-    await syncPlanItemCompletion(req.params.id as string, req.body.completed).catch(() => {});
-  }
 
   res.json(updated);
 }));

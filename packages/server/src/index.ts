@@ -9,7 +9,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
-import { authMiddleware, authRouter, getAuthLimiter, getGlobalLimiter, createRateLimiter, IS_PROD } from "./auth.js";
+import { authMiddleware, authRouter, getAuthLimiter, createRateLimiter, IS_PROD } from "./auth.js";
 import { pool, runMigrations } from "./db.js";
 import { connectRedis, redis, isRedisConnected, rebuildReminderIndex } from "./redis.js";
 import {
@@ -25,8 +25,6 @@ import {
   pushRouter as pushRoutes,
 } from "./modules/tasks/index.js";
 import { profileRouter as profileRoutes } from "./modules/profile/index.js";
-import projectRoutes from "./modules/pm/routes.js";
-import spaceRoutes from "./modules/spaces/routes.js";
 import notificationRoutes from "./modules/notifications/routes.js";
 import { publicRouter as calendarPublicRoutes, authedRouter as calendarAuthedRoutes } from "./modules/calendar/routes.js";
 import apiTokenRoutes from "./modules/apiTokens/routes.js";
@@ -116,26 +114,52 @@ app.get("/api/health", async (_req, res) => {
 // Auth routes with auth-specific rate limiter (skip /check — read-only, no brute-force risk)
 app.use("/api/auth", getAuthLimiter({ skip: (req) => req.path === "/check" }), authRouter);
 
-// Global rate limiter for all API routes
-app.use("/api", getGlobalLimiter());
-
-// Public calendar feed — token in query, no session. Mounted BEFORE authMiddleware.
-// Own rate limit: 30 req/min per IP.
+// Public calendar feed (GET /api/calendar.ics) — token in query, no session.
+// IMPORTANT: limiter and router must mount on the EXACT path. Mounting both at "/api"
+// would apply the 30/min/IP limit to every API route — that was a previous bug that
+// caused widespread 429s for any authed user behind a shared proxy IP.
 const rlCalendarPublic = createRateLimiter(60_000, 30, { perUser: false, prefix: "ical" });
-app.use("/api", rlCalendarPublic, calendarPublicRoutes);
+app.use("/api/calendar.ics", rlCalendarPublic);
+app.use("/api", calendarPublicRoutes);
+
+// API key approval — one-click from email, no session needed (protected by review_token)
+import { approveApiKeyRequest, createApiToken } from "./modules/apiTokens/storage.js";
+import { sendApiKeyApprovedEmail } from "./email.js";
+app.get("/api/profile/api-key-requests/:id/approve", createRateLimiter(60_000, 10, { perUser: false, prefix: "akr-approve" }), async (req: express.Request, res: express.Response) => {
+  const { id } = req.params as { id: string };
+  const { token } = req.query as { token?: string };
+  if (!token) { res.status(400).send("Token eksik"); return; }
+  try {
+    const result = await approveApiKeyRequest(id, token);
+    if (!result) { res.status(410).send("Geçersiz veya zaten işlenmiş talep."); return; }
+    const { raw } = await createApiToken(result.userId, "API Key (Onaylı)");
+    sendApiKeyApprovedEmail({ email: result.email, username: result.username }, raw).catch(console.error);
+    res.send(`<html><body style="font-family:system-ui;text-align:center;padding:60px;background:#09090b;color:#f0f0f0"><h2 style="color:#4ade80">✓ Onaylandı</h2><p>${result.username} kullanıcısına API key gönderildi.</p></body></html>`);
+  } catch { res.status(500).send("Sunucu hatası"); }
+});
 
 // Protect all API routes
 app.use(authMiddleware);
 
+// SSE /events endpoints are long-lived single connections — exempt them from
+// every rate limiter so a single 429 doesn't cause an EventSource reconnect storm.
+const isEventsRequest = (req: express.Request) =>
+  req.originalUrl.split("?")[0].endsWith("/events");
+
+// Global per-user safety net for all authed /api routes — backstop for misconfigured
+// per-route limits and multi-tab usage. Mounted AFTER authMiddleware so req.userId is set;
+// IP-based pre-auth surface is already covered by getAuthLimiter + rlCalendarPublic.
+app.use("/api", createRateLimiter(60_000, 3000, { perUser: true, prefix: "global-user", skip: isEventsRequest }));
+
 // ── Route-specific rate limiters (per-user, after auth) ──────────
 // All instances created at startup — express-rate-limit requires this
-const rl = (max: number, windowMs = 60_000, prefix?: string) =>
-  createRateLimiter(windowMs, max, { perUser: true, prefix });
+const rl = (max: number, windowMs = 60_000, prefix?: string, skip?: (req: express.Request) => boolean) =>
+  createRateLimiter(windowMs, max, { perUser: true, prefix, skip });
 
-const rlDaysR    = rl(120, 60_000, "days-r");
+const rlDaysR    = rl(300, 60_000, "days-r"); // WeekView 7 paralel → ~40 navigasyon/dk headroom
 const rlDaysW    = rl(60,  60_000, "days-w");
-const rlStats    = rl(30,  60_000, "stats");
-const rlSearch   = rl(20,  60_000, "search");
+const rlStats    = rl(60,  60_000, "stats");
+const rlSearch   = rl(40,  60_000, "search");
 const rlRecurring= rl(30,  60_000, "recurring");
 const rlAvatar   = rl(5,   60_000, "avatar");
 const rlProfileW = rl(10,  60_000, "profile-w");
@@ -144,8 +168,7 @@ const rlTemplates  = rl(30, 60_000, "templates");
 const rlImport   = rl(3,   60_000, "import");
 const rlExport   = rl(5,   60_000, "export");
 const rlPush     = rl(20,  60_000, "push");
-const rlProjectsR = rl(120, 60_000, "projects-r");
-const rlProjectsW = rl(40,  60_000, "projects-w");
+const rlNotifications = rl(120, 60_000, "notifications", isEventsRequest); // skip /events SSE
 const rlFeedback  = rl(3,   3_600_000, "feedback"); // 3/saat — email gönderiyor
 
 // days: read-heavy (WeekView fires 7 reqs)
@@ -179,17 +202,7 @@ app.use("/api/export", rlExport, exportRoutes);
 
 app.use("/api/push", rlPush, pushRoutes);
 
-// Projects — higher read limit (board polling), moderate write limit
-app.use("/api/projects", (req, _res, next) => {
-  if (req.method === "GET") return rlProjectsR(req, _res, next);
-  return rlProjectsW(req, _res, next);
-});
-app.use("/api/projects", projectRoutes);
-
-// Spaces — UI deferred, routes ready
-const rlSpaces = rl(60, 60_000, "spaces");
-app.use("/api/spaces", rlSpaces, spaceRoutes);
-app.use("/api/notifications", notificationRoutes);
+app.use("/api/notifications", rlNotifications, notificationRoutes);
 
 // Calendar token management (authed)
 const rlCalendarMgmt = rl(10, 60_000, "calendar-mgmt");
@@ -207,22 +220,26 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   }
 });
 
-// Serve frontend in production — host-based routing for subdomains
-const webDist = path.resolve(__dirname, "../../web/dist");
-const pmWebDist = path.resolve(__dirname, "../../pm-web/dist");
-const serveWeb = express.static(webDist);
-const servePmWeb = express.static(pmWebDist);
-
+// Block bot/scanner probes for common exploit paths — returns 404 quickly
+// instead of falling through to SPA index.html (which returns 200 and signals
+// "hit" to scanners). Pattern covers .php files, WordPress, env/git leaks,
+// phpMyAdmin, common shells, and dotfiles.
+const SCANNER_PROBE = /(\.php(\?|$|\/)|^\/+wp[-_/]|^\/+wordpress\b|^\/+phpmyadmin\b|^\/+\.(env|git|aws|ssh|svn|htaccess|htpasswd|DS_Store)\b|^\/+xmlrpc\.php|^\/+\.well-known\/security\.php|^\/+cgi-bin\/|^\/+admin\.php|^\/+shell\b)/i;
 app.use((req, res, next) => {
-  if (req.hostname === "pm.byfeb.com") return servePmWeb(req, res, next);
-  return serveWeb(req, res, next);
+  if (SCANNER_PROBE.test(req.path)) {
+    return res.status(404).end();
+  }
+  next();
 });
 
-app.get("*", (req, res) => {
-  if (req.hostname === "pm.byfeb.com") {
-    return res.sendFile(path.join(pmWebDist, "index.html"));
-  }
-  return res.sendFile(path.join(webDist, "index.html"));
+// Serve frontend in production
+const webDist = path.resolve(__dirname, "../../web/dist");
+const serveWeb = express.static(webDist);
+
+app.use(serveWeb);
+
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(webDist, "index.html"));
 });
 
 // Notification scheduler — runs every minute

@@ -208,6 +208,7 @@ export default function PlanItem({
               </p>
             </div>
           )}
+
           <div className="flex items-center gap-2.5 mt-0.5">
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-bg-secondary text-text-secondary">
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getCategoryColor(item.category) }} />

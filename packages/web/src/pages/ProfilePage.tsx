@@ -16,6 +16,7 @@ import { CATEGORY_COLORS, type UpdateProfileInput } from "@gmd/shared";
 import { PRESET_COLORS } from "@/components/TaskForm";
 import CalendarSubscribeSection from "@/components/CalendarSubscribeSection";
 import ApiTokensSection from "@/components/ApiTokensSection";
+import ApiKeyRequestSection from "@/components/ApiKeyRequestSection";
 
 const TIMEZONES = [
   "Europe/Istanbul", "Europe/London", "Europe/Berlin", "Europe/Paris",
@@ -95,6 +96,12 @@ export default function ProfilePage() {
 
   // Phone
   const [phoneDisplay, setPhoneDisplay] = useState("");
+
+  // Account deletion
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -694,12 +701,91 @@ export default function ProfilePage() {
           {/* Calendar subscribe */}
           <CalendarSubscribeSection />
 
-          {/* API Tokens (PAT) — admin only */}
-          {profile?.isAdmin && <ApiTokensSection />}
+          {/* API Tokens — admin: full management, others: request form */}
+          {profile?.isAdmin
+            ? <ApiTokensSection />
+            : user?.emailVerified && <ApiKeyRequestSection />
+          }
 
           <SaveBar onClick={handleSave} saving={saving} saved={saved} error={error} t={t} />
+
+          {/* Danger zone — soft delete (server keeps data, frees email/username) */}
+          <Section icon={<Trash2 size={14} className="text-danger" />} title={t("profile.dangerZone" as any)}>
+            <p className="text-[11px] text-text-tertiary leading-relaxed">
+              {t("profile.deleteAccountDescription" as any)}
+            </p>
+            <button
+              type="button"
+              onClick={() => { setDeleteOpen(true); setDeletePassword(""); setDeleteError(""); }}
+              className="mt-2 w-full px-3 py-1.5 rounded-md text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+            >
+              {t("profile.deleteAccount" as any)}
+            </button>
+          </Section>
         </motion.div>
       )}
+
+      <AnimatePresence>
+        {deleteOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={() => !deleteSubmitting && setDeleteOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
+              className="w-full max-w-sm rounded-xl bg-bg-elevated border border-border p-4 space-y-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2">
+                <Trash2 size={16} className="text-danger" />
+                <h3 className="text-sm font-semibold text-text">{t("profile.deleteAccountConfirmTitle" as any)}</h3>
+              </div>
+              <p className="text-[11px] text-text-secondary leading-relaxed">
+                {t("profile.deleteAccountConfirmBody" as any)}
+              </p>
+              <Field label={t("profile.currentPassword" as any)}>
+                <input
+                  type="password"
+                  className="input-sm"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  autoFocus
+                />
+              </Field>
+              {deleteError && <p className="text-[11px] text-danger">{deleteError}</p>}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setDeleteOpen(false)}
+                  disabled={deleteSubmitting}
+                  className="flex-1 px-3 py-1.5 rounded-md text-xs font-medium bg-bg-secondary text-text-secondary hover:bg-bg-tertiary transition-colors"
+                >
+                  {t("common.cancel" as any)}
+                </button>
+                <button
+                  type="button"
+                  disabled={deleteSubmitting || deletePassword.length === 0}
+                  onClick={async () => {
+                    setDeleteSubmitting(true);
+                    setDeleteError("");
+                    try {
+                      await api.deleteAccount(deletePassword);
+                      window.location.href = "/login";
+                    } catch (err) {
+                      setDeleteError(err instanceof Error ? err.message : "Silinemedi");
+                      setDeleteSubmitting(false);
+                    }
+                  }}
+                  className="flex-1 px-3 py-1.5 rounded-md text-xs font-medium bg-danger text-white hover:bg-danger/90 transition-colors disabled:opacity-60"
+                >
+                  {deleteSubmitting ? "..." : t("profile.deleteAccountConfirm" as any)}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

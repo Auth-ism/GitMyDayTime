@@ -10,7 +10,6 @@ import PlanItem from "@/components/PlanItem";
 import ReminderItem from "@/components/ReminderItem";
 import CarryOverBanner from "@/components/CarryOverBanner";
 import OneYearAgoBanner from "@/components/OneYearAgoBanner";
-import DayViewProjectBanner from "@/components/projects/DayViewProjectBanner";
 import StandupExport from "@/components/StandupExport";
 import PomodoroTimer from "@/components/PomodoroTimer";
 import JournalSection from "@/components/JournalSection";
@@ -357,9 +356,6 @@ export default function DayView() {
           })}
         </div>
       )}
-
-      {/* Project assignments banner */}
-      <DayViewProjectBanner date={date} />
 
       {/* Carry over banner */}
       <CarryOverBanner date={date} />

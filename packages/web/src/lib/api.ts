@@ -1,6 +1,13 @@
-import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput, Project, ProjectMember, WorkflowStatus, Issue, IssueComment, IssueDetail, IssueLink, BoardData, CreateProjectInput, UpdateProjectInput, CreateIssueInput, UpdateIssueInput, CreateCommentInput, InviteMemberInput, UpdateMemberRoleInput, TransferOwnerInput, AddToPlanInput, Sprint, CreateSprintInput, UpdateSprintInput, CompleteSprintInput } from "@gmd/shared";
+import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput } from "@gmd/shared";
 
 const BASE = "/api";
+
+// Auth context can register a callback to clear user state on 401
+// instead of a hard page reload (which breaks service-worker routing).
+let _onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: () => void) {
+  _onUnauthorized = fn;
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -19,7 +26,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     } catch {}
 
     if (res.status === 401) {
-      window.location.href = "/login";
+      if (_onUnauthorized) _onUnauthorized();
+      else window.location.href = "/";
     }
 
     if (res.status === 429) {
@@ -111,7 +119,6 @@ export const api = {
     request<{
       plans: (PlanItem & { date: string })[];
       tasks: (TaskEntry & { date: string })[];
-      issues: Array<{ id: string; issueKey: string; title: string; projectId: string; projectName: string; priority: string; issueType: string; statusName: string; statusColor: string }>;
     }>(`/search?q=${encodeURIComponent(q)}`),
 
   getStats: (from?: string, to?: string) => {
@@ -220,6 +227,12 @@ export const api = {
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
 
+  deleteAccount: (password: string) =>
+    request<{ ok: boolean }>("/profile/account", {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    }),
+
   uploadAvatar: (avatar: string) =>
     request<{ ok: boolean }>("/profile/avatar", {
       method: "PUT",
@@ -244,120 +257,6 @@ export const api = {
   deleteCategory: (id: string) =>
     request<void>(`/categories/${id}`, { method: "DELETE" }),
 
-  // ── Projects ────────────────────────────────────────────────────
-  getProjects: () => request<Project[]>("/projects"),
-
-  getProject: (id: string) =>
-    request<Project & { members: ProjectMember[]; statuses: WorkflowStatus[] }>(`/projects/${id}`),
-
-  createProject: (data: CreateProjectInput) =>
-    request<Project>("/projects", { method: "POST", body: JSON.stringify(data) }),
-
-  updateProject: (id: string, data: UpdateProjectInput) =>
-    request<Project>(`/projects/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-
-  deleteProject: (id: string) =>
-    request<{ ok: boolean }>(`/projects/${id}`, { method: "DELETE" }),
-
-  inviteMember: (id: string, data: InviteMemberInput) =>
-    request<{ ok: boolean; invitationId: string; expiresAt: string }>(`/projects/${id}/invitations`, {
-      method: "POST", body: JSON.stringify(data),
-    }),
-
-  joinProject: (token: string) =>
-    request<{ projectId: string; projectName: string }>(`/projects/join/${token}`),
-
-  leaveProject: (id: string) =>
-    request<{ ok: boolean }>(`/projects/${id}/leave`, { method: "DELETE" }),
-
-  removeMember: (id: string, userId: string) =>
-    request<{ ok: boolean }>(`/projects/${id}/members/${userId}`, { method: "DELETE" }),
-
-  updateMemberRole: (id: string, userId: string, data: UpdateMemberRoleInput) =>
-    request<ProjectMember>(`/projects/${id}/members/${userId}`, {
-      method: "PATCH", body: JSON.stringify(data),
-    }),
-
-  transferOwnership: (id: string, data: TransferOwnerInput) =>
-    request<{ ok: boolean }>(`/projects/${id}/transfer`, {
-      method: "POST", body: JSON.stringify(data),
-    }),
-
-  getWorkflowStatuses: (id: string) =>
-    request<WorkflowStatus[]>(`/projects/${id}/statuses`),
-
-  getBoard: (id: string, sprintId?: string | null) =>
-    request<BoardData>(`/projects/${id}/board${sprintId ? `?sprintId=${sprintId}` : ""}`),
-
-  getIssues: (id: string, params?: Record<string, string | number | undefined>) => {
-    const qs = params
-      ? "?" + Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&")
-      : "";
-    return request<{ issues: Issue[]; total: number }>(`/projects/${id}/issues${qs}`);
-  },
-
-  getIssue: (id: string, issueId: string) =>
-    request<IssueDetail>(`/projects/${id}/issues/${issueId}`),
-
-  createIssue: (id: string, data: CreateIssueInput) =>
-    request<Issue>(`/projects/${id}/issues`, { method: "POST", body: JSON.stringify(data) }),
-
-  updateIssue: (id: string, issueId: string, data: UpdateIssueInput) =>
-    request<Issue>(`/projects/${id}/issues/${issueId}`, { method: "PATCH", body: JSON.stringify(data) }),
-
-  deleteIssue: (id: string, issueId: string) =>
-    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}`, { method: "DELETE" }),
-
-  restoreIssue: (id: string, issueId: string) =>
-    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/restore`, { method: "PATCH" }),
-
-  permanentDeleteIssue: (id: string, issueId: string) =>
-    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/permanent`, { method: "DELETE" }),
-
-  getArchivedIssues: (id: string) =>
-    request<{ issues: Issue[]; total: number }>(`/projects/${id}/issues/archived`),
-
-  updateIssueStatus: (id: string, issueId: string, statusId: string) =>
-    request<Issue>(`/projects/${id}/issues/${issueId}/status`, {
-      method: "PATCH", body: JSON.stringify({ statusId }),
-    }),
-
-  addComment: (id: string, issueId: string, data: CreateCommentInput) =>
-    request<IssueComment>(`/projects/${id}/issues/${issueId}/comments`, {
-      method: "POST", body: JSON.stringify(data),
-    }),
-
-  updateComment: (id: string, issueId: string, commentId: string, data: CreateCommentInput) =>
-    request<IssueComment>(`/projects/${id}/issues/${issueId}/comments/${commentId}`, {
-      method: "PUT", body: JSON.stringify(data),
-    }),
-
-  deleteComment: (id: string, issueId: string, commentId: string) =>
-    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/comments/${commentId}`, {
-      method: "DELETE",
-    }),
-
-  addIssueToPlan: (id: string, issueId: string, data: AddToPlanInput) =>
-    request<{ planItemId: string; ok: boolean }>(`/projects/${id}/issues/${issueId}/add-to-plan`, {
-      method: "POST", body: JSON.stringify(data),
-    }),
-
-  removeIssueFromPlan: (id: string, issueId: string) =>
-    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/add-to-plan`, { method: "DELETE" }),
-
-  getMyAssignments: (date?: string) =>
-    request<Array<{ issueId: string; projectId: string; planItemId: string | null; issueKey: string; title: string }>>(
-      `/projects/my-assignments${date ? `?date=${date}` : ""}`
-    ),
-
-  getProjectLabels: (id: string) =>
-    request<string[]>(`/projects/${id}/labels`),
-
-  reorderIssues: (projectId: string, orders: Array<{ issueId: string; sortOrder: number }>) =>
-    request<{ ok: boolean }>(`/projects/${projectId}/issues/reorder`, {
-      method: "PATCH", body: JSON.stringify({ orders }),
-    }),
-
   // Notifications
   getNotifications: () =>
     request<{ notifications: Array<{ id: string; type: string; message: string; url: string | null; read: boolean; actorName: string | null; createdAt: string; projectId: string | null; issueId: string | null }>; unread: number }>("/notifications"),
@@ -370,51 +269,6 @@ export const api = {
 
   markAllRead: () =>
     request<{ ok: boolean }>("/notifications/read-all", { method: "PATCH" }),
-
-  // Sprints
-  getSprints: (id: string) =>
-    request<Sprint[]>(`/projects/${id}/sprints`),
-
-  createSprint: (id: string, data: CreateSprintInput) =>
-    request<Sprint>(`/projects/${id}/sprints`, { method: "POST", body: JSON.stringify(data) }),
-
-  updateSprint: (id: string, sprintId: string, data: UpdateSprintInput) =>
-    request<Sprint>(`/projects/${id}/sprints/${sprintId}`, { method: "PATCH", body: JSON.stringify(data) }),
-
-  deleteSprint: (id: string, sprintId: string) =>
-    request<{ ok: boolean }>(`/projects/${id}/sprints/${sprintId}`, { method: "DELETE" }),
-
-  completeSprint: (id: string, sprintId: string, data: CompleteSprintInput) =>
-    request<{ ok: boolean; completedCount: number; movedCount: number }>(
-      `/projects/${id}/sprints/${sprintId}/complete`,
-      { method: "POST", body: JSON.stringify(data) }
-    ),
-
-  setIssueSprint: (id: string, issueId: string, sprintId: string | null) =>
-    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/sprint`, {
-      method: "POST", body: JSON.stringify({ sprintId }),
-    }),
-
-  getIssueLinks: (id: string, issueId: string) =>
-    request<IssueLink[]>(`/projects/${id}/issues/${issueId}/links`),
-
-  createIssueLink: (id: string, issueId: string, data: { targetId: string; linkType: string }) =>
-    request<IssueLink>(`/projects/${id}/issues/${issueId}/links`, { method: "POST", body: JSON.stringify(data) }),
-
-  deleteIssueLink: (id: string, issueId: string, linkId: string) =>
-    request<{ ok: boolean }>(`/projects/${id}/issues/${issueId}/links/${linkId}`, { method: "DELETE" }),
-
-  createStatus: (id: string, data: { name: string; color: string; category: string }) =>
-    request<WorkflowStatus>(`/projects/${id}/statuses`, { method: "POST", body: JSON.stringify(data) }),
-
-  updateStatus: (id: string, sid: string, data: { name?: string; color?: string; category?: string; isDefault?: boolean }) =>
-    request<WorkflowStatus>(`/projects/${id}/statuses/${sid}`, { method: "PATCH", body: JSON.stringify(data) }),
-
-  deleteStatus: (id: string, sid: string) =>
-    request<{ ok: boolean }>(`/projects/${id}/statuses/${sid}`, { method: "DELETE" }),
-
-  reorderStatuses: (id: string, orders: Array<{ statusId: string; sortOrder: number }>) =>
-    request<{ ok: boolean }>(`/projects/${id}/statuses/reorder`, { method: "PATCH", body: JSON.stringify({ orders }) }),
 
   // Calendar subscribe tokens
   listCalendarTokens: () =>
@@ -442,4 +296,16 @@ export const api = {
 
   revokeApiToken: (id: string) =>
     request<void>(`/profile/api-tokens/${id}`, { method: "DELETE" }),
+
+  // API Key Request
+  getApiKeyRequest: () =>
+    request<{ request: { id: string; status: string; requestedAt: string } | null }>(
+      `/profile/api-key-request`,
+    ),
+
+  submitApiKeyRequest: (reason?: string) =>
+    request<{ ok: boolean }>(`/profile/api-key-request`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
 };

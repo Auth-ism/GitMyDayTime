@@ -1,4 +1,5 @@
 import { pool } from "../../db.js";
+import { publishUserEvent } from "../../redis.js";
 
 export interface UserNotification {
   id: string;
@@ -43,6 +44,7 @@ export async function createUserNotification(data: {
     [data.userId, data.type, data.projectId ?? null, data.issueId ?? null,
      data.actorName ?? null, data.message, data.url ?? null]
   );
+  await publishUserEvent(data.userId, { type: "notification_created" });
 }
 
 export async function getUserNotifications(userId: string, limit = 30): Promise<UserNotification[]> {
@@ -67,6 +69,7 @@ export async function markNotificationRead(id: string, userId: string): Promise<
     "UPDATE user_notifications SET read = TRUE WHERE id = $1 AND user_id = $2",
     [id, userId]
   );
+  await publishUserEvent(userId, { type: "notification_read", id });
 }
 
 export async function markAllRead(userId: string): Promise<void> {
@@ -74,4 +77,5 @@ export async function markAllRead(userId: string): Promise<void> {
     "UPDATE user_notifications SET read = TRUE WHERE user_id = $1 AND read = FALSE",
     [userId]
   );
+  await publishUserEvent(userId, { type: "notification_read_all" });
 }

@@ -15,6 +15,193 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.17.0",
+    date: "2026-05-30",
+    bump: "minor",
+    summary: "Plan oluştururken süre ve öncelik seçimi eklendi",
+    changes: [
+      { type: "feat", text: "Plan eklerken süre (dakika) ve öncelik seçilebiliyor" },
+      { type: "fix", text: "Redis'teki PM SSE fonksiyonları kaldırıldı (temizlik)" },
+      { type: "fix", text: "Onboarding modalındaki 'Projeler' adımı kaldırıldı" },
+    ],
+  },
+  {
+    version: "4.16.0",
+    date: "2026-05-27",
+    bump: "minor",
+    summary: "PM tamamen ayrıldı — GMD artık sadece görev/zaman takibi",
+    changes: [
+      { type: "breaking", text: "Proje yönetimi (board, issue, sprint) GMD'den kaldırıldı — pm.byfeb.com'a taşındı" },
+      { type: "feat", text: "Cmd+K palette artık plan item araması yapıyor" },
+      { type: "fix", text: "Search sayfasından PM issue sonuçları kaldırıldı" },
+    ],
+  },
+  {
+    version: "4.15.0",
+    date: "2026-05-26",
+    bump: "minor",
+    summary: "gmd↔pm çapraz oturum sorunu tamamen giderildi",
+    changes: [
+      { type: "fix", text: "Service worker navigasyon isteği 404 hatası düzeltildi — /api/* yolları SW'dan bypass ediliyor" },
+      { type: "fix", text: "Çoklu cookie (domain çakışması) sorunu çözüldü — tüm gmd_access/gmd_session değerleri deneniyor" },
+      { type: "fix", text: "GMD oturumuyken PM'e girince 404 alınıyordu — artık otomatik giriş yapılıyor" },
+      { type: "fix", text: "Kullanıcı soft-delete sonrası oturum çözümleme güvenleştirildi" },
+      { type: "feat", text: "Oturum başına maksimum bağlantı sayısı 5'ten 20'ye çıkarıldı" },
+      { type: "feat", text: "API Key talebi + tek tık onay akışı eklendi" },
+      { type: "feat", text: "Auto-login endpoint eklendi (email linkleri için)" },
+    ],
+  },
+  {
+    version: "4.14.3",
+    date: "2026-05-25",
+    bump: "patch",
+    summary: "Service worker API cache sorunu düzeltildi",
+    changes: [
+      { type: "fix", text: "SW artık /api/* isteklerini asla önbelleğe almıyor — her zaman direkt network'e gidiyor" },
+      { type: "fix", text: "Brave ve diğer tarayıcılarda login 404 sorunu giderildi" },
+    ],
+  },
+  {
+    version: "4.14.2",
+    date: "2026-05-25",
+    bump: "patch",
+    summary: "pm.byfeb.com oturum sorunu düzeltildi",
+    changes: [
+      { type: "fix", text: "401 gelince hard reload yerine React state temizleniyor — pm'de oturum döngüsü artık yok" },
+      { type: "fix", text: "gmd'de login olan kullanıcı pm'e geçince otomatik giriş yapıyor" },
+    ],
+  },
+  {
+    version: "4.14.1",
+    date: "2026-05-24",
+    bump: "patch",
+    summary: "Plan ekleme formu düzeltildi",
+    changes: [
+      { type: "fix", text: "Plan formuna kategori ve saat seçici geri eklendi (▾ chevron ile açılır)" },
+      { type: "fix", text: "Seçilen kategori ve saat planla birlikte kaydediliyor" },
+    ],
+  },
+  {
+    version: "4.14.0",
+    date: "2026-05-24",
+    bump: "minor",
+    summary: "API Key istek sistemi — email doğrulamalı kullanıcılar talep edebilir",
+    changes: [
+      { type: "feat", text: "Email doğrulamalı kullanıcılar Profil → API Key bölümünden talep gönderebilir" },
+      { type: "feat", text: "Admin talep gelince mail alır, tek tıkla onaylar — kullanıcıya token maili gider" },
+    ],
+  },
+  {
+    version: "4.13.0",
+    date: "2026-05-24",
+    bump: "minor",
+    summary: "Görev ekleme formu sadeleştirildi, pm.byfeb.com login 404 düzeltildi",
+    changes: [
+      { type: "fix", text: "Görev ekleme formu artık kutu/kart görünümünden çıktı — sade satır input oldu, açılır kategori/öncelik bölümü kaldırıldı" },
+      { type: "fix", text: "pm.byfeb.com'da login sonrası 404 hatası düzeltildi — /login route'u /projects'e yönlendirildi" },
+    ],
+  },
+  {
+    version: "4.12.0",
+    date: "2026-05-09",
+    bump: "minor",
+    summary: "Kategori UX iyileştirmeleri — onboarding seçimi + dağılan chip'ler için dropdown",
+    changes: [
+      { type: "feat", text: "Onboarding'e yeni adım: hangi default kategorileri kullanmak istiyorsun? İhtiyacın olmayanları kapat — istemediklerin direkt gizli başlasın" },
+      { type: "feat", text: "Görev ekleme widget'ı: 5'ten fazla kategori varsa otomatik dropdown moduna geçer (renk noktası + isim + ChevronDown). Az olanlar için chip listesi aynen kalır" },
+      { type: "feat", text: "Dropdown içinde \"+ yeni kategori\" alta entegre — hızlı ekleme akışı bozulmadan" },
+    ],
+  },
+  {
+    version: "4.11.1",
+    date: "2026-05-09",
+    bump: "patch",
+    summary: "PM issue oluşturma kartına açıklama alanı eklendi",
+    changes: [
+      { type: "feat", text: "Yeni issue oluştururken modal'a açıklama (description) textarea'sı eklendi — issue detayında zaten gösteriliyordu, sadece oluşturma adımında girilemiyordu" },
+    ],
+  },
+  {
+    version: "4.11.0",
+    date: "2026-05-09",
+    bump: "minor",
+    summary: "Görev açıklama alanı + PM changelog sayfası",
+    changes: [
+      { type: "feat", text: "Plan item'lara serbest 'açıklama / notlar' alanı eklendi (görev ekleme widget'ında genişlet → textarea, opsiyonel, max 4000 karakter). Liste görünümünde görev altında soluk notla gösterilir." },
+      { type: "feat", text: "pm.byfeb.com'a değişiklik geçmişi sayfası — header'daki versiyon numarasına tıklanarak açılır" },
+    ],
+  },
+  {
+    version: "4.10.2",
+    date: "2026-05-09",
+    bump: "patch",
+    summary: "Rate limit asıl kök neden: ical limiter yanlış mount edilmişti",
+    changes: [
+      { type: "fix", text: "Public calendar limiter (30/dk IP) sadece /api/calendar.ics yerine TÜM /api/* yoluna uygulanıyordu — paylaşılan IP'lerde herkesi 30/dk'da patlatıyordu. Doğru path'e bağlandı." },
+    ],
+  },
+  {
+    version: "4.10.1",
+    date: "2026-05-09",
+    bump: "patch",
+    summary: "Rate limit ölüm sarmalı + 3 PM bugu düzeltildi",
+    changes: [
+      { type: "fix", text: "/events SSE endpoint'leri tüm rate limiter'lardan muaf — uzun ömürlü tek bağlantı, sayım anlamsız" },
+      { type: "fix", text: "Tek 429 olunca EventSource artık 3 saniyede bir spam reconnect yapmıyor — exponential backoff (2s→4s→8s→...60s cap)" },
+      { type: "fix", text: "Global per-user limit 1500 → 3000/dk — multi-tab + hızlı navigasyon için gerçek headroom" },
+      { type: "fix", text: "PM: owner projeden ayrılınca yöneticilik otomatik devrediliyor (en yüksek roldeki en eski üyeye); tek üye kalmışsa sahibin projeyi silmesi isteniyor" },
+      { type: "fix", text: "Kayıt onayı sonrası otomatik giriş düzeltildi — production CSP inline script bloğunu aşmak için artık doğrudan GET içinde session açılıp / 'a yönlendiriliyor" },
+      { type: "fix", text: "Görevlerim banner'ı + SearchPage + CommandPalette artık doğrudan pm.byfeb.com'a yönleniyor — gmd→pm flicker ve geri tuşunda yanlış history girdisi düzeldi" },
+    ],
+  },
+  {
+    version: "4.10.0",
+    date: "2026-05-09",
+    bump: "minor",
+    summary: "Hesap silme — soft delete (veriler arşivde kalır, e-posta tekrar kayıt olabilir)",
+    changes: [
+      { type: "feat", text: "Profil → Güvenlik → Tehlikeli Bölge'den hesap silme — parola onaylı" },
+      { type: "feat", text: "Soft delete: hesap deaktive edilir, plan/yorum/aktivite verisi db'de arşivde kalır" },
+      { type: "feat", text: "Aynı e-posta tekrar kayıt olabilir — yeni id ile fresh hesap, eski veriler eski id ile arşivde duruyor" },
+      { type: "feat", text: "Silme anında: tüm session'lar sonlandırılır, proje üyelikleri ve API token'lar iptal edilir" },
+    ],
+  },
+  {
+    version: "4.9.5",
+    date: "2026-05-09",
+    bump: "patch",
+    summary: "Bildirimler artık SSE ile canlı geliyor — bell polling kaldırıldı",
+    changes: [
+      { type: "perf", text: "NotificationBell artık her 10 saniyede bir poll etmiyor — server SSE üzerinden push ediyor (~6/dk/tab → 0)" },
+      { type: "feat", text: "Bildirimler anlık geliyor: yeni bildirim, okundu işareti ve hepsini-okundu olayları multi-tab arasında senkron" },
+      { type: "fix", text: "5 dk'lık fallback refetch sadece kayıp SSE event'leri için güvenlik ağı olarak duruyor" },
+    ],
+  },
+  {
+    version: "4.9.4",
+    date: "2026-05-09",
+    bump: "patch",
+    summary: "Rate limit kök neden düzeltmesi — global limiter per-user'a alındı",
+    changes: [
+      { type: "fix", text: "Global rate limiter artık IP yerine per-user çalışıyor (800/dk IP → 1500/dk/kullanıcı) — Cloudflare/ingress arkasında IP paylaşan kullanıcılar artık birbirini etkilemiyor" },
+      { type: "fix", text: "Global limiter authMiddleware'den sonra mount edildi — req.userId üzerinden doğru kova" },
+      { type: "fix", text: "Pre-auth alan zaten getAuthLimiter (10/15dk) ve ical limiter (30/dk) ile korunuyor" },
+    ],
+  },
+  {
+    version: "4.9.3",
+    date: "2026-05-09",
+    bump: "patch",
+    summary: "Rate limit ayarları gevşetildi — sayfa geçişlerinde 429 hatası yaşanmıyor",
+    changes: [
+      { type: "fix", text: "/api/days okuma limiti 120 → 300/dk — WeekView 7 paralel istek atıyor, hızlı hafta gezintisinde 429 düzeldi" },
+      { type: "fix", text: "/api/projects okuma limiti 120 → 240/dk — board + issue navigasyonu ve multi-tab için headroom" },
+      { type: "fix", text: "/api/stats 30 → 60/dk, /api/search 20 → 40/dk" },
+      { type: "fix", text: "/api/notifications için ayrı per-user limiter eklendi (120/dk) — bildirim çanı global IP kovasını yormuyor" },
+      { type: "perf", text: "Board sayfası artık SSE event'leri ile güncelleniyor — 30s gereksiz polling 2 dk'lık güvenlik ağına düşürüldü" },
+    ],
+  },
+  {
     version: "4.9.2",
     date: "2026-04-20",
     bump: "patch",
