@@ -1,8 +1,24 @@
 # GitMyDayTime
 
-Kisisel gunluk planlama ve zaman takip uygulamasi (PWA). Gununuzu planlayin, aktiviteleri kaydedin, kategorilere gore zaman takibi yapin.
+Tek bir monorepo icinde gelistirilmis, canli yayinda iki bagli urun:
 
-**Live:** [gmd.byfeb.com](https://gmd.byfeb.com)
+1. **Kisisel planlama & zaman takip PWA'si** — gununuzu planlayin, aktiviteleri kaydedin, kategorilere gore zaman takibi yapin.
+2. **Jira benzeri proje yonetimi modulu** — cok kullanicili; rol bazli yetki, board/issue/sprint ve SSE ile gercek zamanli guncelleme. Issue'lar kisisel plana koprulenir.
+
+**Canli:** [gmd.byfeb.com](https://gmd.byfeb.com) (kisisel) · [pm.byfeb.com](https://pm.byfeb.com) (proje yonetimi)
+
+**Mimari:** Detayli sistem tasarimi icin [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Ekran Goruntuleri
+
+> Buraya ekran goruntuleri eklenecek. (Asagidaki "Ekran goruntusu ekleme" bolumune bakin.)
+
+<!--
+![Gunluk gorunum](docs/screenshots/dayview.png)
+![Proje board](docs/screenshots/board.png)
+![Istatistikler](docs/screenshots/stats.png)
+-->
+
 
 ## Ozellikler
 
@@ -70,6 +86,7 @@ packages/
   shared/   # Zod semalari, TypeScript tipleri, sabitler
   server/   # Express API, PostgreSQL, Redis, JWT auth
   web/      # React SPA, PWA
+docs/       # Mimari, feature backlog, planlama dokumanlari
 ```
 
 ## Lisans

@@ -21,8 +21,8 @@ packages/web/public/
 .DS_Store
 
 # Old planning documents — groups feature is complete, plans are stale
-GROUPS_PLAN.md
-plans/
+docs/GROUPS_PLAN.md
+docs/plans/
 
 # Git internals
 .git/

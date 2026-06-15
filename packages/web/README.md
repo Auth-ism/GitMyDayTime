@@ -1,73 +1,38 @@
-# React + TypeScript + Vite
+# @gmd/web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+GitMyDayTime'ın frontend paketi — React 19 + Vite + Tailwind CSS 4 ile geliştirilmiş bir SPA / PWA.
 
-Currently, two official plugins are available:
+Bu paket monorepo'nun bir parçasıdır. Kurulum, ortam değişkenleri ve genel mimari için kök dizindeki [README](../../README.md) ve [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) dosyalarına bakın.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Teknoloji
 
-## React Compiler
+- **React 19** + **Vite** (dev server, HMR, production build)
+- **Tailwind CSS 4** — `@theme` tabanlı tasarım token'ları, CSS değişkenleriyle dark/light tema
+- **React Query 5** — tüm sunucu state'i; `useDayLog`/`useCategories` optimistik güncellemelerle
+- **React Router v7** — masaüstü header + mobil alt tab bar layout
+- **vite-plugin-pwa** — ana ekrana eklenebilir PWA, web push bildirimleri
+- Özel i18n Context (TR/EN, varsayılan Türkçe)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Geliştirme
 
-## Expanding the ESLint configuration
+```bash
+# Kök dizinden (önerilen — server + web birlikte)
+npm run dev
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+# Sadece web
+npm run dev:web
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Tip kontrolü
+npx tsc --noEmit -p packages/web/tsconfig.json
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Yapı
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+  pages/        # DayView, WeekView, CalendarPage, StatsPage, BoardPage, IssuePage, ...
+  components/   # Layout, board/, projects/, NotificationBell, MentionTextarea, ...
+  hooks/        # useDayLog, useBoard, useIssues, useProjectEvents (SSE), ...
+  lib/          # i18n, yardimcilar
+  index.css     # Tailwind v4 @theme + dark mode override'lari
 ```

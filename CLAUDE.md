@@ -207,4 +207,4 @@ Auth: Bearer PAT via `Authorization` header. authMiddleware resolves it to userI
 
 ## Feature Roadmap
 
-See `FEATURES.md` for the full backlog and roadmap.
+See `docs/FEATURES.md` for the full backlog and roadmap.
