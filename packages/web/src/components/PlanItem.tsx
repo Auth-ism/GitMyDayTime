@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Check, Trash2, Clock, Timer, Play, Pencil, Plus, ListChecks, ChevronDown, ChevronUp, Repeat, X } from "lucide-react";
 import { type PlanItem as PlanItemType, type ChecklistItem, type PriorityType, formatDuration } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
@@ -23,7 +23,7 @@ interface Props {
   onToggle: (actualDuration?: number) => void;
   onRequestComplete?: () => void;
   onDelete: () => void;
-  onRequestEdit?: () => void;
+  onUpdate?: (data: Partial<PlanItemType>) => void;
   onMakeRecurring?: () => void;
   onStartPomodoro?: () => void;
   onAddChecklist?: (description: string) => void;
@@ -33,18 +33,57 @@ interface Props {
 }
 
 export default function PlanItem({
-  item, onToggle, onRequestComplete, onDelete, onRequestEdit, onMakeRecurring, onStartPomodoro,
+  item, onToggle, onRequestComplete, onDelete, onUpdate, onMakeRecurring, onStartPomodoro,
   onAddChecklist, onUpdateChecklist, onDeleteChecklist, dragHandle,
 }: Props) {
   const { t } = useI18n();
   const getCatLabel = useCategoryLabel();
-  const { getCategoryColor } = useCategories();
+  const { getCategoryColor, allCategories } = useCategories();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(item.description);
+  const [editCategory, setEditCategory] = useState<PlanItemType["category"]>(item.category);
+  const [editPriority, setEditPriority] = useState<PriorityType>(item.priority ?? "normal");
+  const [editTime, setEditTime] = useState(item.scheduledTime ?? "");
+  const [editDuration, setEditDuration] = useState(item.duration != null && item.duration > 0 ? String(item.duration) : "");
+  const editRef = useRef<HTMLInputElement>(null);
   const [newCheckItem, setNewCheckItem] = useState("");
   const [editingClId, setEditingClId] = useState<string | null>(null);
   const [editingClText, setEditingClText] = useState("");
   const checkInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) editRef.current?.focus();
+  }, [editing]);
+
+  const startEdit = () => {
+    setEditValue(item.description);
+    setEditCategory(item.category);
+    setEditPriority(item.priority ?? "normal");
+    setEditTime(item.scheduledTime ?? "");
+    setEditDuration(item.duration != null && item.duration > 0 ? String(item.duration) : "");
+    setEditing(true);
+  };
+
+  const handleEditSave = () => {
+    if (onUpdate) {
+      const updates: Partial<PlanItemType> = {};
+      const trimmed = editValue.trim();
+      if (trimmed && trimmed !== item.description) updates.description = trimmed;
+      if (editCategory !== item.category) updates.category = editCategory;
+      if (editPriority !== (item.priority ?? "normal")) updates.priority = editPriority;
+      // empty string clears the scheduled time
+      const newTime = editTime.trim() || null;
+      if (newTime !== (item.scheduledTime ?? null)) updates.scheduledTime = newTime ?? undefined;
+      const newDur = editDuration.trim() ? Number(editDuration) : null;
+      if (!isNaN(newDur ?? 0) && newDur !== (item.duration ?? null)) updates.duration = newDur ?? undefined;
+      if (Object.keys(updates).length > 0) onUpdate(updates);
+    }
+    setEditing(false);
+  };
+
+  const handleEditCancel = () => setEditing(false);
 
   const handleDelete = () => {
     if (confirmDelete) {
@@ -132,17 +171,94 @@ export default function PlanItem({
         </button>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            {priority !== "normal" && (
-              <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", PRIORITY_COLORS[priority])} />
-            )}
-            <p
-              className={cn("text-sm leading-snug", item.completed && "line-through text-text-tertiary", onRequestEdit && !item.completed && "cursor-pointer")}
-              onClick={() => { if (onRequestEdit && !item.completed) onRequestEdit(); }}
-            >
-              {item.description}
-            </p>
-          </div>
+          {editing ? (
+            <div className="space-y-1.5">
+              <input
+                ref={editRef}
+                type="text"
+                className="input !py-1 !px-2 !text-sm"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleEditSave();
+                  if (e.key === "Escape") handleEditCancel();
+                }}
+              />
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("form.category" as any)}>
+                {allCategories.map((cat) => (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    onClick={() => setEditCategory(cat.key)}
+                    className={cn(
+                      "px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all",
+                      editCategory === cat.key
+                        ? "border-transparent text-white"
+                        : "border-border text-text-secondary hover:border-text-tertiary"
+                    )}
+                    style={editCategory === cat.key ? { backgroundColor: cat.color } : {}}
+                  >
+                    {cat.isCustom ? cat.label : t(`cat.${cat.key}` as any)}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1.5" role="group" aria-label="Priority">
+                {(["normal", "high", "urgent"] as PriorityType[]).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setEditPriority(p)}
+                    className={cn(
+                      "px-2 py-0.5 rounded text-[10px] font-medium border transition-all",
+                      editPriority === p ? "border-accent bg-accent-soft text-text" : "border-border text-text-tertiary"
+                    )}
+                  >
+                    {t(`priority.${p}` as any)}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <div className="flex items-center gap-1.5 flex-1">
+                  <Clock size={12} className="text-text-tertiary flex-shrink-0" />
+                  <input
+                    type="time"
+                    className="input !py-1 !px-2 !text-xs flex-1"
+                    value={editTime}
+                    onChange={(e) => setEditTime(e.target.value)}
+                    placeholder="--:--"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 flex-1">
+                  <Timer size={12} className="text-text-tertiary flex-shrink-0" />
+                  <input
+                    type="number"
+                    min={1}
+                    max={480}
+                    className="input !py-1 !px-2 !text-xs flex-1"
+                    value={editDuration}
+                    onChange={(e) => setEditDuration(e.target.value)}
+                    placeholder={t("plan.durationMin" as any)}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-1.5 pt-0.5">
+                <button onClick={handleEditCancel} className="btn btn-ghost !py-1 !px-3 text-xs text-text-tertiary">{t("issue.cancelEdit" as any)}</button>
+                <button onClick={handleEditSave} className="btn btn-primary !py-1 !px-4 text-xs">{t("form.save" as any)}</button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              {priority !== "normal" && (
+                <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", PRIORITY_COLORS[priority])} />
+              )}
+              <p
+                className={cn("text-sm leading-snug", item.completed && "line-through text-text-tertiary", onUpdate && !item.completed && "cursor-pointer")}
+                onClick={() => { if (onUpdate && !item.completed) startEdit(); }}
+              >
+                {item.description}
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center gap-2.5 mt-0.5">
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-bg-secondary text-text-secondary">
@@ -179,9 +295,9 @@ export default function PlanItem({
           </div>
         </div>
 
-        {!item.completed && onRequestEdit && (
+        {!item.completed && onUpdate && !editing && (
           <button
-            onClick={onRequestEdit}
+            onClick={startEdit}
             aria-label="Edit"
             className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
           >

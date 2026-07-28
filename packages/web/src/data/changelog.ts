@@ -15,6 +15,18 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.18.1",
+    date: "2026-07-29",
+    bump: "patch",
+    summary: "Plan düzenleme satır içine geri döndü, zaman çizelgesi 24 saati kapsıyor",
+    changes: [
+      { type: "fix", text: "Plan düzenleme ekranın altından açılan panelden çıkarıldı — düzenleme yine planın kendi satırında açılıyor" },
+      { type: "fix", text: "Zaman çizelgesi 00:00–24:00 arasını gösteriyor; 06:00 öncesi ve 23:00 sonrası planlar görünmüyor, en üste yapışıyordu" },
+      { type: "feat", text: "Zaman çizelgesi döngülü kaydırılıyor — aşağı indikçe 00:00'a bağlanıp devam ediyor" },
+      { type: "feat", text: "Satır içi düzenlemede kategori de değiştirilebiliyor" },
+    ],
+  },
+  {
     version: "4.18.0",
     date: "2026-07-29",
     bump: "minor",

@@ -17,8 +17,8 @@ import TimelineView from "@/components/TimelineView";
 import TemplatesModal from "@/components/TemplatesModal";
 import { showUndoToast } from "@/components/Toast";
 import { AnimatePresence, Reorder, useDragControls, type DragControls } from "framer-motion";
-import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, GripVertical, Timer, Pencil } from "lucide-react";
-import { todayStr, parseDuration, type PlanItem as PlanItemData, type PriorityType, type Category } from "@gmd/shared";
+import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, GripVertical, Timer } from "lucide-react";
+import { todayStr, parseDuration, type PlanItem as PlanItemData } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { useSwipe } from "@/hooks/useSwipe";
 import SwipeableItem from "@/components/SwipeableItem";
@@ -74,16 +74,9 @@ export default function DayView() {
   const [barOffset, setBarOffset] = useState(0);
   const durationInputRef = useRef<HTMLInputElement>(null);
 
-  // Plan edit lives in a fixed bottom bar (not inline) so the reorderable list
-  // layout never shifts/overlaps while editing.
-  const [pendingEdit, setPendingEdit] = useState<PlanItemData | null>(null);
-  const [editDesc, setEditDesc] = useState("");
-  const [editCategory, setEditCategory] = useState<Category>("dev");
-  const [editPriority, setEditPriority] = useState<PriorityType>("normal");
-  const [editTime, setEditTime] = useState("");
-  const [editDuration, setEditDuration] = useState("");
-  const editDescRef = useRef<HTMLInputElement>(null);
-  const bottomBarOpen = Boolean(pendingComplete || pendingEdit);
+  // Plan edit is inline on the item itself — a fixed bottom sheet for editing was
+  // tried and rejected. The bottom bar below is only the complete-with-duration prompt.
+  const bottomBarOpen = Boolean(pendingComplete);
 
   useEffect(() => {
     if (!bottomBarOpen) { setBarOffset(0); return; }
@@ -180,34 +173,6 @@ export default function DayView() {
       updatePlan.mutate({ id: item.id, completed: item.completed });
     });
   }, [updatePlan]);
-
-  const openEdit = useCallback((item: PlanItemData) => {
-    setPendingEdit(item);
-    setEditDesc(item.description);
-    setEditCategory(item.category);
-    setEditPriority(item.priority ?? "normal");
-    setEditTime(item.scheduledTime ?? "");
-    setEditDuration(item.duration != null && item.duration > 0 ? String(item.duration) : "");
-    setTimeout(() => editDescRef.current?.focus({ preventScroll: true }), 50);
-  }, []);
-
-  const closeEdit = useCallback(() => setPendingEdit(null), []);
-
-  const saveEdit = useCallback(() => {
-    if (!pendingEdit) return;
-    const item = pendingEdit;
-    const updates: Partial<PlanItemData> & { id: string } = { id: item.id };
-    const trimmed = editDesc.trim();
-    if (trimmed && trimmed !== item.description) updates.description = trimmed;
-    if (editCategory !== item.category) updates.category = editCategory;
-    if (editPriority !== (item.priority ?? "normal")) updates.priority = editPriority;
-    const newTime = editTime.trim() || null;
-    if (newTime !== (item.scheduledTime ?? null)) updates.scheduledTime = newTime ?? undefined;
-    const newDur = editDuration.trim() ? Number(editDuration) : null;
-    if (!isNaN(newDur ?? 0) && newDur !== (item.duration ?? null)) updates.duration = newDur ?? undefined;
-    if (Object.keys(updates).length > 1) updatePlan.mutate(updates);
-    setPendingEdit(null);
-  }, [pendingEdit, editDesc, editCategory, editPriority, editTime, editDuration, updatePlan]);
 
   const handleDeleteTask = useCallback((id: string, description: string) => {
     const task = dayLog?.tasks.find((t) => t.id === id);
@@ -490,7 +455,7 @@ export default function DayView() {
                           setTimeout(() => durationInputRef.current?.focus({ preventScroll: true }), 50);
                         }}
                         onDelete={() => handleDeletePlan(item.id, item.description)}
-                        onRequestEdit={() => openEdit(item)}
+                        onUpdate={(data) => updatePlan.mutate({ id: item.id, ...data })}
                         onMakeRecurring={() => navigate("/recurring", { state: { prefillRecurring: {
                           description: item.description,
                           category: item.category,
@@ -663,87 +628,6 @@ export default function DayView() {
         </div>
       )}
 
-      {/* Plan edit overlay — fixed bottom bar, list layout etkilenmez */}
-      {pendingEdit && (
-        <div className="fixed left-0 right-0 z-50 bg-bg-elevated border-t border-border shadow-xl p-3 space-y-2 max-h-[70vh] overflow-y-auto" style={{ bottom: barOffset }}>
-          <div className="flex items-center gap-2">
-            <Pencil size={15} className="text-text-tertiary flex-shrink-0" />
-            <input
-              ref={editDescRef}
-              type="text"
-              className="input flex-1 !text-sm"
-              value={editDesc}
-              onChange={(e) => setEditDesc(e.target.value)}
-              autoComplete="off"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveEdit();
-                if (e.key === "Escape") closeEdit();
-              }}
-            />
-          </div>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("form.category" as any)}>
-            {allCategories.map((cat) => (
-              <button
-                key={cat.key}
-                type="button"
-                onClick={() => setEditCategory(cat.key)}
-                className={cn(
-                  "px-2 py-0.5 rounded-full text-[11px] font-medium border transition-all",
-                  editCategory === cat.key
-                    ? "border-transparent text-white"
-                    : "border-border text-text-secondary hover:border-text-tertiary"
-                )}
-                style={editCategory === cat.key ? { backgroundColor: cat.color } : {}}
-              >
-                {cat.isCustom ? cat.label : t(`cat.${cat.key}` as any)}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-1.5" role="group" aria-label="Priority">
-            {(["normal", "high", "urgent"] as PriorityType[]).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setEditPriority(p)}
-                className={cn(
-                  "px-2.5 py-1 rounded text-[11px] font-medium border transition-all",
-                  editPriority === p ? "border-accent bg-accent-soft text-text" : "border-border text-text-tertiary"
-                )}
-              >
-                {t(`priority.${p}` as any)}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 flex-1">
-              <Clock size={13} className="text-text-tertiary flex-shrink-0" />
-              <input
-                type="time"
-                className="input !py-1.5 !px-2 !text-xs flex-1"
-                value={editTime}
-                onChange={(e) => setEditTime(e.target.value)}
-                placeholder="--:--"
-              />
-            </div>
-            <div className="flex items-center gap-1.5 flex-1">
-              <Timer size={13} className="text-text-tertiary flex-shrink-0" />
-              <input
-                type="number"
-                min={1}
-                max={480}
-                className="input !py-1.5 !px-2 !text-xs flex-1"
-                value={editDuration}
-                onChange={(e) => setEditDuration(e.target.value)}
-                placeholder={t("plan.durationMin" as any)}
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-0.5">
-            <button onClick={closeEdit} className="btn btn-ghost !py-1.5 !px-3 text-xs text-text-tertiary">{t("issue.cancelEdit" as any)}</button>
-            <button onClick={saveEdit} className="btn btn-primary !py-1.5 !px-5 text-xs">{t("form.save" as any)}</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
