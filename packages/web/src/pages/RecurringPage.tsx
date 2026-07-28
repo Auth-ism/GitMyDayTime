@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useRecurringTasks } from "@/hooks/useRecurringTasks";
 import { useCategories } from "@/hooks/useCategories";
 import { PRESET_COLORS } from "@/components/TaskForm";
@@ -26,13 +27,13 @@ export default function RecurringPage() {
   const getRecLabel = useRecurrenceLabel();
   const { query, create, update, remove } = useRecurringTasks();
 
-  const handleDelete = (task: { id: string; description: string; category: string; recurrencePattern: RecurrencePattern; weekDay?: number | null; customDays?: number[] | null; duration?: number | null; scheduledTime?: string | null; active: boolean }) => {
+  const handleDelete = (task: { id: string; description: string; category: string; recurrence: RecurrencePattern; weekDay?: number | null; customDays?: number[] | null; duration?: number | null; scheduledTime?: string | null; active: boolean }) => {
     remove.mutate(task.id);
     showUndoToast(`"${task.description}" kaldırıldı`, () => {
       create.mutate({
         description: task.description,
         category: task.category as CreateRecurringTaskInput["category"],
-        recurrencePattern: task.recurrencePattern,
+        recurrence: task.recurrence,
         weekDay: task.weekDay ?? undefined,
         customDays: task.customDays ?? undefined,
         duration: task.duration ?? undefined,
@@ -55,6 +56,21 @@ export default function RecurringPage() {
   const [customDays, setCustomDays] = useState<number[]>([]);
   const [time, setTime] = useState("");
   const [durMinutes, setDurMinutes] = useState<number | null>(null);
+
+  // When arriving from a day plan's "make recurring" action, prefill + open the form.
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const pf = (location.state as { prefillRecurring?: { description: string; category: string; scheduledTime: string; duration: number | null } } | null)?.prefillRecurring;
+    if (!pf) return;
+    setDesc(pf.description);
+    setCat(pf.category);
+    setTime(pf.scheduledTime ?? "");
+    setDurMinutes(pf.duration ?? null);
+    setShowForm(true);
+    navigate(location.pathname, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const resetForm = () => {
     setDesc("");

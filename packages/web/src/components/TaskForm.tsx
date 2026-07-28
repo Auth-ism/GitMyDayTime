@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Clock, MessageSquare, ListTodo, Bell, ChevronDown } from "lucide-react";
+import { Plus, Clock, MessageSquare, ListTodo, Bell, ChevronDown, AlertTriangle, ArrowUp, Minus } from "lucide-react";
 import { type Category, type ItemType, type PriorityType } from "@gmd/shared";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
@@ -30,6 +30,9 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
   const [duration, setDuration] = useState("");
   const [priority, setPriority] = useState<PriorityType>("normal");
   const [expanded, setExpanded] = useState(false);
+  // Tracks whether the options panel opened by itself (first keystroke) rather than
+  // by the chevron — only auto-opened panels close again when the input is cleared.
+  const [autoExpanded, setAutoExpanded] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -54,11 +57,23 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
   const isReminder = type === "reminder";
   const hasOptions = isPlan || isReminder;
 
+  // Category / start / duration stay out of the way until there is something to schedule.
+  const handleDescChange = (value: string) => {
+    setDesc(value);
+    if (!hasOptions) return;
+    if (value.trim()) {
+      if (!expanded) { setExpanded(true); setAutoExpanded(true); }
+    } else if (autoExpanded) {
+      setExpanded(false);
+      setAutoExpanded(false);
+    }
+  };
+
   useEffect(() => {
     if (!expanded) return;
     const handler = (e: MouseEvent) => {
       if (formRef.current && !formRef.current.contains(e.target as Node)) {
-        if (!desc.trim()) setExpanded(false);
+        if (!desc.trim()) { setExpanded(false); setAutoExpanded(false); }
       }
     };
     document.addEventListener("mousedown", handler);
@@ -82,6 +97,7 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
     setDuration("");
     setPriority("normal");
     setExpanded(false);
+    setAutoExpanded(false);
     setJustAdded(true);
     inputRef.current?.focus();
   };
@@ -105,13 +121,26 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
           className="flex-1 bg-transparent text-sm text-text placeholder:text-text-tertiary outline-none py-1.5"
           placeholder={isPlan ? t("form.whatWillYouDo") : isReminder ? t("reminder.placeholder" as any) : t("form.addNotePlace")}
           value={desc}
-          onChange={(e) => setDesc(e.target.value)}
+          onChange={(e) => handleDescChange(e.target.value)}
           autoComplete="off"
         />
+        {isPlan && (
+          <button
+            type="button"
+            onClick={() => setPriority(p => p === "normal" ? "high" : p === "high" ? "urgent" : "normal")}
+            title={t(`priority.${priority}` as any)}
+            className={cn(
+              "p-1 rounded transition-colors flex-shrink-0",
+              priority === "urgent" ? "text-red-500" : priority === "high" ? "text-orange-400" : "text-text-tertiary hover:text-text"
+            )}
+          >
+            {priority === "urgent" ? <AlertTriangle size={14} /> : priority === "high" ? <ArrowUp size={14} /> : <Minus size={14} />}
+          </button>
+        )}
         {hasOptions && (
           <button
             type="button"
-            onClick={() => setExpanded((v) => !v)}
+            onClick={() => { setExpanded((v) => !v); setAutoExpanded(false); }}
             className={cn(
               "p-1 rounded transition-colors",
               expanded ? "text-text" : "text-text-tertiary hover:text-text"
@@ -189,28 +218,6 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
                   </div>
                 )}
               </div>
-              {isPlan && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-tertiary">{t("projects.priority" as any)}</span>
-                  {(["urgent", "high", "normal"] as PriorityType[]).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPriority(p)}
-                      className={cn(
-                        "px-2 py-0.5 rounded-full text-xs font-medium border transition-all",
-                        priority === p
-                          ? p === "urgent" ? "bg-red-500 border-transparent text-white"
-                            : p === "high" ? "bg-orange-400 border-transparent text-white"
-                            : "bg-accent border-transparent text-bg"
-                          : "border-border text-text-secondary hover:border-text-tertiary"
-                      )}
-                    >
-                      {t(`priority.${p}` as any)}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           </motion.div>
         )}

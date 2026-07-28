@@ -64,6 +64,7 @@ const translations = {
     "form.addTag": "Add tag...",
     "form.start": "Start",
     "form.duration": "Duration",
+    "form.category": "Category",
     "form.custom": "Custom",
     "form.add": "Add",
     "form.save": "Save",
@@ -91,6 +92,10 @@ const translations = {
 
     // Checklist
     "checklist.add": "Add a step...",
+    "checklist.rename": "Rename step",
+    "checklist.moveUp": "Move up",
+    "checklist.moveDown": "Move down",
+    "checklist.delete": "Delete step",
 
     // CarryOver
     "carry.incomplete": "{count} incomplete task{s} from yesterday",
@@ -170,6 +175,7 @@ const translations = {
     "recurring.title": "Recurring Tasks",
     "recurring.desc": "Auto-added to your daily plan",
     "recurring.taskDesc": "Task description...",
+    "recurring.makeRecurring": "Make recurring",
     "recurring.repeat": "Repeat",
     "recurring.pause": "Pause",
     "recurring.resume": "Resume",
@@ -433,7 +439,6 @@ const translations = {
     "profile.exportDataDesc": "Download all your data as JSON",
     "profile.dataManagement": "Data Management",
     "profile.dangerZone": "Danger Zone",
-    "profile.deleteAccount": "Delete Account",
     "profile.deleteAccountDescription": "Your account will be deactivated. Your data stays archived in our database. The same email can register again as a fresh account.",
     "profile.deleteAccountConfirmTitle": "Delete this account?",
     "profile.deleteAccountConfirmBody": "Enter your password to confirm. You will be signed out from all devices and your active project memberships will be removed.",
@@ -663,6 +668,7 @@ const translations = {
     "form.addTag": "Etiket ekle...",
     "form.start": "Başlangıç",
     "form.duration": "Süre",
+    "form.category": "Kategori",
     "form.custom": "Özel",
     "form.add": "Ekle",
     "form.save": "Kaydet",
@@ -690,6 +696,10 @@ const translations = {
 
     // Checklist
     "checklist.add": "Adım ekle...",
+    "checklist.rename": "Adımı yeniden adlandır",
+    "checklist.moveUp": "Yukarı taşı",
+    "checklist.moveDown": "Aşağı taşı",
+    "checklist.delete": "Adımı sil",
 
     // CarryOver
     "carry.incomplete": "Dünden {count} tamamlanmamış görev",
@@ -769,6 +779,7 @@ const translations = {
     "recurring.title": "Tekrarlayan Görevler",
     "recurring.desc": "Günlük planına otomatik eklenir",
     "recurring.taskDesc": "Görev açıklaması...",
+    "recurring.makeRecurring": "Tekrarlayan yap",
     "recurring.repeat": "Tekrar",
     "recurring.pause": "Duraklat",
     "recurring.resume": "Devam et",
@@ -1032,7 +1043,6 @@ const translations = {
     "profile.exportDataDesc": "Tüm verilerini JSON olarak indir",
     "profile.dataManagement": "Veri Yönetimi",
     "profile.dangerZone": "Tehlikeli Bölge",
-    "profile.deleteAccount": "Hesabı Sil",
     "profile.deleteAccountDescription": "Hesabın deaktive edilir, verilerin veritabanında arşivde kalır. Aynı e-posta daha sonra yeni bir hesap olarak tekrar kayıt olabilir.",
     "profile.deleteAccountConfirmTitle": "Hesabı silmek istediğinden emin misin?",
     "profile.deleteAccountConfirmBody": "Onaylamak için parolanı gir. Tüm cihazlardan çıkış yapılır ve aktif proje üyeliklerin kaldırılır.",

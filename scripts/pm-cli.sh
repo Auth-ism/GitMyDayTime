@@ -7,7 +7,7 @@
 #   GMD_PROJECT_ID — UUID of the target project (URL: /projects/<ID>/board)
 #
 # Optional:
-#   GMD_API_BASE   — defaults to https://gmd.byfeb.com
+#   GMD_API_BASE   — defaults to https://pm.byfeb.com
 #
 # Usage:
 #   ./scripts/pm-cli.sh create "bug: toast 5sn kayboluyor" "Geri Al 5sn fakat bazen 3sn" [bug|task|story] [critical|high|medium|low]
@@ -27,7 +27,7 @@ fi
 
 : "${GMD_API_TOKEN:?GMD_API_TOKEN env var not set — create one at Profile → API Tokens}"
 : "${GMD_PROJECT_ID:?GMD_PROJECT_ID env var not set — see project URL in pm.byfeb.com}"
-API_BASE="${GMD_API_BASE:-https://gmd.byfeb.com}"
+API_BASE="${GMD_API_BASE:-https://pm.byfeb.com}"
 
 AUTH_HEADER="Authorization: Bearer $GMD_API_TOKEN"
 CT_HEADER="Content-Type: application/json"

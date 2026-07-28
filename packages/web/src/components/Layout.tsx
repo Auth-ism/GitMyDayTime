@@ -1,7 +1,7 @@
-import { useState, useEffect, useSyncExternalStore } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { NavLink, useLocation, Outlet } from "react-router-dom";
 import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, UserCircle, WifiOff, X, Layers, Bug, Command } from "lucide-react";
-import { useTheme } from "@/lib/theme";
+import { useTheme, resolveTheme, type Theme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
@@ -88,7 +88,7 @@ const navLabelKeys = {
 } as const;
 
 export default function Layout() {
-  const { theme, toggle } = useTheme();
+  const { theme, setTheme, hadStoredTheme } = useTheme();
   const { logout, profile, user, refreshProfile } = useAuth();
   const { t, locale, setLocale } = useI18n();
   const location = useLocation();
@@ -131,6 +131,31 @@ export default function Layout() {
   const handleLogoutConfirm = () => { setShowLogoutConfirm(false); logout(); };
 
   const toggleLocale = () => setLocale(locale === "en" ? "tr" : "en" as Locale);
+
+  // The header toggle used to be local-only, so users/profiles.theme drifted apart:
+  // the settings form seeded its picker from the stale server value and saving it
+  // snapped the app back to that value. Persist every toggle so the two agree.
+  const toggleTheme = () => {
+    const next: Theme = resolveTheme(theme) === "light" ? "dark" : "light";
+    setTheme(next);
+    api.updateProfile({ theme: next }).catch(() => {});
+  };
+
+  // Reconcile once per session. A theme stored on this device is the user's most
+  // recent explicit choice, so it wins and gets pushed up; a fresh device has
+  // nothing to go on and adopts whatever the account already has.
+  const themeSyncedRef = useRef(false);
+  useEffect(() => {
+    if (!profile || themeSyncedRef.current) return;
+    themeSyncedRef.current = true;
+    const serverTheme = profile.theme as Theme | undefined;
+    if (!serverTheme || serverTheme === theme) return;
+    if (hadStoredTheme) {
+      api.updateProfile({ theme }).catch(() => {});
+    } else {
+      setTheme(serverTheme);
+    }
+  }, [profile, theme, hadStoredTheme, setTheme]);
 
   return (
     <div className={cn("flex flex-col bg-bg-secondary", location.pathname.includes("/board") ? "h-dvh overflow-hidden" : "min-h-screen")}>
@@ -196,7 +221,7 @@ export default function Layout() {
             </button>
 
             <button
-              onClick={toggle}
+              onClick={toggleTheme}
               aria-label={t("nav.switchTheme", { theme: theme === "light" ? "dark" : "light" })}
               className="btn-icon p-2 rounded-lg"
             >
@@ -265,7 +290,7 @@ export default function Layout() {
               {locale === "en" ? "TR" : "EN"}
             </button>
             <button
-              onClick={toggle}
+              onClick={toggleTheme}
               aria-label={t("nav.switchTheme", { theme: theme === "light" ? "dark" : "light" })}
               className="btn-icon p-2 rounded-lg"
             >

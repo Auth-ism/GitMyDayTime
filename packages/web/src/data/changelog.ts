@@ -15,6 +15,21 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.18.0",
+    date: "2026-07-29",
+    bump: "minor",
+    summary: "Plan düzenleme ve adım listesi elden geçti, tema kaydetme hatası giderildi",
+    changes: [
+      { type: "fix", text: "Ayarlarda Kaydet'e basınca tema açık temaya dönmüyor — tema tercihi artık hesapla senkron tutuluyor" },
+      { type: "fix", text: "Plan düzenlerken kategori değiştirilebiliyor (düzenleme çubuğunda kategori seçimi hiç yoktu)" },
+      { type: "feat", text: "Adım listesindeki adımlar yukarı/aşağı taşınabiliyor ve yeniden adlandırılabiliyor" },
+      { type: "feat", text: "Görev eklerken tür/başlangıç/süre paneli, açıklama yazılmaya başlanınca kendiliğinden açılıyor" },
+      { type: "fix", text: "Düzenleme çubuğundaki Kaydet butonu normal genişliğe çekildi" },
+      { type: "fix", text: "Adım listesi butonları mobilde görünür oldu — silme butonu hover'a bağlıydı" },
+      { type: "fix", text: "Hafta görünümünde kart sürüklerken günler yatay kaymıyor" },
+    ],
+  },
+  {
     version: "4.17.0",
     date: "2026-05-30",
     bump: "minor",

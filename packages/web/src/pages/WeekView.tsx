@@ -46,6 +46,12 @@ export default function WeekView() {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
   const dragOverDateRef = useRef<string | null>(null);
+  // The week strip scrolls horizontally; while dragging a card we lock that scroll
+  // so dragging Tue→Mon doesn't also swipe the days left/right.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const lockWeekScroll = (lock: boolean) => {
+    if (scrollRef.current) scrollRef.current.style.overflowX = lock ? "hidden" : "";
+  };
 
   const dates = useMemo(() => getWeekDates(weekRef), [weekRef]);
 
@@ -140,6 +146,7 @@ export default function WeekView() {
   const cleanupTouchDrag = useCallback(() => {
     if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
     if (touchGhostRef.current) { touchGhostRef.current.remove(); touchGhostRef.current = null; }
+    lockWeekScroll(false);
     touchDragRef.current = null;
     touchStartPos.current = null;
     dragOverDateRef.current = null;
@@ -178,6 +185,7 @@ export default function WeekView() {
       ghost.style.top = `${touch.clientY - 20}px`;
       document.body.appendChild(ghost);
       touchGhostRef.current = ghost;
+      lockWeekScroll(true);
       navigator.vibrate?.(30);
     }, 400);
   }, []);
@@ -237,7 +245,7 @@ export default function WeekView() {
 
       {/* Week grid */}
       <div>
-      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
+      <div ref={scrollRef} className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
       <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, minmax(110px, 1fr))" }}>
         {dates.map((date, i) => {
           const dayLog = dayQueries[i].data;

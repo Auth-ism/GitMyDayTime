@@ -2,31 +2,36 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 export type Theme = "light" | "dark" | "system";
 
-function resolveTheme(theme: Theme): "light" | "dark" {
+const STORAGE_KEY = "gmd-theme";
+
+export function resolveTheme(theme: Theme): "light" | "dark" {
   if (theme === "system") {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
   return theme;
 }
 
+// Read once at module load — the provider's effect writes this key back on mount,
+// so this is the only chance to tell "chosen on this device" from "fresh device".
+const bootStoredTheme: Theme | null =
+  typeof window === "undefined" ? null : (localStorage.getItem(STORAGE_KEY) as Theme | null);
+
 const ThemeContext = createContext<{
   theme: Theme;
   toggle: () => void;
   setTheme: (t: Theme) => void;
-}>({ theme: "system", toggle: () => {}, setTheme: () => {} });
+  hadStoredTheme: boolean;
+}>({ theme: "system", toggle: () => {}, setTheme: () => {}, hadStoredTheme: false });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "system";
-    return (localStorage.getItem("gmd-theme") as Theme) || "system";
-  });
+  const [theme, setThemeState] = useState<Theme>(() => bootStoredTheme || "system");
 
   useEffect(() => {
     const apply = () => {
       document.documentElement.classList.toggle("dark", resolveTheme(theme) === "dark");
     };
     apply();
-    localStorage.setItem("gmd-theme", theme);
+    localStorage.setItem(STORAGE_KEY, theme);
 
     if (theme === "system") {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -42,7 +47,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = (t: Theme) => setThemeState(t);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggle, setTheme }}>
+    <ThemeContext.Provider value={{ theme, toggle, setTheme, hadStoredTheme: bootStoredTheme !== null }}>
       {children}
     </ThemeContext.Provider>
   );

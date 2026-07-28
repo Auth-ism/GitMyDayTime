@@ -123,7 +123,9 @@ export default function ProfilePage() {
         username: profile.username,
         timezone: profile.timezone,
         locale: profile.locale as "tr" | "en",
-        theme: profile.theme as "light" | "dark",
+        // Live context, not profile.theme — the picker must show what the user is
+        // actually looking at, otherwise saving reverts the theme they just set.
+        theme: theme as "light" | "dark",
         pomodoroDuration: profile.pomodoroDuration,
         breakDuration: profile.breakDuration,
         dailyGoal: profile.dailyGoal,
