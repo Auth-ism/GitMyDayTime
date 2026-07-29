@@ -5,6 +5,7 @@ import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { useCategories } from "@/hooks/useCategories";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
+import Tooltip from "@/components/Tooltip";
 
 const PRIORITY_COLORS: Record<PriorityType, string> = {
   urgent: "bg-red-500",
@@ -46,7 +47,7 @@ export default function PlanItem({
   const [editCategory, setEditCategory] = useState<PlanItemType["category"]>(item.category);
   const [editPriority, setEditPriority] = useState<PriorityType>(item.priority ?? "normal");
   const [editTime, setEditTime] = useState(item.scheduledTime ?? "");
-  const [editDuration, setEditDuration] = useState(item.duration != null && item.duration > 0 ? String(item.duration) : "");
+  const [editDuration, setEditDuration] = useState(item.duration != null && item.duration > 0 ? formatDuration(item.duration) : "");
   const [completing, setCompleting] = useState(false);
   const [completeDuration, setCompleteDuration] = useState("");
   const editRef = useRef<HTMLInputElement>(null);
@@ -65,7 +66,7 @@ export default function PlanItem({
     setEditCategory(item.category);
     setEditPriority(item.priority ?? "normal");
     setEditTime(item.scheduledTime ?? "");
-    setEditDuration(item.duration != null && item.duration > 0 ? String(item.duration) : "");
+    setEditDuration(item.duration != null && item.duration > 0 ? formatDuration(item.duration) : "");
     setEditing(true);
   };
 
@@ -79,8 +80,8 @@ export default function PlanItem({
       // empty string clears the scheduled time
       const newTime = editTime.trim() || null;
       if (newTime !== (item.scheduledTime ?? null)) updates.scheduledTime = newTime ?? undefined;
-      const newDur = editDuration.trim() ? Number(editDuration) : null;
-      if (!isNaN(newDur ?? 0) && newDur !== (item.duration ?? null)) updates.duration = newDur ?? undefined;
+      const newDur = editDuration.trim() ? parseDuration(editDuration) || null : null;
+      if (newDur !== (item.duration ?? null)) updates.duration = newDur ?? undefined;
       if (Object.keys(updates).length > 0) onUpdate(updates);
     }
     setEditing(false);
@@ -274,13 +275,15 @@ export default function PlanItem({
                 <div className="flex items-center gap-1.5 flex-1">
                   <Timer size={12} className="text-text-tertiary flex-shrink-0" />
                   <input
-                    type="number"
-                    min={1}
-                    max={480}
-                    className="input !py-1 !px-2 !text-xs flex-1"
+                    type="text"
+                    inputMode="text"
+                    className="input !py-1 !px-2 !text-xs flex-1 min-w-0"
                     value={editDuration}
                     onChange={(e) => setEditDuration(e.target.value)}
-                    placeholder={t("plan.durationMin" as any)}
+                    placeholder={t("tip.durationHint" as any)}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
                   />
                 </div>
               </div>
@@ -339,63 +342,70 @@ export default function PlanItem({
         </div>
 
         {!busy && !item.completed && onAddChecklist && checklist.length === 0 && (
-          <button
-            onClick={() => { setExpanded(true); setTimeout(() => checkInputRef.current?.focus(), 100); }}
-            aria-label={t("checklist.add" as any)}
-            title={t("checklist.add" as any)}
-            className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
-          >
-            <Plus size={14} />
-          </button>
+          <Tooltip label={t("tip.addStep" as any)}>
+            <button
+              onClick={() => { setExpanded(true); setTimeout(() => checkInputRef.current?.focus(), 100); }}
+              aria-label={t("tip.addStep" as any)}
+              className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
+            >
+              <Plus size={14} />
+            </button>
+          </Tooltip>
         )}
 
         {!busy && !item.completed && onUpdate && (
-          <button
-            onClick={startEdit}
-            aria-label="Edit"
-            className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
-          >
-            <Pencil size={14} />
-          </button>
+          <Tooltip label={t("tip.edit" as any)}>
+            <button
+              onClick={startEdit}
+              aria-label={t("tip.edit" as any)}
+              className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
+            >
+              <Pencil size={14} />
+            </button>
+          </Tooltip>
         )}
 
         {!busy && !item.completed && onMakeRecurring && (
-          <button
-            onClick={onMakeRecurring}
-            aria-label={t("recurring.makeRecurring" as any)}
-            title={t("recurring.makeRecurring" as any)}
-            className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
-          >
-            <Repeat size={14} />
-          </button>
+          <Tooltip label={t("tip.makeRecurring" as any)}>
+            <button
+              onClick={onMakeRecurring}
+              aria-label={t("recurring.makeRecurring" as any)}
+              className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
+            >
+              <Repeat size={14} />
+            </button>
+          </Tooltip>
         )}
 
         {!busy && !item.completed && onStartPomodoro && (
-          <button
-            onClick={onStartPomodoro}
-            aria-label={t("plan.startPomodoro", { desc: item.description })}
-            title={t("plan.startPomodoro", { desc: item.description })}
-            className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
-          >
-            <Hourglass size={14} />
-          </button>
+          <Tooltip label={t("tip.pomodoro" as any)}>
+            <button
+              onClick={onStartPomodoro}
+              aria-label={t("plan.startPomodoro", { desc: item.description })}
+              className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
+            >
+              <Hourglass size={14} />
+            </button>
+          </Tooltip>
         )}
 
         {!busy && dragHandle}
 
         {!busy && (
-        <button
-          onClick={handleDelete}
-          aria-label={confirmDelete ? t("plan.confirmDelete", { desc: item.description }) : t("plan.delete", { desc: item.description })}
-          className={cn(
-            "p-1.5 rounded-lg transition-all flex-shrink-0",
-            confirmDelete
-              ? "bg-danger-soft text-danger"
-              : "text-text-tertiary hover:text-danger hover:bg-danger-soft focus-visible:text-danger"
-          )}
-        >
-          <Trash2 size={14} />
-        </button>
+          <Tooltip align="right" label={confirmDelete ? t("tip.deleteConfirm" as any) : t("tip.delete" as any)}>
+            <button
+              onClick={handleDelete}
+              aria-label={confirmDelete ? t("plan.confirmDelete", { desc: item.description }) : t("plan.delete", { desc: item.description })}
+              className={cn(
+                "p-1.5 rounded-lg transition-all flex-shrink-0",
+                confirmDelete
+                  ? "bg-danger-soft text-danger"
+                  : "text-text-tertiary hover:text-danger hover:bg-danger-soft focus-visible:text-danger"
+              )}
+            >
+              <Trash2 size={14} />
+            </button>
+          </Tooltip>
         )}
       </div>
 

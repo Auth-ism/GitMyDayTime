@@ -151,12 +151,23 @@ export function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+// Accepts "90", "1h 30m" and the Turkish "1s 30d" (saat / dakika).
+// A bare number is minutes. Returns total minutes.
 export function parseDuration(input: string): number {
-  const match = input.match(/^(?:(\d+)h)?\s*(?:(\d+)m)?$/);
-  if (!match) return parseInt(input) || 0;
-  const hours = parseInt(match[1] || "0");
-  const mins = parseInt(match[2] || "0");
-  return hours * 60 + mins;
+  const raw = input.trim().toLowerCase();
+  if (!raw) return 0;
+  if (/^\d+$/.test(raw)) return parseInt(raw, 10);
+
+  const unit = /(\d+)\s*([hsmd])/g;
+  let total = 0;
+  let matched = false;
+  let m: RegExpExecArray | null;
+  while ((m = unit.exec(raw)) !== null) {
+    matched = true;
+    const value = parseInt(m[1], 10);
+    total += m[2] === "h" || m[2] === "s" ? value * 60 : value;
+  }
+  return matched ? total : parseInt(raw, 10) || 0;
 }
 
 export function dateToPath(date: string): string {

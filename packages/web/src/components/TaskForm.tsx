@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, Clock, MessageSquare, ListTodo, Bell, ChevronDown, AlertTriangle, ArrowUp, Minus } from "lucide-react";
-import { type Category, type ItemType, type PriorityType } from "@gmd/shared";
+import { parseDuration, type Category, type ItemType, type PriorityType } from "@gmd/shared";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { useCategories } from "@/hooks/useCategories";
@@ -83,6 +83,7 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!desc.trim() || loading) return;
+    const durationMinutes = parseDuration(duration);
     onSubmit({
       description: desc.trim(),
       category: isPlan ? category : "other",
@@ -90,7 +91,7 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
       ...(time ? { scheduledTime: time } : {}),
       ...(isReminder ? { itemType: "reminder" as ItemType } : {}),
       ...(isPlan ? { priority } : {}),
-      ...(isPlan && duration ? { duration: parseInt(duration, 10) } : {}),
+      ...(isPlan && durationMinutes > 0 ? { duration: durationMinutes } : {}),
     });
     setDesc("");
     setTime("");
@@ -207,13 +208,15 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
                     <Clock size={13} className="text-text-tertiary flex-shrink-0" />
                     <span className="text-xs text-text-tertiary">{t("form.duration")}</span>
                     <input
-                      type="number"
-                      min={1}
-                      max={480}
-                      className="input !w-[5rem] !text-xs !py-1"
-                      placeholder="dk"
+                      type="text"
+                      inputMode="text"
+                      className="input !w-[6.5rem] !text-xs !py-1"
+                      placeholder={t("tip.durationHint" as any)}
                       value={duration}
                       onChange={(e) => setDuration(e.target.value)}
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
                     />
                   </div>
                 )}

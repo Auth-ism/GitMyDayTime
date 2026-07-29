@@ -15,6 +15,18 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.18.3",
+    date: "2026-07-29",
+    bump: "patch",
+    summary: "İkonlara bilgi baloncuğu, süre alanları her yerde serbest formatta",
+    changes: [
+      { type: "feat", text: "Plan satırındaki ikonların üstüne gelince tasarıma uygun bilgi baloncuğu çıkıyor — tarayıcının varsayılan sarı kutusu yerine" },
+      { type: "fix", text: "Görev eklerken süre alanı sadece düz dakika kabul ediyordu; artık 1h 30m ve 1s 30d yazılabiliyor" },
+      { type: "feat", text: "Süre alanları Türkçe birimleri de anlıyor: s = saat, d = dakika" },
+      { type: "fix", text: "Düzenlemede süre alanı mevcut değeri 90 yerine 1h 30m olarak gösteriyor" },
+    ],
+  },
+  {
     version: "4.18.2",
     date: "2026-07-29",
     bump: "patch",

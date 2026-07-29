@@ -93,6 +93,14 @@ const translations = {
     // Checklist
     "checklist.add": "Add a step...",
     "checklist.rename": "Rename step",
+    // Short icon-button tooltips — aria-labels stay descriptive, these stay tight
+    "tip.edit": "Edit",
+    "tip.addStep": "Add step",
+    "tip.makeRecurring": "Make recurring",
+    "tip.pomodoro": "Start pomodoro",
+    "tip.delete": "Delete",
+    "tip.deleteConfirm": "Click again to delete",
+    "tip.durationHint": "e.g. 1h 30m",
     "checklist.moveUp": "Move up",
     "checklist.moveDown": "Move down",
     "checklist.delete": "Delete step",
@@ -697,6 +705,14 @@ const translations = {
     // Checklist
     "checklist.add": "Adım ekle...",
     "checklist.rename": "Adımı yeniden adlandır",
+    // Kısa ikon tooltip'leri — aria-label'lar açıklayıcı kalıyor, bunlar kısa
+    "tip.edit": "Düzenle",
+    "tip.addStep": "Adım ekle",
+    "tip.makeRecurring": "Tekrarlayan yap",
+    "tip.pomodoro": "Pomodoro başlat",
+    "tip.delete": "Sil",
+    "tip.deleteConfirm": "Silmek için tekrar tıkla",
+    "tip.durationHint": "örn. 1s 30d",
     "checklist.moveUp": "Yukarı taşı",
     "checklist.moveDown": "Aşağı taşı",
     "checklist.delete": "Adımı sil",
