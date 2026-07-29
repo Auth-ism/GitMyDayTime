@@ -15,6 +15,19 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.18.2",
+    date: "2026-07-29",
+    bump: "patch",
+    summary: "Tamamlama süresi de satır içine alındı, plan satırı butonları düzenlendi",
+    changes: [
+      { type: "fix", text: "Görevi tamamlarken sorulan süre ekranın altındaki panelden çıkarıldı — görevin kendi satırında soruluyor" },
+      { type: "fix", text: "Adım ekleme (+) butonu artık hep görünür; sadece imleç üstüne gelince beliriyordu, dokunmatikte hiç erişilemiyordu" },
+      { type: "fix", text: "Plan satırında + ve kalem butonlarının yeri değiştirildi" },
+      { type: "fix", text: "Pomodoro ikonu oynat yerine kum saati oldu" },
+      { type: "fix", text: "Satır içi düzenleme veya süre girişi açıkken sağdaki ikonlar gizleniyor" },
+    ],
+  },
+  {
     version: "4.18.1",
     date: "2026-07-29",
     bump: "patch",

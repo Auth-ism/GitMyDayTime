@@ -17,8 +17,8 @@ import TimelineView from "@/components/TimelineView";
 import TemplatesModal from "@/components/TemplatesModal";
 import { showUndoToast } from "@/components/Toast";
 import { AnimatePresence, Reorder, useDragControls, type DragControls } from "framer-motion";
-import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, GripVertical, Timer } from "lucide-react";
-import { todayStr, parseDuration, type PlanItem as PlanItemData } from "@gmd/shared";
+import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, GripVertical } from "lucide-react";
+import { todayStr, type PlanItem as PlanItemData } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 import { useSwipe } from "@/hooks/useSwipe";
 import SwipeableItem from "@/components/SwipeableItem";
@@ -69,25 +69,8 @@ export default function DayView() {
   const [showTimeline, setShowTimeline] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [copyingDay, setCopyingDay] = useState(false);
-  const [pendingComplete, setPendingComplete] = useState<{ id: string; desc: string } | null>(null);
-  const [durationInput, setDurationInput] = useState("");
-  const [barOffset, setBarOffset] = useState(0);
-  const durationInputRef = useRef<HTMLInputElement>(null);
-
-  // Plan edit is inline on the item itself — a fixed bottom sheet for editing was
-  // tried and rejected. The bottom bar below is only the complete-with-duration prompt.
-  const bottomBarOpen = Boolean(pendingComplete);
-
-  useEffect(() => {
-    if (!bottomBarOpen) { setBarOffset(0); return; }
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const update = () => setBarOffset(Math.max(0, window.innerHeight - vv.offsetTop - vv.height));
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    update();
-    return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
-  }, [bottomBarOpen]);
+  // Editing and complete-with-duration both happen inline on the plan item itself —
+  // fixed bottom sheets were tried here and rejected.
 
   // PWA share_target + quickAdd entry points — open the add form pre-filled
   const [sharedDraft, setSharedDraft] = useState<string>("");
@@ -449,11 +432,7 @@ export default function DayView() {
                       <PlanItem
                         item={item}
                         onToggle={(actualDuration) => handleToggleComplete(item, actualDuration)}
-                        onRequestComplete={() => {
-                          setPendingComplete({ id: item.id, desc: item.description });
-                          setDurationInput("");
-                          setTimeout(() => durationInputRef.current?.focus({ preventScroll: true }), 50);
-                        }}
+                        askDurationOnComplete
                         onDelete={() => handleDeletePlan(item.id, item.description)}
                         onUpdate={(data) => updatePlan.mutate({ id: item.id, ...data })}
                         onMakeRecurring={() => navigate("/recurring", { state: { prefillRecurring: {
@@ -573,60 +552,6 @@ export default function DayView() {
           />
         )}
       </AnimatePresence>
-
-      {/* Duration overlay — fixed bottom bar, list layout etkilenmez */}
-      {pendingComplete && (
-        <div className="fixed left-0 right-0 z-50 bg-bg-elevated border-t border-border shadow-xl p-4 flex items-center gap-2" style={{ bottom: barOffset }}>
-          <Timer size={15} className="text-text-tertiary flex-shrink-0" />
-          <input
-            ref={durationInputRef}
-            type="text"
-            className="input flex-1 !text-sm"
-            placeholder="1h 30m"
-            value={durationInput}
-            onChange={(e) => setDurationInput(e.target.value)}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                const dur = durationInput ? parseDuration(durationInput) : undefined;
-                const pending = dayLog?.plan.find((p) => p.id === pendingComplete.id);
-                if (pending) handleToggleComplete(pending, dur);
-                setPendingComplete(null);
-                setDurationInput("");
-              }
-              if (e.key === "Escape") {
-                setPendingComplete(null);
-                setDurationInput("");
-              }
-            }}
-          />
-          <button
-            onClick={() => {
-              const dur = durationInput ? parseDuration(durationInput) : undefined;
-              const pending = dayLog?.plan.find((p) => p.id === pendingComplete.id);
-              if (pending) handleToggleComplete(pending, dur);
-              setPendingComplete(null);
-              setDurationInput("");
-            }}
-            className="btn btn-primary !py-1.5 !px-3 text-xs flex-shrink-0"
-          >
-            {t("plan.done")}
-          </button>
-          <button
-            onClick={() => {
-              const pending = dayLog?.plan.find((p) => p.id === pendingComplete.id);
-              if (pending) handleToggleComplete(pending);
-              setPendingComplete(null);
-              setDurationInput("");
-            }}
-            className="btn btn-ghost !py-1.5 !px-2 text-xs text-text-tertiary flex-shrink-0"
-          >
-            {t("plan.skip")}
-          </button>
-        </div>
-      )}
 
     </div>
   );

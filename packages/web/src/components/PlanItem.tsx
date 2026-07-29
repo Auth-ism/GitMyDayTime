@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Check, Trash2, Clock, Timer, Play, Pencil, Plus, ListChecks, ChevronDown, ChevronUp, Repeat, X } from "lucide-react";
-import { type PlanItem as PlanItemType, type ChecklistItem, type PriorityType, formatDuration } from "@gmd/shared";
+import { Check, Trash2, Clock, Timer, Hourglass, Pencil, Plus, ListChecks, ChevronDown, ChevronUp, Repeat, X } from "lucide-react";
+import { type PlanItem as PlanItemType, type ChecklistItem, type PriorityType, formatDuration, parseDuration } from "@gmd/shared";
 import { useI18n, useCategoryLabel } from "@/lib/i18n";
 import { useCategories } from "@/hooks/useCategories";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,7 +21,7 @@ const PRIORITY_BORDER: Record<PriorityType, string> = {
 interface Props {
   item: PlanItemType;
   onToggle: (actualDuration?: number) => void;
-  onRequestComplete?: () => void;
+  askDurationOnComplete?: boolean;
   onDelete: () => void;
   onUpdate?: (data: Partial<PlanItemType>) => void;
   onMakeRecurring?: () => void;
@@ -33,7 +33,7 @@ interface Props {
 }
 
 export default function PlanItem({
-  item, onToggle, onRequestComplete, onDelete, onUpdate, onMakeRecurring, onStartPomodoro,
+  item, onToggle, askDurationOnComplete, onDelete, onUpdate, onMakeRecurring, onStartPomodoro,
   onAddChecklist, onUpdateChecklist, onDeleteChecklist, dragHandle,
 }: Props) {
   const { t } = useI18n();
@@ -47,7 +47,10 @@ export default function PlanItem({
   const [editPriority, setEditPriority] = useState<PriorityType>(item.priority ?? "normal");
   const [editTime, setEditTime] = useState(item.scheduledTime ?? "");
   const [editDuration, setEditDuration] = useState(item.duration != null && item.duration > 0 ? String(item.duration) : "");
+  const [completing, setCompleting] = useState(false);
+  const [completeDuration, setCompleteDuration] = useState("");
   const editRef = useRef<HTMLInputElement>(null);
+  const completeRef = useRef<HTMLInputElement>(null);
   const [newCheckItem, setNewCheckItem] = useState("");
   const [editingClId, setEditingClId] = useState<string | null>(null);
   const [editingClText, setEditingClText] = useState("");
@@ -94,12 +97,22 @@ export default function PlanItem({
     }
   };
 
+  // Completing asks for the actual duration inline, on the item itself.
   const handleToggle = () => {
-    if (!item.completed) {
-      onRequestComplete ? onRequestComplete() : onToggle();
-    } else {
-      onToggle();
+    if (!item.completed && askDurationOnComplete) {
+      setCompleteDuration("");
+      setCompleting(true);
+      setTimeout(() => completeRef.current?.focus({ preventScroll: true }), 50);
+      return;
     }
+    onToggle();
+  };
+
+  const confirmComplete = (withDuration: boolean) => {
+    const raw = completeDuration.trim();
+    onToggle(withDuration && raw ? parseDuration(raw) : undefined);
+    setCompleting(false);
+    setCompleteDuration("");
   };
 
   const handleAddCheck = (e: React.FormEvent) => {
@@ -143,6 +156,8 @@ export default function PlanItem({
   };
 
   const priority = item.priority ?? "normal";
+  // While an inline form is open the row's action icons would crowd it out.
+  const busy = editing || completing;
 
   return (
     <div
@@ -171,7 +186,35 @@ export default function PlanItem({
         </button>
 
         <div className="flex-1 min-w-0">
-          {editing ? (
+          {completing ? (
+            <div className="space-y-1.5">
+              <p className="text-sm leading-snug truncate">{item.description}</p>
+              <div className="flex items-center gap-1.5">
+                <Timer size={13} className="text-text-tertiary flex-shrink-0" />
+                <input
+                  ref={completeRef}
+                  type="text"
+                  className="input !py-1 !px-2 !text-xs flex-1 min-w-0"
+                  placeholder="1h 30m"
+                  value={completeDuration}
+                  onChange={(e) => setCompleteDuration(e.target.value)}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") confirmComplete(true);
+                    if (e.key === "Escape") { setCompleting(false); setCompleteDuration(""); }
+                  }}
+                />
+                <button onClick={() => confirmComplete(false)} className="btn btn-ghost !py-1 !px-2 text-xs text-text-tertiary flex-shrink-0">
+                  {t("plan.skip")}
+                </button>
+                <button onClick={() => confirmComplete(true)} className="btn btn-primary !py-1 !px-3 text-xs flex-shrink-0">
+                  {t("plan.done")}
+                </button>
+              </div>
+            </div>
+          ) : editing ? (
             <div className="space-y-1.5">
               <input
                 ref={editRef}
@@ -295,7 +338,18 @@ export default function PlanItem({
           </div>
         </div>
 
-        {!item.completed && onUpdate && !editing && (
+        {!busy && !item.completed && onAddChecklist && checklist.length === 0 && (
+          <button
+            onClick={() => { setExpanded(true); setTimeout(() => checkInputRef.current?.focus(), 100); }}
+            aria-label={t("checklist.add" as any)}
+            title={t("checklist.add" as any)}
+            className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
+          >
+            <Plus size={14} />
+          </button>
+        )}
+
+        {!busy && !item.completed && onUpdate && (
           <button
             onClick={startEdit}
             aria-label="Edit"
@@ -305,17 +359,7 @@ export default function PlanItem({
           </button>
         )}
 
-        {!item.completed && onAddChecklist && checklist.length === 0 && (
-          <button
-            onClick={() => { setExpanded(true); setTimeout(() => checkInputRef.current?.focus(), 100); }}
-            aria-label="Add checklist"
-            className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-          >
-            <Plus size={14} />
-          </button>
-        )}
-
-        {!item.completed && onMakeRecurring && (
+        {!busy && !item.completed && onMakeRecurring && (
           <button
             onClick={onMakeRecurring}
             aria-label={t("recurring.makeRecurring" as any)}
@@ -326,18 +370,20 @@ export default function PlanItem({
           </button>
         )}
 
-        {!item.completed && onStartPomodoro && (
+        {!busy && !item.completed && onStartPomodoro && (
           <button
             onClick={onStartPomodoro}
             aria-label={t("plan.startPomodoro", { desc: item.description })}
+            title={t("plan.startPomodoro", { desc: item.description })}
             className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft"
           >
-            <Play size={14} />
+            <Hourglass size={14} />
           </button>
         )}
 
-        {dragHandle}
+        {!busy && dragHandle}
 
+        {!busy && (
         <button
           onClick={handleDelete}
           aria-label={confirmDelete ? t("plan.confirmDelete", { desc: item.description }) : t("plan.delete", { desc: item.description })}
@@ -350,6 +396,7 @@ export default function PlanItem({
         >
           <Trash2 size={14} />
         </button>
+        )}
       </div>
 
       {/* Checklist */}
