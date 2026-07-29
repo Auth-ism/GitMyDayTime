@@ -392,7 +392,7 @@ export default function PlanItem({
         {!busy && dragHandle}
 
         {!busy && (
-          <Tooltip align="right" label={confirmDelete ? t("tip.deleteConfirm" as any) : t("tip.delete" as any)}>
+          <Tooltip label={confirmDelete ? t("tip.deleteConfirm" as any) : t("tip.delete" as any)}>
             <button
               onClick={handleDelete}
               aria-label={confirmDelete ? t("plan.confirmDelete", { desc: item.description }) : t("plan.delete", { desc: item.description })}
@@ -464,40 +464,44 @@ export default function PlanItem({
                     </button>
                   ) : (
                     <div className="flex items-center gap-0.5 flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover/cl:opacity-100 sm:focus-within:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => moveCheck(index, -1)}
-                        disabled={index === 0}
-                        aria-label={t("checklist.moveUp" as any)}
-                        title={t("checklist.moveUp" as any)}
-                        className="p-0.5 text-text-tertiary hover:text-accent disabled:opacity-30 disabled:hover:text-text-tertiary"
-                      >
-                        <ChevronUp size={11} />
-                      </button>
-                      <button
-                        onClick={() => moveCheck(index, 1)}
-                        disabled={index === checklist.length - 1}
-                        aria-label={t("checklist.moveDown" as any)}
-                        title={t("checklist.moveDown" as any)}
-                        className="p-0.5 text-text-tertiary hover:text-accent disabled:opacity-30 disabled:hover:text-text-tertiary"
-                      >
-                        <ChevronDown size={11} />
-                      </button>
-                      <button
-                        onClick={() => startRename(cl)}
-                        aria-label={t("checklist.rename" as any)}
-                        title={t("checklist.rename" as any)}
-                        className="p-0.5 text-text-tertiary hover:text-accent"
-                      >
-                        <Pencil size={11} />
-                      </button>
-                      <button
-                        onClick={() => onDeleteChecklist?.(cl.id)}
-                        aria-label={t("checklist.delete" as any)}
-                        title={t("checklist.delete" as any)}
-                        className="p-0.5 text-text-tertiary hover:text-danger"
-                      >
-                        <Trash2 size={11} />
-                      </button>
+                      <Tooltip label={t("checklist.moveUp" as any)}>
+                        <button
+                          onClick={() => moveCheck(index, -1)}
+                          disabled={index === 0}
+                          aria-label={t("checklist.moveUp" as any)}
+                          className="p-0.5 text-text-tertiary hover:text-accent disabled:opacity-30 disabled:hover:text-text-tertiary"
+                        >
+                          <ChevronUp size={11} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip label={t("checklist.moveDown" as any)}>
+                        <button
+                          onClick={() => moveCheck(index, 1)}
+                          disabled={index === checklist.length - 1}
+                          aria-label={t("checklist.moveDown" as any)}
+                          className="p-0.5 text-text-tertiary hover:text-accent disabled:opacity-30 disabled:hover:text-text-tertiary"
+                        >
+                          <ChevronDown size={11} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip label={t("checklist.rename" as any)}>
+                        <button
+                          onClick={() => startRename(cl)}
+                          aria-label={t("checklist.rename" as any)}
+                          className="p-0.5 text-text-tertiary hover:text-accent"
+                        >
+                          <Pencil size={11} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip label={t("checklist.delete" as any)}>
+                        <button
+                          onClick={() => onDeleteChecklist?.(cl.id)}
+                          aria-label={t("checklist.delete" as any)}
+                          className="p-0.5 text-text-tertiary hover:text-danger"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </Tooltip>
                     </div>
                   )}
                 </div>

@@ -15,6 +15,17 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.18.4",
+    date: "2026-07-29",
+    bump: "patch",
+    summary: "Bilgi baloncukları artık üstteki kartın altında kalmıyor",
+    changes: [
+      { type: "fix", text: "İkon baloncukları üstteki görev kartının arkasında kalıyordu — kaydırma kabının kırpması yüzündendi, baloncuk artık sayfanın en üstüne çiziliyor" },
+      { type: "feat", text: "Adım listesindeki taşı/düzenle/sil butonları da aynı baloncuğu kullanıyor" },
+      { type: "feat", text: "Baloncuk ekran kenarına taşmıyor ve kısa bir bekleme sonrası çıkıyor; dokunmatikte hiç çıkmıyor" },
+    ],
+  },
+  {
     version: "4.18.3",
     date: "2026-07-29",
     bump: "patch",
