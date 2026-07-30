@@ -645,3 +645,114 @@ export const SpaceMemberSchema = z.object({
   email: z.string().optional(),
 });
 export type SpaceMember = z.infer<typeof SpaceMemberSchema>;
+
+// ─────────────────────────────────────────────────────────────────
+// Activity Events & Insights  (GMD-4)
+// ─────────────────────────────────────────────────────────────────
+
+export const ActivityEventType = z.enum([
+  "plan_created",
+  "plan_completed",
+  "plan_uncompleted",
+  "plan_deleted",
+  "plan_moved",
+  "plan_duration_set",
+  "plan_category_changed",
+  "plan_carried_over",
+  "note_created",
+]);
+export type ActivityEventType = z.infer<typeof ActivityEventType>;
+
+/** Where the item came from — lets insights exclude machine-generated activity. */
+export const ActivitySource = z.enum([
+  "manual",
+  "recurring",
+  "template",
+  "carry_over",
+  "backfill",
+]);
+export type ActivitySource = z.infer<typeof ActivitySource>;
+
+/** Estimated-duration buckets used by behavioral metrics. */
+export const DURATION_BUCKETS = ["lt30", "30to60", "60to120", "gt120"] as const;
+export type DurationBucket = (typeof DURATION_BUCKETS)[number];
+
+export interface HourBucket {
+  hour: number;
+  completed: number;
+  created: number;
+}
+
+export interface DowBucket {
+  dow: number;
+  completed: number;
+  created: number;
+}
+
+export interface TemporalPatterns {
+  byHour: HourBucket[];
+  byDow: DowBucket[];
+  /** Completions excluding backfilled rows — the sample size time-of-day rules rely on. */
+  liveCompletions: number;
+}
+
+export interface CategoryWeekPoint {
+  week: string;
+  category: string;
+  minutes: number;
+  count: number;
+}
+
+export interface PostponeStat {
+  bucket: DurationBucket;
+  items: number;
+  avgPostpones: number;
+}
+
+export interface EstimateBiasStat {
+  bucket: DurationBucket;
+  items: number;
+  avgEstimate: number;
+  avgActual: number;
+  ratio: number;
+}
+
+export interface BehavioralMetrics {
+  postpones: PostponeStat[];
+  estimateBias: EstimateBiasStat[];
+  totalPostponed: number;
+}
+
+export const InsightKind = z.enum([
+  "peak_hours",
+  "category_drift",
+  "estimate_bias",
+  "postpone_risk",
+  "best_dow",
+]);
+export type InsightKind = z.infer<typeof InsightKind>;
+
+/**
+ * A derived insight. The server never renders text — it emits a kind plus
+ * params, and the client renders it through i18n so TR and EN stay in sync.
+ */
+export interface Insight {
+  id: string;
+  kind: InsightKind;
+  confidence: "high" | "low";
+  params: Record<string, string | number>;
+}
+
+export interface InsightsResponse {
+  insights: Insight[];
+  temporal: TemporalPatterns;
+  categoryDrift: CategoryWeekPoint[];
+  behavioral: BehavioralMetrics;
+  dataQuality: {
+    eventCount: number;
+    liveEventCount: number;
+    daysCovered: number;
+    /** False when no rule cleared its minimum-sample threshold. */
+    ready: boolean;
+  };
+}

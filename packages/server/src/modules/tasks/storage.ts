@@ -2,6 +2,7 @@ import { pool } from "../../db.js";
 import { nanoid } from "nanoid";
 import { DEFAULT_CATEGORIES, type DayLog, type TaskEntry, type PlanItem, type ChecklistItem, type RecurringTask, type CreateRecurringTaskInput, type UserProfile, type UpdateProfileInput, type UserCategory, type PlanTemplate, type CreateTemplateInput } from "@gmd/shared";
 import { cacheGet, cacheSet, cacheDel, cacheDelPattern, scheduleReminder, unscheduleReminder } from "../../redis.js";
+import { logActivityEvent, logActivityEvents } from "../activity/events.js";
 
 // Cache TTLs (seconds)
 const TTL = {
@@ -18,6 +19,7 @@ export async function invalidateDayLog(userId: string, date: string): Promise<vo
 }
 export async function invalidateStats(userId: string): Promise<void> {
   await cacheDelPattern(`stats:${userId}:*`);
+  await cacheDelPattern(`insights:${userId}:*`);
 }
 
 // Helpers to normalize DB row types
@@ -261,6 +263,13 @@ export async function addTask(
     [task.id, userId, date, task.timestamp, task.description, task.category, task.duration ?? null, task.tags, task.completed]
   );
   await invalidateDayLog(userId, date);
+  await logActivityEvent(userId, {
+    eventType: "note_created",
+    entityId: task.id,
+    entityType: "note",
+    category: task.category,
+    duration: task.duration ?? null,
+  });
   return task;
 }
 
@@ -317,6 +326,14 @@ export async function addPlanItem(
   );
   await invalidateDayLog(userId, date);
   await invalidateStats(userId);
+  await logActivityEvent(userId, {
+    eventType: "plan_created",
+    entityId: item.id,
+    entityType: item.itemType ?? "plan_item",
+    category: item.category,
+    duration: item.duration ?? null,
+    source: "manual",
+  });
   // Schedule reminder in Redis if it has a time
   if (item.scheduledTime && (item.itemType === "reminder" || item.itemType === "plan")) {
     const [h, m] = item.scheduledTime.split(":").map(Number);
@@ -345,31 +362,81 @@ export async function updatePlanItem(
 
   if (fields.length === 0) return null;
 
-  let idx = nextIdx;
+  const idIdx = nextIdx;
+  const userIdx = nextIdx + 1;
   values.push(itemId, userId);
+
+  // The CTE reads the pre-update snapshot, so one round trip yields both the old
+  // and new values — enough to tell what actually changed for the activity log.
   const { rows } = await pool.query(
-    `UPDATE plan_items SET ${fields.join(", ")}
-     WHERE id = $${idx++} AND user_id = $${idx}
-     RETURNING id, date, description, category, estimated_duration AS "duration", completed, sort_order AS "order",
-               scheduled_time AS "scheduledTime", actual_duration AS "actualDuration",
-               item_type AS "itemType", priority`,
+    `WITH old AS (
+       SELECT id, completed, category, estimated_duration, actual_duration
+       FROM plan_items WHERE id = $${idIdx} AND user_id = $${userIdx}
+     )
+     UPDATE plan_items SET ${fields.join(", ")}
+     FROM old
+     WHERE plan_items.id = old.id
+     RETURNING plan_items.id, plan_items.date, plan_items.description, plan_items.category,
+               plan_items.estimated_duration AS "duration", plan_items.completed,
+               plan_items.sort_order AS "order", plan_items.scheduled_time AS "scheduledTime",
+               plan_items.actual_duration AS "actualDuration", plan_items.item_type AS "itemType",
+               plan_items.priority,
+               old.completed AS "oldCompleted", old.category AS "oldCategory",
+               old.actual_duration AS "oldActualDuration"`,
     values
   );
 
   if (rows.length > 0) {
-    await invalidateDayLog(userId, formatDate(rows[0].date));
+    const row = rows[0];
+    await invalidateDayLog(userId, formatDate(row.date));
     if (updates.completed !== undefined || updates.actualDuration !== undefined) {
       await invalidateStats(userId);
     }
-    const item = toPlanItem(rows[0]);
+    await logPlanItemChanges(userId, itemId, row);
+
+    const item = toPlanItem(row);
     delete (item as any).date;
+    delete (item as any).oldCompleted;
+    delete (item as any).oldCategory;
+    delete (item as any).oldActualDuration;
     return item;
   }
   return null;
 }
 
+/** Turns an old→new plan item diff into the matching activity events. */
+async function logPlanItemChanges(userId: string, itemId: string, row: any): Promise<void> {
+  const base = { entityId: itemId, entityType: row.itemType ?? "plan_item", category: row.category };
+
+  if (row.completed !== row.oldCompleted) {
+    await logActivityEvent(userId, {
+      ...base,
+      eventType: row.completed ? "plan_completed" : "plan_uncompleted",
+      duration: row.actualDuration ?? row.duration ?? null,
+    });
+  }
+  if (row.category !== row.oldCategory) {
+    await logActivityEvent(userId, {
+      ...base,
+      eventType: "plan_category_changed",
+      metadata: { from: row.oldCategory, to: row.category },
+    });
+  }
+  if (row.actualDuration !== row.oldActualDuration && row.actualDuration != null) {
+    await logActivityEvent(userId, {
+      ...base,
+      eventType: "plan_duration_set",
+      duration: row.actualDuration,
+      metadata: { estimated: row.duration ?? null },
+    });
+  }
+}
+
 export async function deletePlanItem(userId: string, itemId: string): Promise<boolean> {
-  const { rows: dateRows } = await pool.query("SELECT date FROM plan_items WHERE id = $1 AND user_id = $2", [itemId, userId]);
+  const { rows: dateRows } = await pool.query(
+    "SELECT date, category, item_type, estimated_duration, completed FROM plan_items WHERE id = $1 AND user_id = $2",
+    [itemId, userId]
+  );
 
   // If a project issue is linked to this plan item, clear the reference before deleting
   const { rows: issueRows } = await pool.query(
@@ -384,6 +451,14 @@ export async function deletePlanItem(userId: string, itemId: string): Promise<bo
   if (dateRows[0]) {
     await invalidateDayLog(userId, formatDate(dateRows[0].date));
     await invalidateStats(userId);
+    await logActivityEvent(userId, {
+      eventType: "plan_deleted",
+      entityId: itemId,
+      entityType: dateRows[0].item_type ?? "plan_item",
+      category: dateRows[0].category,
+      duration: dateRows[0].estimated_duration ?? null,
+      metadata: { wasCompleted: dateRows[0].completed },
+    });
   }
   await unscheduleReminder(userId, itemId);
 
@@ -460,6 +535,15 @@ export async function movePlanItem(
   if (rows.length > 0) {
     if (oldDate) await invalidateDayLog(userId, oldDate);
     await invalidateDayLog(userId, newDate);
+    await invalidateStats(userId);
+    await logActivityEvent(userId, {
+      eventType: "plan_moved",
+      entityId: itemId,
+      entityType: rows[0].itemType ?? "plan_item",
+      category: rows[0].category,
+      duration: rows[0].duration ?? null,
+      metadata: { fromDate: oldDate, toDate: newDate },
+    });
     return toPlanItem(rows[0]);
   }
   return null;
@@ -546,17 +630,27 @@ export async function carryOverItems(userId: string, fromDate: string, toDate: s
     );
     const nextOrder = orderRows[0].next_order;
 
-    const { rowCount } = await client.query(
+    const { rowCount, rows } = await client.query(
       `UPDATE plan_items
        SET date = $1, carried_over = TRUE, sort_order = sort_order - (
          SELECT MIN(sort_order) FROM plan_items WHERE user_id = $3 AND date = $4
            AND completed = false AND carried_over = FALSE AND recurring_task_id IS NULL
        ) + $2
-       WHERE user_id = $3 AND date = $4 AND completed = false AND carried_over = FALSE AND recurring_task_id IS NULL`,
+       WHERE user_id = $3 AND date = $4 AND completed = false AND carried_over = FALSE AND recurring_task_id IS NULL
+       RETURNING id`,
       [toDate, nextOrder, userId, fromDate]
     );
 
     await client.query("COMMIT");
+
+    // Logged after COMMIT so a logging failure can never roll back the carry-over.
+    await logActivityEvents(
+      userId,
+      rows.map((r: any) => r.id),
+      { eventType: "plan_carried_over", source: "carry_over", metadata: { fromDate, toDate } }
+    );
+    await invalidateStats(userId);
+
     return rowCount ?? 0;
   } catch (err) {
     await client.query("ROLLBACK");
@@ -870,6 +964,11 @@ export async function injectRecurringTasks(userId: string, date: string): Promis
 
     if (created.length > 0) {
       await invalidateDayLog(userId, date);
+      await logActivityEvents(
+        userId,
+        created.map((c) => c.id),
+        { eventType: "plan_created", source: "recurring" }
+      );
     }
 
     return created;
@@ -1214,13 +1313,19 @@ export async function copyDayPlans(userId: string, fromDate: string, toDate: str
     [userId, toDate]
   );
   let nextOrder = orderRows[0].next_order;
+  const createdIds: string[] = [];
   for (const row of rows) {
+    const id = nanoid(8);
     await pool.query(
       `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type, priority)
        VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $9, $10)`,
-      [nanoid(8), userId, toDate, row.description, row.category, row.estimated_duration, nextOrder++, row.scheduled_time, row.item_type, row.priority ?? "normal"]
+      [id, userId, toDate, row.description, row.category, row.estimated_duration, nextOrder++, row.scheduled_time, row.item_type, row.priority ?? "normal"]
     );
+    createdIds.push(id);
   }
+  await invalidateDayLog(userId, toDate);
+  await invalidateStats(userId);
+  await logActivityEvents(userId, createdIds, { eventType: "plan_created", source: "template" });
   return rows.length;
 }
 

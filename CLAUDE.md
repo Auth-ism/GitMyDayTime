@@ -56,7 +56,7 @@ No test runner or linter configured.
 - **`src/redis.ts`** — Session cache + pub/sub for SSE.
 
 ### Migrations (`migrations/`)
-Sequential SQL files `001_initial.sql` … `025_password_reset.sql`. Auto-run on startup.
+Sequential SQL files `001_initial.sql` … `034_activity_events.sql`. Auto-run on startup.
 
 | Migration | Purpose |
 |-----------|---------|
@@ -67,6 +67,8 @@ Sequential SQL files `001_initial.sql` … `025_password_reset.sql`. Auto-run on
 | 023 | Sprints |
 | 024 | User notifications (in-app bell) |
 | 025 | Password reset tokens |
+| 026–033 | Story points, font size, onboarding, calendar tokens, weekly recap, API tokens, user soft delete, API key requests |
+| 034 | Activity event log (GMD-4) |
 
 ## Frontend Architecture (`packages/web`)
 
@@ -157,6 +159,17 @@ Exports Zod schemas + inferred TypeScript types. Key types:
 - `nanoid(8)` for `plan_items.id` — TEXT PK, no auto-generation. Must pass explicit id on INSERT.
 - Recurring tasks auto-inject via `injectRecurringTasks()` + `recurring_task_instances` dedup table.
 - Categories: 7 defaults + user custom via `user_categories`. `PRESET_COLORS` from `TaskForm.tsx` = shared palette.
+
+### Activity Log & Insights (`src/modules/activity/`)
+- `activity_events` is append-only and separate from `plan_items`, so existing per-user queries are untouched.
+- `logActivityEvent()` mirrors `audit.ts`: fire-and-forget, wrapped in `try/catch`. A logging failure must never break the mutation. Write events from the **storage layer**, next to the existing `invalidateStats()` calls — not from routes.
+- `local_date`/`local_hour`/`local_dow` are computed in SQL via `NOW() AT TIME ZONE u.timezone`. Never compute them in JS — that reintroduces the UTC off-by-one bug.
+- `updatePlanItem` uses a CTE to read the pre-update row, so one query yields both old and new values for the event diff.
+- Aggregates are computed **on read** and cached in Redis (`insights:${userId}:*`, TTL 300s), cleared by `invalidateStats()`. No scheduled rollups — revisit only past ~1M events.
+- Raw events are kept indefinitely (retention decision recorded in migration 034).
+- Insight rules in `insights.ts` each carry a **minimum-sample threshold**; below it the insight is not emitted at all. Do not relax these to make the UI look fuller.
+- The server emits `{ kind, params }` descriptors only — never prose. The client renders them through i18n so TR/EN stay in sync.
+- Migration 034 backfills `plan_created` only. There are deliberately no synthetic `plan_completed` timestamps, so time-of-day insights filter `source <> 'backfill'`.
 
 ### Version
 Injected at Vite build time via `define: { __APP_VERSION__ }` from root `package.json`.

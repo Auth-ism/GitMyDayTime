@@ -1,4 +1,4 @@
-import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput } from "@gmd/shared";
+import type { DayLog, TaskEntry, PlanItem, ChecklistItem, CreateTaskInput, CreatePlanInput, CreateChecklistInput, RecurringTask, CreateRecurringTaskInput, UserProfile, UpdateProfileInput, UserCategory, CreateCategoryInput, PlanTemplate, CreateTemplateInput, InsightsResponse } from "@gmd/shared";
 
 const BASE = "/api";
 
@@ -138,6 +138,8 @@ export const api = {
   },
 
   getYearlyActivity: () => request<{ date: string; count: number }[]>("/stats/yearly"),
+
+  getInsights: () => request<InsightsResponse>("/stats/insights"),
 
   // Journal
   getJournal: (date: string) => request<{ content: string }>(`/days/${date}/journal`),

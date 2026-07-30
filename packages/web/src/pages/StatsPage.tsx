@@ -6,7 +6,13 @@ import { useCategories } from "@/hooks/useCategories";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { motion } from "framer-motion";
 import { Flame, Clock, CheckCircle, TrendingUp, BarChart3, Target, Gauge } from "lucide-react";
-import { cn } from "@/lib/cn";
+import { heatColor } from "@/lib/heat";
+import { tooltipStyle, tooltipLabelStyle, tooltipItemStyle } from "@/lib/chartTheme";
+import { useInsights } from "@/hooks/useInsights";
+import { InsightsSection } from "@/components/stats/InsightsSection";
+import { HourHeatmap } from "@/components/stats/HourHeatmap";
+import { DowChart } from "@/components/stats/DowChart";
+import { CategoryDriftChart } from "@/components/stats/CategoryDriftChart";
 
 export default function StatsPage() {
   const { t, locale } = useI18n();
@@ -22,6 +28,8 @@ export default function StatsPage() {
     queryKey: ["stats", "yearly"],
     queryFn: () => api.getYearlyActivity(),
   });
+
+  const { data: insights } = useInsights();
 
   if (isLoading) {
     return (
@@ -64,25 +72,6 @@ export default function StatsPage() {
     };
   });
 
-  const tooltipStyle = {
-    background: "var(--color-bg-elevated)",
-    border: "1px solid var(--color-border)",
-    borderRadius: "8px",
-    fontSize: "12px",
-    color: "var(--color-text)",
-    boxShadow: "0 4px 12px rgb(0 0 0 / 0.08)",
-  };
-
-  const tooltipLabelStyle = {
-    color: "var(--color-text)",
-    fontWeight: 600,
-    marginBottom: "2px",
-  };
-
-  const tooltipItemStyle = {
-    color: "var(--color-text-secondary)",
-  };
-
   // Build a 365-day heatmap grid
   const heatmapMap = new Map(yearlyActivity.map((a) => [a.date, a.count]));
   const today = new Date();
@@ -106,15 +95,6 @@ export default function StatsPage() {
   }
 
   const maxCount = Math.max(...heatmapDays.map((d) => d.count), 1);
-
-  function heatColor(count: number): string {
-    if (count <= 0) return "var(--color-bg-tertiary)";
-    const intensity = Math.min(count / maxCount, 1);
-    if (intensity < 0.25) return "#c6f0d4";
-    if (intensity < 0.5) return "#86efac";
-    if (intensity < 0.75) return "#4ade80";
-    return "#16a34a";
-  }
 
   // Category completion rates
   const categoryRates = stats.categoryRates ?? {};
@@ -160,28 +140,31 @@ export default function StatsPage() {
         ))}
       </div>
 
+      {/* Derived insights — rendered first because they interpret the charts below */}
+      {insights && <InsightsSection data={insights} />}
+
       {/* Estimate vs Actual */}
       {accuracy && accuracy.count > 0 && (
         <div className="card">
           <div className="flex items-center gap-2 mb-4">
             <Gauge size={15} className="text-text-secondary" />
-            <h3 className="text-sm font-medium text-text-secondary">Tahmin vs Gercek</h3>
-            <span className="text-xs text-text-tertiary">({accuracy.count} tamamlanan)</span>
+            <h3 className="text-sm font-medium text-text-secondary">{t("stats.estimateVsActual")}</h3>
+            <span className="text-xs text-text-tertiary">({t("stats.completedCount", { count: accuracy.count })})</span>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="text-center p-3 bg-bg-secondary rounded-xl">
               <p className="text-2xl font-bold">{formatDuration(accuracy.avgEstimate)}</p>
-              <p className="text-xs text-text-tertiary mt-0.5">Ortalama Tahmin</p>
+              <p className="text-xs text-text-tertiary mt-0.5">{t("stats.avgEstimate")}</p>
             </div>
             <div className="text-center p-3 bg-bg-secondary rounded-xl">
               <p className="text-2xl font-bold text-success">{formatDuration(accuracy.avgActual)}</p>
-              <p className="text-xs text-text-tertiary mt-0.5">Ortalama Gercek</p>
+              <p className="text-xs text-text-tertiary mt-0.5">{t("stats.avgActual")}</p>
             </div>
           </div>
           {accuracy.avgEstimate > 0 && (
             <div className="mt-3">
               <div className="flex justify-between text-xs text-text-tertiary mb-1">
-                <span>Tahmin dogrulugu</span>
+                <span>{t("stats.accuracy")}</span>
                 <span>{Math.round((accuracy.avgActual / accuracy.avgEstimate) * 100)}%</span>
               </div>
               <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
@@ -218,12 +201,21 @@ export default function StatsPage() {
         </div>
       )}
 
+      {/* Temporal patterns from the activity log */}
+      {insights && (
+        <>
+          <HourHeatmap byHour={insights.temporal.byHour} />
+          <DowChart byDow={insights.temporal.byDow} />
+          <CategoryDriftChart points={insights.categoryDrift} />
+        </>
+      )}
+
       {/* Yearly heatmap */}
       {yearlyActivity.length > 0 && (
         <div className="card">
           <div className="flex items-center gap-2 mb-4">
             <Target size={15} className="text-text-secondary" />
-            <h3 className="text-sm font-medium text-text-secondary">Yillik Aktivite</h3>
+            <h3 className="text-sm font-medium text-text-secondary">{t("stats.yearlyActivity")}</h3>
           </div>
           <div className="overflow-x-auto">
             <div className="flex gap-0.5 min-w-max">
@@ -235,7 +227,7 @@ export default function StatsPage() {
                       title={day.date ? `${day.date}: ${day.count}` : ""}
                       className="w-3 h-3 rounded-sm"
                       style={{
-                        backgroundColor: day.count < 0 ? "transparent" : heatColor(day.count),
+                        backgroundColor: day.count < 0 ? "transparent" : heatColor(day.count, maxCount),
                       }}
                     />
                   ))}
@@ -244,15 +236,15 @@ export default function StatsPage() {
             </div>
           </div>
           <div className="flex items-center gap-1 mt-3 justify-end">
-            <span className="text-xs text-text-tertiary">Az</span>
+            <span className="text-xs text-text-tertiary">{t("stats.less")}</span>
             {[0, 0.25, 0.5, 0.75, 1].map((v, i) => (
               <div
                 key={i}
                 className="w-3 h-3 rounded-sm"
-                style={{ backgroundColor: v === 0 ? "var(--color-bg-tertiary)" : heatColor(Math.ceil(v * maxCount)) }}
+                style={{ backgroundColor: v === 0 ? "var(--color-bg-tertiary)" : heatColor(Math.ceil(v * maxCount), maxCount) }}
               />
             ))}
-            <span className="text-xs text-text-tertiary">Cok</span>
+            <span className="text-xs text-text-tertiary">{t("stats.more")}</span>
           </div>
         </div>
       )}
@@ -260,7 +252,7 @@ export default function StatsPage() {
       {/* Category completion rates */}
       {rateData.length > 0 && (
         <div className="card">
-          <h3 className="text-sm font-medium text-text-secondary mb-4">Kategori Tamamlama Orani</h3>
+          <h3 className="text-sm font-medium text-text-secondary mb-4">{t("stats.completionByCategory")}</h3>
           <div className="space-y-2">
             {rateData.map((item) => (
               <div key={item.name} className="space-y-1">

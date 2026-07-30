@@ -15,6 +15,19 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.19.0",
+    date: "2026-07-30",
+    bump: "minor",
+    summary: "İstatistikler artık sadece sayı göstermiyor, çıkarım yapıyor",
+    changes: [
+      { type: "feat", text: "Uygulama artık her anlamlı hareketi ayrı ayrı kaydediyor: görev oluşturma, tamamlama, erteleme, kategori ve süre değişikliği" },
+      { type: "feat", text: "İstatistikler sayfasının başına İçgörüler bölümü eklendi — en verimli saat aralığın, düşüşe geçen kategorin, tahminlerinin ne kadar şaştığı gibi çıkarımlar" },
+      { type: "feat", text: "İçgörüler ancak yeterli veri birikince çıkıyor; az veriyle kulağa hoş gelen ama bir şey söylemeyen metinler üretilmiyor" },
+      { type: "feat", text: "Yeni grafikler: işleri günün hangi saatinde bitirdiğin, haftanın hangi günü daha verimli olduğun ve kategorilerin haftalık trendi" },
+      { type: "fix", text: "İstatistikler sayfasında dil değiştirince Türkçe kalan başlıklar çevrildi" },
+    ],
+  },
+  {
     version: "4.18.4",
     date: "2026-07-29",
     bump: "patch",
