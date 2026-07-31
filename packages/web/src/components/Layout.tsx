@@ -14,6 +14,7 @@ import ChangelogModal, { shouldShowChangelog } from "@/components/ChangelogModal
 import BugReportModal from "@/components/BugReportModal";
 import CommandPalette from "@/components/CommandPalette";
 import ShortcutHelp from "@/components/ShortcutHelp";
+import InstallPrompt from "@/components/InstallPrompt";
 import { AnimatePresence } from "framer-motion";
 
 function EmailVerifyBanner() {
@@ -107,6 +108,7 @@ export default function Layout() {
   const { logout, profile, user, refreshProfile } = useAuth();
   const { t, locale, setLocale } = useI18n();
   const location = useLocation();
+  const standaloneApp = document.documentElement.dataset.appMode === "standalone";
   const isOnline = useOnline();
   const [lastDateView, setLastDateView] = useState<"/week" | "/calendar">(() => {
     try {
@@ -145,7 +147,7 @@ export default function Layout() {
   // ignores overscroll-behavior. Prevent it only when the gesture starts on
   // page content, leaving taps on controls and in-app swipes available.
   useEffect(() => {
-    if (!window.matchMedia("(max-width: 639px)").matches) return;
+    if (!window.matchMedia("(max-width: 639px)").matches || document.documentElement.dataset.appMode !== "standalone") return;
 
     const handleTouchStart = (event: TouchEvent) => {
       const touch = event.touches[0];
@@ -211,7 +213,10 @@ export default function Layout() {
   return (
     <div
       className={cn(
-        "flex flex-col bg-bg-secondary h-[100dvh] overflow-hidden sm:h-auto sm:min-h-screen sm:overflow-visible",
+        "flex flex-col bg-bg-secondary",
+        standaloneApp
+          ? "h-[100dvh] overflow-hidden sm:h-auto sm:min-h-screen sm:overflow-visible"
+          : "min-h-screen overflow-visible",
         location.pathname.includes("/board") && "sm:h-dvh sm:overflow-hidden"
       )}
     >
@@ -315,7 +320,10 @@ export default function Layout() {
       </header>
 
       {/* Mobile header */}
-      <header className="border-b border-border sticky top-0 z-40 bg-bg/90 backdrop-blur-md sm:hidden safe-top shrink-0">
+      <header className={cn(
+        "mobile-shell-chrome border-b border-border z-40 bg-bg/90 backdrop-blur-md sm:hidden safe-top shrink-0",
+        standaloneApp && "sticky top-0"
+      )}>
         <div className="px-3 h-14 flex items-center justify-between overflow-hidden">
           <NavLink to="/" className="flex items-center gap-2 font-semibold text-text tracking-tight">
             <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
@@ -347,9 +355,14 @@ export default function Layout() {
         <EmailVerifyBanner />
       )}
 
+      <InstallPrompt />
+
       <main
         className={cn(
-          "flex-1 min-h-0 overflow-y-auto overscroll-contain pb-16 sm:overflow-visible sm:overscroll-auto sm:pb-0 safe-main-bottom mobile-page-scroll",
+          "flex-1 sm:overflow-visible sm:overscroll-auto mobile-page-scroll",
+          standaloneApp
+            ? "min-h-0 overflow-y-auto pb-16 safe-main-bottom"
+            : "overflow-visible pb-0",
           location.pathname.includes("/board")
             ? "flex flex-col overflow-hidden flex-1"
             : "flex-1",
@@ -425,7 +438,10 @@ export default function Layout() {
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Mobile navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 bg-bg/95 backdrop-blur-md border-t border-border sm:hidden safe-bottom"
+        className={cn(
+          "mobile-shell-chrome left-0 right-0 z-40 bg-bg/95 backdrop-blur-md border-t border-border sm:hidden safe-bottom",
+          standaloneApp ? "fixed bottom-0" : "static"
+        )}
       >
         <div className="flex items-center justify-around h-16 px-2">
           {mobileNavItems.map(({ to, icon: Icon, labelKey, end, match }) => {

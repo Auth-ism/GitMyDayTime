@@ -107,17 +107,45 @@
   #root {
     height: 100dvh;
     overflow: hidden;
-    overscroll-behavior: none;
+    overscroll-behavior: auto;
+  }
+
+  html[data-app-mode="browser"],
+  html[data-app-mode="browser"] body,
+  html[data-app-mode="browser"] #root {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
   }
 
   .mobile-page-scroll {
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: auto;
+    touch-action: auto;
+  }
+
+  .mobile-bounded-scroll {
+    overscroll-behavior-y: auto;
+  }
+
+  html[data-app-mode="standalone"],
+  html[data-app-mode="standalone"] body,
+  html[data-app-mode="standalone"] #root {
+    overscroll-behavior: none;
+  }
+
+  html[data-app-mode="standalone"] .mobile-page-scroll {
     overscroll-behavior-x: none;
     touch-action: pan-y;
   }
 
-  .mobile-bounded-scroll {
+  html[data-app-mode="standalone"] .mobile-bounded-scroll {
     overscroll-behavior-y: none;
+  }
+
+  html[data-app-mode="standalone"] .mobile-shell-chrome {
+    overscroll-behavior: none;
+    touch-action: pan-y;
   }
 
   @supports (padding-bottom: env(safe-area-inset-bottom)) {
