@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -7,7 +7,11 @@ import fs from "node:fs";
 
 const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf-8"));
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const apiProxyTarget = env.VITE_API_PROXY_TARGET || "http://localhost:3001";
+
+  return {
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
@@ -95,7 +99,26 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": "http://localhost:3001",
+      "/api": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        secure: true,
+        cookieDomainRewrite: "",
+        configure: (proxy) => {
+          proxy.on("proxyRes", (proxyRes) => {
+            const setCookie = proxyRes.headers["set-cookie"];
+            if (!setCookie) return;
+
+            proxyRes.headers["set-cookie"] = setCookie.map((cookie) =>
+              cookie
+                .replace(/;\s*Domain=[^;]*/gi, "")
+                .replace(/;\s*Secure/gi, "")
+            );
+          });
+        },
+      },
     },
+    allowedHosts: ["phirios"]
   },
+  };
 });
