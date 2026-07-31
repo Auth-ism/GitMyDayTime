@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, CalendarDays, Clock, Target, Check, MessageS
 import { formatDuration, todayStr, type DayLog } from "@gmd/shared";
 import { useCategories } from "@/hooks/useCategories";
 import { motion } from "framer-motion";
+import { useSwipe } from "@/hooks/useSwipe";
 
 function localDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -76,6 +77,7 @@ export default function WeekView() {
   const prevWeek = () => setWeekRef((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
   const nextWeek = () => setWeekRef((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
   const goToday = () => setWeekRef(new Date());
+  const swipeHandlers = useSwipe({ onSwipeLeft: nextWeek, onSwipeRight: prevWeek });
 
   const isCurrentWeek = dates.includes(today);
   const moveItem = useCallback(async (info: DragInfo, toDate: string) => {
@@ -221,7 +223,7 @@ export default function WeekView() {
     document.querySelectorAll("[data-drag-ghost]").forEach((el) => el.remove());
   }, [moveItem, cleanupTouchDrag]);
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" {...swipeHandlers}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold flex items-center gap-2">
