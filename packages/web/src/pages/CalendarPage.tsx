@@ -63,6 +63,7 @@ export default function CalendarPage() {
   const { data: stats } = useQuery({
     queryKey: ["stats", from, to],
     queryFn: () => api.getStats(from, to),
+    placeholderData: (previousData) => previousData,
   });
 
   const activityMap = useMemo(() => {

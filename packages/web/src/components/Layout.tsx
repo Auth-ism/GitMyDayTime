@@ -335,7 +335,8 @@ export default function Layout() {
           "flex-1 min-h-0 overflow-y-auto overscroll-contain pb-16 sm:overflow-visible sm:overscroll-auto sm:pb-0 safe-main-bottom mobile-page-scroll",
           location.pathname.includes("/board")
             ? "flex flex-col overflow-hidden flex-1"
-            : "flex-1"
+            : "flex-1",
+          ["/calendar", "/week", "/profile"].includes(location.pathname) && "mobile-bounded-scroll"
         )}
         id="main-content"
       >
