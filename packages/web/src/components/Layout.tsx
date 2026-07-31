@@ -62,35 +62,6 @@ function useOnline() {
   );
 }
 
-function useAppViewportHeight() {
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-
-  useEffect(() => {
-    const setHeight = () => {
-      const viewport = window.visualViewport;
-      const height = viewport?.height ?? window.innerHeight;
-      const top = viewport?.offsetTop ?? 0;
-      document.documentElement.style.setProperty("--app-viewport-height", `${height}px`);
-      document.documentElement.style.setProperty("--app-viewport-top", `${top}px`);
-      setKeyboardOpen(window.innerHeight - height > 140);
-    };
-
-    setHeight();
-    window.visualViewport?.addEventListener("resize", setHeight);
-    window.visualViewport?.addEventListener("scroll", setHeight);
-    window.addEventListener("resize", setHeight);
-    window.addEventListener("orientationchange", setHeight);
-    return () => {
-      window.visualViewport?.removeEventListener("resize", setHeight);
-      window.visualViewport?.removeEventListener("scroll", setHeight);
-      window.removeEventListener("resize", setHeight);
-      window.removeEventListener("orientationchange", setHeight);
-    };
-  }, []);
-
-  return keyboardOpen;
-}
-
 const navIcons = {
   "/": Clock,
   "/week": CalendarDays,
@@ -135,7 +106,6 @@ export default function Layout() {
   const { t, locale, setLocale } = useI18n();
   const location = useLocation();
   const isOnline = useOnline();
-  const keyboardOpen = useAppViewportHeight();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
@@ -201,13 +171,7 @@ export default function Layout() {
   }, [profile, theme, hadStoredTheme, setTheme]);
 
   return (
-    <div
-      className={cn(
-        "flex flex-col bg-bg-secondary h-[var(--app-viewport-height,100dvh)] overflow-hidden sm:h-auto sm:min-h-screen sm:overflow-visible",
-        "fixed inset-x-0 top-[var(--app-viewport-top,0px)] sm:static",
-        location.pathname.includes("/board") && "sm:h-dvh sm:overflow-hidden"
-      )}
-    >
+    <div className={cn("flex flex-col bg-bg-secondary", location.pathname.includes("/board") ? "h-dvh overflow-hidden" : "min-h-screen")}>
       {/* Desktop header */}
       <header className="border-b border-border sticky top-0 z-40 bg-bg/90 backdrop-blur-md hidden sm:block">
         <div className="px-4 sm:px-6 h-14 flex items-center">
@@ -342,7 +306,7 @@ export default function Layout() {
 
       <main
         className={cn(
-          "flex-1 min-h-0 overflow-y-auto overscroll-contain sm:overflow-visible sm:overscroll-auto safe-main-bottom",
+          "pb-16 sm:pb-0 safe-main-bottom",
           location.pathname.includes("/board")
             ? "flex flex-col overflow-hidden flex-1"
             : "flex-1"
@@ -417,10 +381,7 @@ export default function Layout() {
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Mobile navigation"
-        className={cn(
-          "z-40 bg-bg/95 backdrop-blur-md border-t border-border sm:hidden safe-bottom shrink-0",
-          keyboardOpen && "hidden"
-        )}
+        className="fixed bottom-0 left-0 right-0 z-40 bg-bg/95 backdrop-blur-md border-t border-border sm:hidden safe-bottom"
       >
         <div className="flex items-center justify-around h-16 px-2">
           {mobileNavItems.map(({ to, icon: Icon, labelKey, end, match }) => {
