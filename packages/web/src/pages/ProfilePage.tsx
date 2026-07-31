@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown,
   Download, Upload, Bell, Camera, Mail, AlertCircle, Plus, Pencil, Trash2,
-  X, Tag, Smartphone, Palette,
+  X, Tag, Smartphone, Palette, LogOut,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
@@ -17,6 +17,7 @@ import { PRESET_COLORS } from "@/components/TaskForm";
 import CalendarSubscribeSection from "@/components/CalendarSubscribeSection";
 import ApiTokensSection from "@/components/ApiTokensSection";
 import ApiKeyRequestSection from "@/components/ApiKeyRequestSection";
+import LogoutConfirmModal from "@/components/LogoutConfirmModal";
 
 const TIMEZONES = [
   "Europe/Istanbul", "Europe/London", "Europe/Berlin", "Europe/Paris",
@@ -50,7 +51,7 @@ function rawPhone(formatted: string): string {
 }
 
 export default function ProfilePage() {
-  const { profile, refreshProfile, user } = useAuth();
+  const { profile, refreshProfile, user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { fontSize, setFontSize } = useFontSize();
   const { t, locale, setLocale } = useI18n();
@@ -102,6 +103,7 @@ export default function ProfilePage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -317,28 +319,46 @@ export default function ProfilePage() {
   return (
     <div className="max-w-lg mx-auto space-y-4" onKeyDown={handleKeyDown}>
       {/* Compact header */}
-      <div className="flex items-center gap-3">
-        <div className="relative group shrink-0">
-          {avatarPreview ? (
-            <img src={avatarPreview} alt="Avatar" className="w-10 h-10 rounded-xl object-cover" />
-          ) : (
-            <div className="w-10 h-10 rounded-xl bg-accent-soft text-text-secondary flex items-center justify-center text-xs font-semibold">
-              {initials}
-            </div>
-          )}
-          <button
-            onClick={() => avatarInputRef.current?.click()}
-            className="absolute inset-0 rounded-xl bg-black/30 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center"
-          >
-            <Camera size={14} className="text-white" />
-          </button>
-          <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarChange} className="hidden" />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative group shrink-0">
+            {avatarPreview ? (
+              <img src={avatarPreview} alt="Avatar" className="w-10 h-10 rounded-xl object-cover" />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-accent-soft text-text-secondary flex items-center justify-center text-xs font-semibold">
+                {initials}
+              </div>
+            )}
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              className="absolute inset-0 rounded-xl bg-black/30 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center"
+            >
+              <Camera size={14} className="text-white" />
+            </button>
+            <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarChange} className="hidden" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-sm font-semibold text-text truncate">{profile.displayName || profile.username}</h1>
+            <p className="text-[11px] text-text-tertiary">@{profile.username}</p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <h1 className="text-sm font-semibold text-text truncate">{profile.displayName || profile.username}</h1>
-          <p className="text-[11px] text-text-tertiary">@{profile.username}</p>
-        </div>
+        <button
+          onClick={() => setShowLogoutConfirm(true)}
+          aria-label={t("nav.signOut" as any)}
+          className="btn-icon p-2 rounded-lg shrink-0"
+        >
+          <LogOut size={16} />
+        </button>
       </div>
+      {showLogoutConfirm && (
+        <LogoutConfirmModal
+          onConfirm={() => {
+            setShowLogoutConfirm(false);
+            logout();
+          }}
+          onCancel={() => setShowLogoutConfirm(false)}
+        />
+      )}
 
       {/* Tab bar */}
       <div className="flex gap-0.5 p-0.5 bg-bg-tertiary/50 rounded-lg">

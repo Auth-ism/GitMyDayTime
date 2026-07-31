@@ -56,7 +56,13 @@ export default function CalendarPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold flex items-center gap-2">
-          <Calendar size={20} className="text-text-secondary" />
+          <button
+            onClick={() => navigate("/week")}
+            className="btn-icon p-1.5 rounded-lg -ml-1"
+            aria-label={t("nav.week" as any)}
+          >
+            <Calendar size={20} />
+          </button>
           {t("cal.title")}
         </h1>
         {!isCurrentMonth && (

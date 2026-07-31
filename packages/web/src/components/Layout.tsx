@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { NavLink, useLocation, Outlet } from "react-router-dom";
-import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, UserCircle, WifiOff, X, Layers, Bug, Command } from "lucide-react";
+import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, UserCircle, WifiOff, X, Layers, Bug, Command, type LucideIcon } from "lucide-react";
 import { useTheme, resolveTheme, type Theme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
@@ -62,6 +62,35 @@ function useOnline() {
   );
 }
 
+function useAppViewportHeight() {
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    const setHeight = () => {
+      const viewport = window.visualViewport;
+      const height = viewport?.height ?? window.innerHeight;
+      const top = viewport?.offsetTop ?? 0;
+      document.documentElement.style.setProperty("--app-viewport-height", `${height}px`);
+      document.documentElement.style.setProperty("--app-viewport-top", `${top}px`);
+      setKeyboardOpen(window.innerHeight - height > 140);
+    };
+
+    setHeight();
+    window.visualViewport?.addEventListener("resize", setHeight);
+    window.visualViewport?.addEventListener("scroll", setHeight);
+    window.addEventListener("resize", setHeight);
+    window.addEventListener("orientationchange", setHeight);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", setHeight);
+      window.visualViewport?.removeEventListener("scroll", setHeight);
+      window.removeEventListener("resize", setHeight);
+      window.removeEventListener("orientationchange", setHeight);
+    };
+  }, []);
+
+  return keyboardOpen;
+}
+
 const navIcons = {
   "/": Clock,
   "/week": CalendarDays,
@@ -75,8 +104,21 @@ const PM_URL = "https://pm.byfeb.com";
 
 // Desktop nav: all items
 const navKeys = ["/", "/week", "/calendar", "/stats", "/search", "/recurring"] as const;
-// Mobile tab bar: Home / Week / Cal / Stats (4 items, Projects is external)
-const mobileNavKeys = ["/", "/week", "/calendar", "/stats"] as const;
+// Mobile tab bar keeps the date views in one slot; switch Week/Calendar from the page icon.
+type MobileNavItem = {
+  to: string;
+  icon: LucideIcon;
+  labelKey: string;
+  end?: boolean;
+  match?: string[];
+};
+
+const mobileNavItems: MobileNavItem[] = [
+  { to: "/", icon: Clock, labelKey: "nav.today", end: true },
+  { to: "/week", icon: CalendarDays, labelKey: "nav.week", match: ["/week", "/calendar"] },
+  { to: "/stats", icon: BarChart3, labelKey: "nav.stats" },
+  { to: "/profile", icon: UserCircle, labelKey: "profile.nav" },
+];
 
 const navLabelKeys = {
   "/": "nav.today",
@@ -93,6 +135,7 @@ export default function Layout() {
   const { t, locale, setLocale } = useI18n();
   const location = useLocation();
   const isOnline = useOnline();
+  const keyboardOpen = useAppViewportHeight();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
@@ -158,7 +201,13 @@ export default function Layout() {
   }, [profile, theme, hadStoredTheme, setTheme]);
 
   return (
-    <div className={cn("flex flex-col bg-bg-secondary", location.pathname.includes("/board") ? "h-dvh overflow-hidden" : "min-h-screen")}>
+    <div
+      className={cn(
+        "flex flex-col bg-bg-secondary h-[var(--app-viewport-height,100dvh)] overflow-hidden sm:h-auto sm:min-h-screen sm:overflow-visible",
+        "fixed inset-x-0 top-[var(--app-viewport-top,0px)] sm:static",
+        location.pathname.includes("/board") && "sm:h-dvh sm:overflow-hidden"
+      )}
+    >
       {/* Desktop header */}
       <header className="border-b border-border sticky top-0 z-40 bg-bg/90 backdrop-blur-md hidden sm:block">
         <div className="px-4 sm:px-6 h-14 flex items-center">
@@ -259,67 +308,22 @@ export default function Layout() {
       </header>
 
       {/* Mobile header */}
-      <header className="border-b border-border sticky top-0 z-40 bg-bg/90 backdrop-blur-md sm:hidden safe-top">
+      <header className="border-b border-border sticky top-0 z-40 bg-bg/90 backdrop-blur-md sm:hidden safe-top shrink-0">
         <div className="px-3 h-12 flex items-center justify-between overflow-hidden">
           <NavLink to="/" className="flex items-center gap-2 font-semibold text-text tracking-tight">
             <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
               <Clock size={13} className="text-bg" />
             </div>
-            <span className="text-sm">GitMyDayTime</span>
+            <span className="text-sm">GMD</span>
           </NavLink>
-          <button
-            onClick={() => setShowChangelog(true)}
-            className="text-[9px] text-text-tertiary font-normal -ml-3 hover:text-accent transition-colors"
-          >
-            v{__APP_VERSION__}
-          </button>
           <div className="flex items-center gap-0.5">
+            <NotificationBell />
             <button
               onClick={() => setShowCommandPalette(true)}
               aria-label="Issue ara"
               className="btn-icon p-2 rounded-lg"
             >
               <Search size={16} />
-            </button>
-            <NotificationBell />
-            <button
-              onClick={toggleLocale}
-              aria-label={locale === "en" ? "Turkce" : "English"}
-              className="btn-icon p-2 rounded-lg text-[10px] font-bold"
-            >
-              {locale === "en" ? "TR" : "EN"}
-            </button>
-            <button
-              onClick={toggleTheme}
-              aria-label={t("nav.switchTheme", { theme: theme === "light" ? "dark" : "light" })}
-              className="btn-icon p-2 rounded-lg"
-            >
-              {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
-            </button>
-            <NavLink
-              to="/profile"
-              aria-label={t("profile.nav" as any)}
-              className={({ isActive }) =>
-                cn(
-                  "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-semibold transition-colors overflow-hidden",
-                  isActive
-                    ? "bg-accent text-bg"
-                    : "bg-accent-soft text-text-secondary hover:text-text"
-                )
-              }
-            >
-              {profile?.avatarUrl
-                ? <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
-                : profile
-                  ? (profile.displayName || profile.username).slice(0, 2).toUpperCase()
-                  : <UserCircle size={14} />}
-            </NavLink>
-            <button
-              onClick={handleLogoutClick}
-              aria-label={t("nav.signOut")}
-              className="btn-icon p-2 rounded-lg"
-            >
-              <LogOut size={16} />
             </button>
           </div>
         </div>
@@ -338,7 +342,7 @@ export default function Layout() {
 
       <main
         className={cn(
-          "pb-16 sm:pb-0 safe-main-bottom",
+          "flex-1 min-h-0 overflow-y-auto overscroll-contain sm:overflow-visible sm:overscroll-auto safe-main-bottom",
           location.pathname.includes("/board")
             ? "flex flex-col overflow-hidden flex-1"
             : "flex-1"
@@ -413,37 +417,46 @@ export default function Layout() {
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Mobile navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 bg-bg/95 backdrop-blur-md border-t border-border sm:hidden safe-bottom"
+        className={cn(
+          "z-40 bg-bg/95 backdrop-blur-md border-t border-border sm:hidden safe-bottom shrink-0",
+          keyboardOpen && "hidden"
+        )}
       >
         <div className="flex items-center justify-around h-16 px-2">
-          {mobileNavKeys.map((to) => {
-            const Icon = navIcons[to];
-            const label = t(navLabelKeys[to] as any);
+          {mobileNavItems.map(({ to, icon: Icon, labelKey, end, match }) => {
+            const active = match?.some((path) => location.pathname === path) ?? (end ? location.pathname === to : location.pathname.startsWith(to));
+            const label = t(labelKey as any);
             return (
               <NavLink
                 key={to}
                 to={to}
-                end={to === "/"}
-                className={({ isActive }) =>
+                end={end}
+                aria-label={label}
+                className={() =>
                   cn(
-                    "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-[60px]",
-                    isActive
+                    "flex items-center justify-center p-2.5 rounded-xl transition-colors min-w-[52px]",
+                    active
                       ? "text-accent"
                       : "text-text-tertiary"
                   )
                 }
               >
-                <Icon size={20} />
-                <span className="text-[10px] font-medium">{label}</span>
+                {to === "/profile" && profile?.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt="" className={cn("w-6 h-6 rounded-md object-cover", active && "ring-1 ring-accent")} />
+                ) : (
+                  <Icon size={24} />
+                )}
+                <span className="sr-only">{label}</span>
               </NavLink>
             );
           })}
           <a
             href={PM_URL}
-            className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-[60px] text-text-tertiary"
+            aria-label={t("nav.projects" as any)}
+            className="flex items-center justify-center p-2.5 rounded-xl transition-colors min-w-[52px] text-text-tertiary"
           >
-            <Layers size={20} />
-            <span className="text-[10px] font-medium">{t("nav.projects" as any)}</span>
+            <Layers size={24} />
+            <span className="sr-only">{t("nav.projects" as any)}</span>
           </a>
         </div>
       </nav>

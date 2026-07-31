@@ -226,7 +226,13 @@ export default function WeekView() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold flex items-center gap-2">
-          <CalendarDays size={20} className="text-text-secondary" />
+          <button
+            onClick={() => navigate("/calendar")}
+            className="btn-icon p-1.5 rounded-lg -ml-1"
+            aria-label={t("nav.calendar" as any)}
+          >
+            <CalendarDays size={20} />
+          </button>
           <span className="hidden sm:inline">{t("week.title")}</span>
         </h1>
         <div className="flex items-center gap-1">
