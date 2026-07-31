@@ -138,7 +138,7 @@ export default function NotificationBell({ iconSize = 16 }: NotificationBellProp
         onClick={() => setOpen(v => !v)}
         className={cn(
           "btn-icon p-2 rounded-lg relative",
-          open && "bg-bg-subtle"
+          open && "btn-icon-active"
         )}
         aria-label="Bildirimler"
       >

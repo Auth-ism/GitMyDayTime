@@ -51,7 +51,6 @@ export default function CalendarPage() {
   const monthName = new Date(current.year, current.month).toLocaleDateString(dateLoc, { month: "long", year: "numeric" });
   const today = new Date().toISOString().split("T")[0];
   const isCurrentMonth = current.year === new Date().getFullYear() && current.month === new Date().getMonth();
-
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -147,11 +146,17 @@ export default function CalendarPage() {
             { value: stats.daysTracked, label: t("cal.daysTracked") },
             { value: stats.totalTasks, label: t("cal.totalTasks") },
             { value: stats.streak, label: t("cal.dayStreak") },
-          ].map(({ value, label }) => (
-            <div key={label} className="card text-center">
+          ].map(({ value, label }, index) => (
+            <motion.div
+              key={label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="card text-center"
+            >
               <p className="text-2xl font-bold">{value}</p>
               <p className="text-xs text-text-secondary mt-1">{label}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}

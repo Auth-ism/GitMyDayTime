@@ -220,7 +220,6 @@ export default function WeekView() {
     cleanupTouchDrag();
     document.querySelectorAll("[data-drag-ghost]").forEach((el) => el.remove());
   }, [moveItem, cleanupTouchDrag]);
-
   return (
     <div className="space-y-4">
       {/* Header */}

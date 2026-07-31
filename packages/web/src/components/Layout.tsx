@@ -73,6 +73,7 @@ const navIcons = {
 } as const;
 
 const PM_URL = "https://pm.byfeb.com";
+const LAST_DATE_VIEW_KEY = "gmd-last-date-view";
 
 // Desktop nav: all items
 const navKeys = ["/", "/week", "/calendar", "/stats", "/search", "/recurring"] as const;
@@ -107,6 +108,14 @@ export default function Layout() {
   const { t, locale, setLocale } = useI18n();
   const location = useLocation();
   const isOnline = useOnline();
+  const [lastDateView, setLastDateView] = useState<"/week" | "/calendar">(() => {
+    try {
+      const stored = localStorage.getItem(LAST_DATE_VIEW_KEY);
+      return stored === "/calendar" ? "/calendar" : "/week";
+    } catch {
+      return "/week";
+    }
+  });
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
@@ -147,6 +156,13 @@ export default function Layout() {
     flushSync(() => setShowCommandPalette(true));
     document.getElementById("command-palette-input")?.focus({ preventScroll: true });
   };
+
+  useEffect(() => {
+    if (location.pathname !== "/week" && location.pathname !== "/calendar") return;
+    const next = location.pathname as "/week" | "/calendar";
+    setLastDateView(next);
+    try { localStorage.setItem(LAST_DATE_VIEW_KEY, next); } catch {}
+  }, [location.pathname]);
 
   const toggleLocale = () => setLocale(locale === "en" ? "tr" : "en" as Locale);
 
@@ -395,12 +411,13 @@ export default function Layout() {
       >
         <div className="flex items-center justify-around h-16 px-2">
           {mobileNavItems.map(({ to, icon: Icon, labelKey, end, match }) => {
+            const targetTo = match?.includes("/week") && match.includes("/calendar") ? lastDateView : to;
             const active = match?.some((path) => location.pathname === path) ?? (end ? location.pathname === to : location.pathname.startsWith(to));
-            const label = t(labelKey as any);
+            const label = targetTo === "/calendar" ? t("nav.calendar" as any) : t(labelKey as any);
             return (
               <NavLink
                 key={to}
-                to={to}
+                to={targetTo}
                 end={end}
                 aria-label={label}
                 className={() =>

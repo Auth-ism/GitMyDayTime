@@ -182,7 +182,14 @@
     border: 1px solid transparent;
     border-radius: 0.5rem;
   }
-  .btn-icon:hover:not(:disabled) {
+  @media (hover: hover) and (pointer: fine) {
+    .btn-icon:hover:not(:disabled) {
+      background: var(--color-accent-soft);
+      color: var(--color-text);
+    }
+  }
+
+  .btn-icon-active {
     background: var(--color-accent-soft);
     color: var(--color-text);
   }
