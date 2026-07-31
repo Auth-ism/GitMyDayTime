@@ -171,7 +171,12 @@ export default function Layout() {
   }, [profile, theme, hadStoredTheme, setTheme]);
 
   return (
-    <div className={cn("flex flex-col bg-bg-secondary", location.pathname.includes("/board") ? "h-dvh overflow-hidden" : "min-h-screen")}>
+    <div
+      className={cn(
+        "flex flex-col bg-bg-secondary h-[100dvh] overflow-hidden sm:h-auto sm:min-h-screen sm:overflow-visible",
+        location.pathname.includes("/board") && "sm:h-dvh sm:overflow-hidden"
+      )}
+    >
       {/* Desktop header */}
       <header className="border-b border-border sticky top-0 z-40 bg-bg/90 backdrop-blur-md hidden sm:block">
         <div className="px-4 sm:px-6 h-14 flex items-center">
@@ -306,7 +311,7 @@ export default function Layout() {
 
       <main
         className={cn(
-          "pb-16 sm:pb-0 safe-main-bottom",
+          "flex-1 min-h-0 overflow-y-auto overscroll-contain pb-16 sm:overflow-visible sm:overscroll-auto sm:pb-0 safe-main-bottom mobile-page-scroll",
           location.pathname.includes("/board")
             ? "flex flex-col overflow-hidden flex-1"
             : "flex-1"

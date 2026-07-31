@@ -102,6 +102,18 @@
 }
 
 @media (max-width: 639px) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .mobile-page-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+
   @supports (padding-bottom: env(safe-area-inset-bottom)) {
     .safe-main-bottom {
       padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
