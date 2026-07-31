@@ -251,8 +251,8 @@ export default function WeekView() {
 
       {/* Week grid */}
       <div>
-      <div ref={scrollRef} className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
-      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, minmax(110px, 1fr))" }}>
+      <div ref={scrollRef} className="-mx-4 px-4 pb-1 sm:mx-0 sm:px-0 sm:overflow-x-auto">
+      <div className="grid grid-cols-2 gap-2 sm:[grid-template-columns:repeat(7,minmax(110px,1fr))]">
         {dates.map((date, i) => {
           const dayLog = dayQueries[i].data;
           const isLoading = dayQueries[i].isLoading;
