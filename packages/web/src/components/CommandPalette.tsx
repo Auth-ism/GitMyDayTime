@@ -4,7 +4,7 @@ import { Search, X, Calendar } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface SearchResult {
   id: string;
@@ -73,23 +73,29 @@ export default function CommandPalette({ open, onClose }: Props) {
     else if (e.key === "Escape") onClose();
   };
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] p-4 bg-bg/70 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.97, y: -6 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.12 }}
-        className="w-full max-w-lg bg-bg-elevated border border-border rounded-xl shadow-2xl overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22 }}
+          className="fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] p-4 bg-bg/70 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: -6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: -4 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="w-full max-w-lg bg-bg-elevated border border-border rounded-xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
         <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-border">
           <Search size={15} className="text-text-tertiary flex-shrink-0" />
           <input
+            id="command-palette-input"
             ref={inputRef}
             type="text"
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-text-tertiary"
@@ -142,7 +148,9 @@ export default function CommandPalette({ open, onClose }: Props) {
           <span><kbd className="font-mono bg-bg-secondary border border-border rounded px-1 py-0.5">Esc</kbd> {t("cmd.close" as any)}</span>
           <span className="ml-auto opacity-60">Ctrl/⌘ K</span>
         </div>
-      </motion.div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

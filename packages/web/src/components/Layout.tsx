@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import { NavLink, useLocation, Outlet } from "react-router-dom";
 import { Calendar, CalendarDays, BarChart3, Sun, Moon, Clock, LogOut, Search, Repeat, Globe, UserCircle, WifiOff, X, Layers, Bug, Command, type LucideIcon } from "lucide-react";
 import { useTheme, resolveTheme, type Theme } from "@/lib/theme";
@@ -142,6 +143,10 @@ export default function Layout() {
 
   const handleLogoutClick = () => setShowLogoutConfirm(true);
   const handleLogoutConfirm = () => { setShowLogoutConfirm(false); logout(); };
+  const openCommandPalette = () => {
+    flushSync(() => setShowCommandPalette(true));
+    document.getElementById("command-palette-input")?.focus({ preventScroll: true });
+  };
 
   const toggleLocale = () => setLocale(locale === "en" ? "tr" : "en" as Locale);
 
@@ -278,21 +283,21 @@ export default function Layout() {
 
       {/* Mobile header */}
       <header className="border-b border-border sticky top-0 z-40 bg-bg/90 backdrop-blur-md sm:hidden safe-top shrink-0">
-        <div className="px-3 h-12 flex items-center justify-between overflow-hidden">
+        <div className="px-3 h-14 flex items-center justify-between overflow-hidden">
           <NavLink to="/" className="flex items-center gap-2 font-semibold text-text tracking-tight">
-            <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
-              <Clock size={13} className="text-bg" />
+            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+              <Clock size={16} className="text-bg" />
             </div>
             <span className="text-sm">GMD</span>
           </NavLink>
           <div className="flex items-center gap-0.5">
-            <NotificationBell />
+            <NotificationBell iconSize={20} />
             <button
-              onClick={() => setShowCommandPalette(true)}
+              onClick={openCommandPalette}
               aria-label="Issue ara"
               className="btn-icon p-2 rounded-lg"
             >
-              <Search size={16} />
+              <Search size={20} />
             </button>
           </div>
         </div>

@@ -33,7 +33,11 @@ const TYPE_ICON: Record<string, string> = {
   issue_done: "✅",
 };
 
-export default function NotificationBell() {
+type NotificationBellProps = {
+  iconSize?: number;
+};
+
+export default function NotificationBell({ iconSize = 16 }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -138,7 +142,7 @@ export default function NotificationBell() {
         )}
         aria-label="Bildirimler"
       >
-        <Bell size={16} className={unread > 0 ? "text-accent" : "text-text-tertiary"} />
+        <Bell size={iconSize} className={unread > 0 ? "text-accent" : "text-text-tertiary"} />
         {unread > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full bg-danger text-white text-[9px] font-bold flex items-center justify-center">
             {unread > 99 ? "99+" : unread}
