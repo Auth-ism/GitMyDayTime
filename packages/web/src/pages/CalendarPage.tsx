@@ -210,14 +210,26 @@ export default function CalendarPage() {
           </button>
         )}
       </div>
-      <div className="flex items-center justify-center gap-1">
-        <button onClick={prev} className="btn btn-ghost p-2" aria-label={t("cal.prevMonth")}>
-          <ChevronLeft size={18} />
-        </button>
-        <span className="text-sm font-medium w-40 text-center" aria-live="polite">{monthName}</span>
-        <button onClick={next} className="btn btn-ghost p-2" aria-label={t("cal.nextMonth")}>
-          <ChevronRight size={18} />
-        </button>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center justify-center gap-1 flex-1 min-w-0">
+          <button onClick={prev} className="btn btn-ghost p-2" aria-label={t("cal.prevMonth")}>
+            <ChevronLeft size={18} />
+          </button>
+          <span className="text-sm font-medium w-40 text-center" aria-live="polite">{monthName}</span>
+          <button onClick={next} className="btn btn-ghost p-2" aria-label={t("cal.nextMonth")}>
+            <ChevronRight size={18} />
+          </button>
+        </div>
+        <div className="flex flex-col gap-1 pt-1 shrink-0 text-[10px] text-text-tertiary">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+            {t("cal.tasks")}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary/40" />
+            {t("cal.plans")}
+          </span>
+        </div>
       </div>
 
       <div ref={calendarViewportRef} className="overflow-hidden -mx-1.5">
@@ -261,15 +273,6 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* Legend */}
-      <div className="flex items-center justify-center gap-4 text-xs text-text-tertiary">
-        <span className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-accent" /> {t("cal.tasks")}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-text-tertiary/40" /> {t("cal.plans")}
-        </span>
-      </div>
     </div>
   );
 }

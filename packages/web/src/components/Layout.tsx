@@ -336,7 +336,7 @@ export default function Layout() {
           location.pathname.includes("/board")
             ? "flex flex-col overflow-hidden flex-1"
             : "flex-1",
-          ["/calendar", "/week", "/profile"].includes(location.pathname) && "mobile-bounded-scroll"
+          (location.pathname === "/" || location.pathname.startsWith("/day/") || ["/calendar", "/week", "/profile"].includes(location.pathname)) && "mobile-bounded-scroll"
         )}
         id="main-content"
       >

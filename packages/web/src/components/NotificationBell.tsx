@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { AnimatePresence, motion } from "framer-motion";
 
 type Notification = {
   id: string;
@@ -150,9 +151,16 @@ export default function NotificationBell({ iconSize = 16 }: NotificationBellProp
         )}
       </button>
 
+      <AnimatePresence>
       {open && (
-        <div className="fixed sm:absolute left-2 right-2 sm:left-auto sm:right-0 top-auto sm:top-full mt-2 sm:w-80 z-50 bg-bg-elevated border border-border rounded-xl shadow-xl overflow-hidden"
-          style={{ maxHeight: "calc(100dvh - 80px)" }}>
+        <motion.div
+          initial={{ opacity: 0, y: -6, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -4, scale: 0.98 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="fixed sm:absolute left-2 right-2 sm:left-auto sm:right-0 top-auto sm:top-full mt-2 sm:w-80 z-50 bg-bg-elevated border border-border rounded-xl shadow-xl overflow-hidden"
+          style={{ maxHeight: "calc(100dvh - 80px)" }}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
             <span className="text-xs font-semibold text-text">Bildirimler</span>
@@ -195,8 +203,9 @@ export default function NotificationBell({ iconSize = 16 }: NotificationBellProp
               ))
             )}
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
