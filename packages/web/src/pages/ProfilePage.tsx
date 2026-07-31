@@ -639,11 +639,11 @@ export default function ProfilePage() {
           {/* Silent hours */}
           <Section icon={<Bell size={14} className="text-text-secondary" />} title={t("profile.silentHours" as any)}>
             <p className="text-[10px] text-text-tertiary -mt-1 mb-2">{t("profile.silentHoursDesc" as any)}</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 min-w-0">
               <Field label={t("profile.silentFrom" as any)}>
                 <input
                   type="time"
-                  className="input-sm"
+                  className="input-sm w-full max-w-[8rem] min-w-0"
                   value={form.silentHoursStart ?? ""}
                   onChange={(e) => setForm({ ...form, silentHoursStart: e.target.value || null })}
                 />
@@ -651,7 +651,7 @@ export default function ProfilePage() {
               <Field label={t("profile.silentTo" as any)}>
                 <input
                   type="time"
-                  className="input-sm"
+                  className="input-sm w-full max-w-[8rem] min-w-0"
                   value={form.silentHoursEnd ?? ""}
                   onChange={(e) => setForm({ ...form, silentHoursEnd: e.target.value || null })}
                 />
