@@ -112,6 +112,8 @@
 
   .mobile-page-scroll {
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
   }
 
   .mobile-bounded-scroll {

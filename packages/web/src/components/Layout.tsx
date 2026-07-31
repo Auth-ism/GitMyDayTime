@@ -141,6 +141,23 @@ export default function Layout() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // Safari's edge-swipe history navigation is outside the scroll container and
+  // ignores overscroll-behavior. Prevent it only when the gesture starts on
+  // page content, leaving taps on controls and in-app swipes available.
+  useEffect(() => {
+    if (!window.matchMedia("(max-width: 639px)").matches) return;
+
+    const handleTouchStart = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      const target = event.target as HTMLElement | null;
+      if (!touch || touch.clientX > 20 || target?.closest("button, a, input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+    };
+
+    document.addEventListener("touchstart", handleTouchStart, { passive: false });
+    return () => document.removeEventListener("touchstart", handleTouchStart);
+  }, []);
+
   useEffect(() => {
     if (!profile) return;
     if (!profile.onboarded) {
