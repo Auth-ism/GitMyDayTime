@@ -241,27 +241,33 @@ export default function DayView() {
   const dateLoc = locale === "tr" ? "tr-TR" : "en-US";
 
   return (
-    <div className="space-y-3" {...swipeHandlers}>
-      {/* Date header — compact */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <button onClick={prevDay} className="btn btn-ghost p-2" aria-label={t("day.prevDay")}>
-            <ChevronLeft size={18} />
-          </button>
-          <div className="text-center min-w-[130px]">
-            <h1 className="text-base font-semibold leading-tight">
+    <div className="day-view space-y-4 sm:space-y-3" {...swipeHandlers}>
+      {/* Date header */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-2">
+          <div className="sm:hidden min-w-0">
+            <h1 className="text-base font-semibold leading-tight truncate">
               {isToday ? t("day.today") : displayDate.toLocaleDateString(dateLoc, { weekday: "long" })}
             </h1>
-            <p className="text-xs text-text-secondary">
-              {displayDate.toLocaleDateString(dateLoc, { month: "long", day: "numeric" })}
-            </p>
           </div>
-          <button onClick={nextDay} className="btn btn-ghost p-2" aria-label={t("day.nextDay")}>
-            <ChevronRight size={18} />
-          </button>
-        </div>
+          <div className="hidden sm:flex items-center gap-1">
+            <button onClick={prevDay} className="btn btn-ghost p-2" aria-label={t("day.prevDay")}>
+              <ChevronLeft size={18} />
+            </button>
+            <div className="text-center min-w-[130px]">
+              <h1 className="text-base font-semibold leading-tight">
+                {isToday ? t("day.today") : displayDate.toLocaleDateString(dateLoc, { weekday: "long" })}
+              </h1>
+              <p className="text-xs text-text-secondary">
+                {displayDate.toLocaleDateString(dateLoc, { month: "long", day: "numeric" })}
+              </p>
+            </div>
+            <button onClick={nextDay} className="btn btn-ghost p-2" aria-label={t("day.nextDay")}>
+              <ChevronRight size={18} />
+            </button>
+          </div>
 
-        <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 shrink-0">
           <button onClick={handleCopyYesterday} disabled={copyingDay} className="btn btn-ghost p-2 text-text-tertiary" title="Dunden kopyala">
             <Copy size={14} />
           </button>
@@ -275,6 +281,19 @@ export default function DayView() {
               <CalendarDays size={14} />
             </button>
           )}
+          </div>
+        </div>
+
+        <div className="sm:hidden flex items-center justify-center gap-1">
+          <button onClick={prevDay} className="btn btn-ghost p-2" aria-label={t("day.prevDay")}>
+            <ChevronLeft size={18} />
+          </button>
+          <span className="text-sm font-medium text-center min-w-[150px]">
+            {displayDate.toLocaleDateString(dateLoc, { month: "long", day: "numeric", year: "numeric" })}
+          </span>
+          <button onClick={nextDay} className="btn btn-ghost p-2" aria-label={t("day.nextDay")}>
+            <ChevronRight size={18} />
+          </button>
         </div>
       </div>
 
@@ -472,6 +491,13 @@ export default function DayView() {
 
       {/* Reminders section */}
       <section>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider flex items-center gap-1.5">
+            <Bell size={12} />
+            {t("reminder.title" as any)}
+          </span>
+          {reminderCount > 0 && <span className="text-[11px] text-text-tertiary tabular-nums">{reminderCount}</span>}
+        </div>
         <TaskForm
           type="reminder"
           loading={addReminder.isPending}
@@ -496,6 +522,13 @@ export default function DayView() {
 
       {/* Notes section */}
       <section>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider flex items-center gap-1.5">
+            <MessageSquare size={12} />
+            {t("form.addNote" as any)}
+          </span>
+          {taskCount > 0 && <span className="text-[11px] text-text-tertiary tabular-nums">{taskCount}</span>}
+        </div>
         <TaskForm
           type="task"
           loading={addTask.isPending}

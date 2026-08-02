@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -7,7 +8,7 @@ import { cn } from "@/lib/cn";
 import { ChevronLeft, ChevronRight, CalendarDays, Clock, Target, Check, MessageSquare, Bell } from "lucide-react";
 import { formatDuration, todayStr, type DayLog } from "@gmd/shared";
 import { useCategories } from "@/hooks/useCategories";
-import { motion } from "framer-motion";
+import { animate, motion, useMotionValue, type PanInfo } from "framer-motion";
 
 function localDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -46,6 +47,11 @@ export default function WeekView() {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
   const dragOverDateRef = useRef<string | null>(null);
+  const slidingRef = useRef(false);
+  const weekViewportRef = useRef<HTMLDivElement>(null);
+  const weekWidthRef = useRef(0);
+  const [weekWidth, setWeekWidth] = useState(0);
+  const weekX = useMotionValue(0);
   // The week strip scrolls horizontally; while dragging a card we lock that scroll
   // so dragging Tue→Mon doesn't also swipe the days left/right.
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -53,7 +59,30 @@ export default function WeekView() {
     if (scrollRef.current) scrollRef.current.style.overflowX = lock ? "hidden" : "";
   };
 
-  const dates = useMemo(() => getWeekDates(weekRef), [weekRef]);
+  const weekPanels = useMemo(() => [-7, 0, 7].map((offset) => {
+    const ref = new Date(weekRef);
+    ref.setDate(ref.getDate() + offset);
+    return getWeekDates(ref);
+  }), [weekRef]);
+  const dates = weekPanels[1];
+
+  useLayoutEffect(() => {
+    const viewport = weekViewportRef.current;
+    if (!viewport) return;
+
+    const syncWidth = () => {
+      const width = viewport.clientWidth;
+      if (!width || width === weekWidthRef.current) return;
+      weekWidthRef.current = width;
+      setWeekWidth(width);
+      if (!slidingRef.current) weekX.set(-width);
+    };
+
+    syncWidth();
+    const observer = new ResizeObserver(syncWidth);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [weekX]);
 
   const weekLabel = useMemo(() => {
     const start = new Date(dates[0] + "T12:00:00");
@@ -65,8 +94,9 @@ export default function WeekView() {
     return `${start.toLocaleDateString(dateLoc, { month: "short", day: "numeric" })} – ${end.toLocaleDateString(dateLoc, { month: "short", day: "numeric", year: "numeric" })}`;
   }, [dates, dateLoc]);
 
+  const allDates = weekPanels.flat();
   const dayQueries = useQueries({
-    queries: dates.map((date) => ({
+    queries: allDates.map((date) => ({
       queryKey: ["daylog", date],
       queryFn: () => api.getDayLog(date),
       staleTime: 30_000,
@@ -75,9 +105,49 @@ export default function WeekView() {
 
   const prevWeek = () => setWeekRef((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
   const nextWeek = () => setWeekRef((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
-  const goToday = () => setWeekRef(new Date());
+  const paginate = async (direction: -1 | 1) => {
+    const width = weekWidthRef.current;
+    if (slidingRef.current || !width) return;
+    slidingRef.current = true;
+    weekX.stop();
+    const target = direction === 1 ? -width * 2 : 0;
+    const animation = animate(weekX, target, { type: "spring", stiffness: 420, damping: 38 });
+    await (animation as typeof animation & { finished: Promise<unknown> }).finished;
+    flushSync(() => {
+      setWeekRef((d) => {
+        const next = new Date(d);
+        next.setDate(next.getDate() + direction * 7);
+        return next;
+      });
+      weekX.set(-width);
+    });
+    slidingRef.current = false;
+  };
+  const prev = () => { void paginate(-1); };
+  const next = () => { void paginate(1); };
+  const goToday = () => {
+    weekX.stop();
+    if (weekWidthRef.current) weekX.set(-weekWidthRef.current);
+    setWeekRef(new Date());
+  };
 
   const isCurrentWeek = dates.includes(today);
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
+  const handleWeekDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const width = weekWidthRef.current;
+    if (!isMobile || slidingRef.current || !width) return;
+    const threshold = Math.max(70, width * 0.2);
+    if (info.offset.x <= -threshold || info.velocity.x <= -500) {
+      void paginate(1);
+    } else if (info.offset.x >= threshold || info.velocity.x >= 500) {
+      void paginate(-1);
+    } else {
+      slidingRef.current = true;
+      weekX.stop();
+      void (animate(weekX, -width, { type: "spring", stiffness: 420, damping: 38 }) as ReturnType<typeof animate> & { finished: Promise<unknown> }).finished
+        .finally(() => { slidingRef.current = false; });
+    }
+  };
   const moveItem = useCallback(async (info: DragInfo, toDate: string) => {
     if (info.fromDate === toDate) return;
 
@@ -220,36 +290,57 @@ export default function WeekView() {
     cleanupTouchDrag();
     document.querySelectorAll("[data-drag-ghost]").forEach((el) => el.remove());
   }, [moveItem, cleanupTouchDrag]);
-
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold flex items-center gap-2">
-          <CalendarDays size={20} className="text-text-secondary" />
-          <span className="hidden sm:inline">{t("week.title")}</span>
+          <button
+            onClick={() => navigate("/calendar")}
+            className="btn-icon p-1.5 rounded-lg -ml-1"
+            aria-label={t("nav.calendar" as any)}
+          >
+            <CalendarDays size={20} />
+          </button>
+          {t("week.title")}
         </h1>
-        <div className="flex items-center gap-1">
-          {!isCurrentWeek && (
-            <button onClick={goToday} className="btn btn-ghost text-xs mr-1">{t("week.thisWeek")}</button>
-          )}
-          <button onClick={prevWeek} className="btn btn-ghost p-2" aria-label={t("week.prevWeek")}>
-            <ChevronLeft size={18} />
+        {!isCurrentWeek && (
+          <button onClick={goToday} className="px-2.5 py-1 rounded-lg text-xs font-medium bg-accent/15 text-accent hover:bg-accent/25 transition-colors">
+            {t("week.thisWeek")}
           </button>
-          <span className="text-xs sm:text-sm font-medium text-center min-w-[140px] sm:min-w-[200px]">{weekLabel}</span>
-          <button onClick={nextWeek} className="btn btn-ghost p-2" aria-label={t("week.nextWeek")}>
-            <ChevronRight size={18} />
-          </button>
-        </div>
+        )}
+      </div>
+      <div className="flex items-center justify-center gap-1">
+        <button onClick={prev} className="btn btn-ghost p-2" aria-label={t("week.prevWeek")}>
+          <ChevronLeft size={18} />
+        </button>
+        <span className="text-xs sm:text-sm font-medium text-center min-w-[140px] sm:min-w-[200px]">{weekLabel}</span>
+        <button onClick={next} className="btn btn-ghost p-2" aria-label={t("week.nextWeek")}>
+          <ChevronRight size={18} />
+        </button>
       </div>
 
       {/* Week grid */}
-      <div>
-      <div ref={scrollRef} className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
-      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, minmax(110px, 1fr))" }}>
-        {dates.map((date, i) => {
-          const dayLog = dayQueries[i].data;
-          const isLoading = dayQueries[i].isLoading;
+      <div ref={weekViewportRef} className="overflow-hidden -mx-1.5">
+        <motion.div
+          style={{ x: weekX }}
+          drag={isMobile && weekWidth > 0 ? "x" : false}
+          dragConstraints={{ left: -weekWidth * 2, right: 0 }}
+          dragElastic={0.12}
+          dragDirectionLock
+          onDragStart={() => weekX.stop()}
+          onDragEnd={handleWeekDragEnd}
+          className="flex w-[300%] touch-pan-y"
+        >
+        {weekPanels.map((panelDates, panelIndex) => (
+          <div key={panelDates[0]} className={cn("w-1/3 shrink-0 px-1.5", panelIndex !== 1 && "pointer-events-none")}>
+          <div>
+          <div ref={panelIndex === 1 ? scrollRef : undefined} className="-mx-4 px-4 pb-1 sm:mx-0 sm:px-0 sm:overflow-x-auto">
+          <div className="grid grid-cols-2 gap-2 sm:[grid-template-columns:repeat(7,minmax(110px,1fr))]">
+        {panelDates.map((date, i) => {
+          const dayQuery = dayQueries[panelIndex * 7 + i];
+          const dayLog = dayQuery.data;
+          const isLoading = dayQuery.isLoading;
           const isToday = date === today;
           const d = new Date(date + "T12:00:00");
           const dayName = d.toLocaleDateString(dateLoc, { weekday: "short" });
@@ -410,8 +501,12 @@ export default function WeekView() {
             </div>
           );
         })}
-      </div>
-      </div>
+          </div>
+          </div>
+          </div>
+          </div>
+        ))}
+        </motion.div>
       </div>
     </div>
   );

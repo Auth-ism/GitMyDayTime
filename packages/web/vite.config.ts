@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -7,7 +7,11 @@ import fs from "node:fs";
 
 const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf-8"));
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const apiProxyTarget = env.VITE_API_PROXY_TARGET || "http://localhost:3001";
+
+  return {
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
@@ -19,15 +23,27 @@ export default defineConfig({
       manifest: {
         name: "GitMyDayTime",
         short_name: "GMD",
+        id: "/",
+        scope: "/",
+        description: "Track daily plans, duties, notes, and time.",
         theme_color: "#000000",
-        background_color: "#ffffff",
+        background_color: "#f5f5f7",
         display: "standalone",
+        display_override: ["window-controls-overlay", "standalone"],
+        orientation: "portrait-primary",
+        categories: ["productivity", "lifestyle"],
         start_url: "/",
         icons: [
           {
-            src: "/favicon.svg",
-            sizes: "any",
-            type: "image/svg+xml",
+            src: "/icons/icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "/icons/icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
             purpose: "any maskable",
           },
         ],
@@ -95,7 +111,26 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": "http://localhost:3001",
+      "/api": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        secure: true,
+        cookieDomainRewrite: "",
+        configure: (proxy) => {
+          proxy.on("proxyRes", (proxyRes) => {
+            const setCookie = proxyRes.headers["set-cookie"];
+            if (!setCookie) return;
+
+            proxyRes.headers["set-cookie"] = setCookie.map((cookie) =>
+              cookie
+                .replace(/;\s*Domain=[^;]*/gi, "")
+                .replace(/;\s*Secure/gi, "")
+            );
+          });
+        },
+      },
     },
+    allowedHosts: ["phirios"]
   },
+  };
 });
