@@ -15,6 +15,14 @@ const translations = {
     "nav.signOut": "Sign out",
     "nav.switchTheme": "Switch to {theme} theme",
 
+    // Install prompt
+    "install.title": "Install GMD",
+    "install.description": "Add GMD to your home screen for a faster app-like experience.",
+    "install.safari": "Tap Share, then Add to Home Screen.",
+    "install.browser": "Open your browser menu and choose Install app or Add to Home screen.",
+    "install.button": "Install",
+    "install.dismiss": "Dismiss install suggestion",
+
     // Categories
     "cat.dev": "Development",
     "cat.meeting": "Meeting",
@@ -650,6 +658,14 @@ const translations = {
     "nav.recurring": "Tekrar",
     "nav.signOut": "Çıkış yap",
     "nav.switchTheme": "{theme} temaya geç",
+
+    // Install prompt
+    "install.title": "GMD'yi yükle",
+    "install.description": "Daha hızlı ve uygulama benzeri kullanım için GMD'yi ana ekranına ekle.",
+    "install.safari": "Paylaş'a, ardından Ana Ekrana Ekle'ye dokun.",
+    "install.browser": "Tarayıcı menüsünü açıp Uygulamayı yükle veya Ana ekrana ekle seçeneğini seç.",
+    "install.button": "Yükle",
+    "install.dismiss": "Yükleme önerisini kapat",
 
     // Categories
     "cat.dev": "Geliştirme",

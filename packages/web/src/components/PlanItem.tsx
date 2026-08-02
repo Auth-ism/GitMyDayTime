@@ -169,7 +169,7 @@ export default function PlanItem({
         PRIORITY_BORDER[priority]
       )}
     >
-      <div className="flex items-center gap-3 py-2.5 px-3.5">
+      <div className="flex flex-wrap items-start gap-2 py-2.5 px-3.5 sm:flex-nowrap sm:items-center sm:gap-3">
         <button
           onClick={handleToggle}
           onPointerDown={(e) => e.stopPropagation()}
@@ -341,6 +341,10 @@ export default function PlanItem({
           </div>
         </div>
 
+        <div className={cn(
+          "flex items-center justify-end gap-0.5 basis-full sm:basis-auto sm:ml-auto",
+          busy && "hidden"
+        )}>
         {!busy && !item.completed && onAddChecklist && checklist.length === 0 && (
           <Tooltip label={t("tip.addStep" as any)}>
             <button
@@ -407,6 +411,7 @@ export default function PlanItem({
             </button>
           </Tooltip>
         )}
+        </div>
       </div>
 
       {/* Checklist */}

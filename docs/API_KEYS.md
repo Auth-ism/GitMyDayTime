@@ -138,7 +138,7 @@ Claude'un bug/feature takibi için kullandığı sarmalayıcı.
 ```bash
 # pm-cli.sh hedefi pm.byfeb.com — token PM hesabından alınmalı (gmd_pat_ değil!)
 GMD_API_TOKEN=pm_pat_...
-GMD_PROJECT_ID=d87f1e45-f0cb-4d37-8f4a-37ee7de18f1f
+GMD_PROJECT=GMD
 GMD_API_BASE=https://pm.byfeb.com
 ```
 
@@ -148,11 +148,16 @@ GMD_API_BASE=https://pm.byfeb.com
 ### Komutlar
 
 ```bash
-./scripts/pm-cli.sh create "başlık" "açıklama" bug high   # issue aç → "GMD-1  <uuid>  başlık"
-./scripts/pm-cli.sh list                                  # done olmayan tüm issue'lar
-./scripts/pm-cli.sh statuses                              # workflow durumları + id'leri
-./scripts/pm-cli.sh status GMD-1 "Devam Ediyor"           # durum değiştir (ad veya kategori)
-./scripts/pm-cli.sh done GMD-1                            # ilk done kategorili duruma taşı
+pm projects                                             # available projects
+pm auth pm_pat_...                                       # save/update API token
+pm config use-board PM                                   # change default board
+pm --project PM list                                    # select by project key
+pm completion zsh                                        # print zsh completions
+pm create "başlık" "açıklama" bug high                 # issue aç → "GMD-1  <uuid>  başlık"
+pm list                                                  # done olmayan tüm issue'lar
+pm statuses                                              # workflow durumları + id'leri
+pm status GMD-1 "Devam Ediyor"                           # durum değiştir (ad veya kategori)
+pm done GMD-1                                            # ilk done kategorili duruma taşı
 ```
 
 `done` ve `status` komutları issue-key'i (`GMD-1`) board'u tarayarak UUID'ye çevirir; UUID ezberlemene gerek yok.
