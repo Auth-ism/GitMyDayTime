@@ -15,6 +15,16 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.19.1",
+    date: "2026-08-02",
+    bump: "patch",
+    summary: "Erken bitirdiğin görev için saati gelince bildirim gelmiyor artık",
+    changes: [
+      { type: "fix", text: "Bir görevi planlanan saatinden önce tamamlasan bile saat gelince bildirim düşüyordu — tamamlanmış görevler artık bildirim göndermiyor" },
+      { type: "fix", text: "Hem anlık hatırlatma hem de yedek kontrol yolunda aynı eksik vardı, ikisi de düzeltildi" },
+    ],
+  },
+  {
     version: "4.19.0",
     date: "2026-07-30",
     bump: "minor",

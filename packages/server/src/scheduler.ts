@@ -128,7 +128,10 @@ async function processRedisReminders(): Promise<number> {
                 u.push_subscription AS "pushSubscription"
          FROM plan_items pi
          JOIN users u ON u.id = pi.user_id
-         WHERE pi.id = $1 AND pi.user_id = $2 AND pi.notification_sent = FALSE`,
+         -- completed = FALSE: a Redis entry stays queued after the item is
+         -- completed, so this guard is what actually silences it.
+         WHERE pi.id = $1 AND pi.user_id = $2 AND pi.notification_sent = FALSE
+           AND pi.completed = FALSE`,
         [itemId, userId]
       );
       if (rows.length > 0) {

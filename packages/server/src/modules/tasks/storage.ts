@@ -1143,6 +1143,9 @@ export async function getPendingNotifications(): Promise<PendingNotification[]> 
      FROM plan_items pi
      JOIN users u ON u.id = pi.user_id
      WHERE pi.notification_sent = FALSE
+       -- Finishing early must silence the reminder; getUpcomingPlanNotifications
+       -- already guards this, the due-now path did not.
+       AND pi.completed = FALSE
        AND pi.scheduled_time IS NOT NULL
        AND (u.plan_email_notifications = TRUE OR u.plan_sms_notifications = TRUE OR u.plan_push_notifications = TRUE
             OR u.reminder_email_notifications = TRUE OR u.reminder_sms_notifications = TRUE OR u.reminder_push_notifications = TRUE)
