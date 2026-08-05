@@ -204,11 +204,13 @@ export default function DayView() {
   const handleCopyYesterday = async () => {
     const d = new Date(date + "T12:00:00");
     d.setDate(d.getDate() - 1);
-    const fromDate = d.toISOString().split("T")[0];
+    const fromDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     setCopyingDay(true);
     try {
       await api.copyDayPlans(date, fromDate);
-      qc.invalidateQueries({ queryKey: ["daylog", date] });
+      // Yeniden çekmeyi bekle: aksi halde spinner duruyor ama liste bir sonraki
+      // refetch'e kadar eski kalıyordu (GMD-8).
+      await qc.refetchQueries({ queryKey: ["daylog", date], type: "active" });
     } finally {
       setCopyingDay(false);
     }
@@ -262,7 +264,7 @@ export default function DayView() {
         </div>
 
         <div className="flex items-center gap-0.5">
-          <button onClick={handleCopyYesterday} disabled={copyingDay} className="btn btn-ghost p-2 text-text-tertiary" title="Dunden kopyala">
+          <button onClick={handleCopyYesterday} disabled={copyingDay} className="btn btn-ghost p-2 text-text-tertiary disabled:opacity-40" title={t("day.copyYesterday")} aria-label={t("day.copyYesterday")}>
             <Copy size={14} />
           </button>
           <button onClick={() => setShowTemplates(true)} className="btn btn-ghost px-2 py-1.5 text-text-tertiary text-[11px] gap-1" title="Şablonlar">

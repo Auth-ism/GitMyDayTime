@@ -15,6 +15,18 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.19.2",
+    date: "2026-08-05",
+    bump: "patch",
+    summary: "Dünden kopyala artık anında görünüyor",
+    changes: [
+      { type: "fix", text: "Dünden kopyala butonu: kopyalanan planlar veritabanına yazıldığı anda listede beliriyor, artık bir sonraki yenilemeyi beklemiyor" },
+      { type: "fix", text: "Kopyalama sırasında gün hesabı yerel saate göre yapılıyor — gece yarısına yakın saatlerde yanlış günden kopyalama riski kalktı" },
+      { type: "fix", text: "Butonun ipucu metni İngilizce/Türkçe olarak doğru çevriliyor" },
+      { type: "fix", text: "E-posta anahtarı tanımlanmamış ortamlarda sunucu artık açılıyor; e-posta gönderimi sessizce devre dışı kalıyor" },
+    ],
+  },
+  {
     version: "4.19.1",
     date: "2026-08-02",
     bump: "patch",

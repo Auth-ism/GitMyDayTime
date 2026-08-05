@@ -1,10 +1,40 @@
 import { Resend } from "resend";
 import { CATEGORY_COLORS } from "@gmd/shared";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
 const APP_URL = process.env.APP_URL || "https://gmd.byfeb.com";
 const FROM = process.env.FROM_EMAIL || "GMD <noreply@byfeb.com>";
+
+// Resend istemcisi anahtar varsa kurulur. Resend constructor'ı anahtarsız
+// fırlattığı için modül seviyesinde kurmak, RESEND_API_KEY tanımsız olan
+// ortamlarda süreci import anında düşürüyordu (GMD-11).
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
+
+if (!resend) {
+  console.warn("[email] RESEND_API_KEY tanımlı değil — e-posta gönderimi devre dışı.");
+}
+
+interface MailPayload {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+}
+
+// audit.ts'teki gibi fire-and-forget: e-posta hatası çağıran akışı bozmamalı.
+async function sendMail(payload: MailPayload): Promise<void> {
+  if (!resend) {
+    console.warn(`[email] Atlandı (anahtar yok): "${payload.subject}" → ${payload.to}`);
+    return;
+  }
+  try {
+    await resend.emails.send(payload);
+  } catch (err) {
+    console.error(`[email] Gönderilemedi: "${payload.subject}" → ${payload.to}`, err);
+  }
+}
 
 export interface ReminderEmailData {
   description: string;
@@ -94,7 +124,7 @@ export async function sendAdminApprovalEmail(
     </table>
     ${button(approveUrl, "Onayla", "#4ade80", "#09090b")}
   `;
-  await resend.emails.send({
+  await sendMail({
     from: FROM,
     to: ADMIN_EMAIL,
     subject: `GMD: Yeni kayıt — ${user.username}`,
@@ -115,7 +145,7 @@ export async function sendUserApprovedEmail(
     ${button(loginUrl, "Giriş Yap")}
     <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Bu link tek kullanımlıktır.</p>
   `;
-  await resend.emails.send({
+  await sendMail({
     from: FROM,
     to: user.email,
     subject: "Hesabın onaylandı — GitMyDayTime",
@@ -169,7 +199,7 @@ export async function sendReminderEmail(
     ${checklistHtml}
     ${button(`${APP_URL}`, "Uygulamayı Aç")}
   `;
-  await resend.emails.send({
+  await sendMail({
     from: FROM,
     to,
     subject: `${isReminder ? "⏰" : "📋"} ${data.scheduledTime} — ${data.description}`,
@@ -192,7 +222,7 @@ export async function sendProjectInvitationEmail(
     </p>
     ${button(joinUrl, "Daveti Kabul Et")}
   `;
-  await resend.emails.send({
+  await sendMail({
     from: FROM,
     to: toEmail,
     subject: `${projectName} — Projeye davet edildiniz`,
@@ -213,7 +243,7 @@ export async function sendPasswordResetEmail(
     ${button(resetUrl, "Şifremi Sıfırla")}
     <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Bu isteği sen yapmadıysan bu e-postayı görmezden gel.</p>
   `;
-  await resend.emails.send({
+  await sendMail({
     from: FROM,
     to: user.email,
     subject: "Şifre sıfırlama — GitMyDayTime",
@@ -247,7 +277,7 @@ export async function sendFeedbackEmail(data: {
       </tr>
     </table>
   `;
-  await resend.emails.send({
+  await sendMail({
     from: FROM,
     to: ADMIN_EMAIL,
     subject: `GMD Geri Bildirim: ${typeLabel} — ${data.senderUsername}`,
@@ -282,7 +312,7 @@ export async function sendApiKeyRequestEmail(
     </table>
     ${button(approveUrl, "API Key Onayla", "#4ade80", "#09090b")}
   `;
-  await resend.emails.send({
+  await sendMail({
     from: FROM,
     to: ADMIN_EMAIL,
     subject: `GMD API Key Talebi: ${user.username}`,
@@ -305,7 +335,7 @@ export async function sendApiKeyApprovedEmail(
     <p style="margin:0 0 16px;font-size:12px;color:#71717a;">Ayarlar → API Tokens bölümünden token'larını yönetebilirsin.</p>
     ${button(APP_URL + "/profile", "Ayarlara Git")}
   `;
-  await resend.emails.send({
+  await sendMail({
     from: FROM,
     to: user.email,
     subject: "GMD API Key'in Hazır",
@@ -325,7 +355,7 @@ export async function sendVerificationEmail(
     </p>
     ${button(verifyUrl, "E-postamı Doğrula")}
   `;
-  await resend.emails.send({
+  await sendMail({
     from: FROM,
     to: user.email,
     subject: "E-postanı doğrula — GitMyDayTime",
@@ -414,7 +444,7 @@ export async function sendWeeklyRecapEmail(
     </p>
   `;
 
-  await resend.emails.send({
+  await sendMail({
     from: FROM,
     to: user.email,
     subject: `Haftalık özet · ${range}`,
