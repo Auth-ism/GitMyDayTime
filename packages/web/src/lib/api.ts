@@ -9,6 +9,16 @@ export function setUnauthorizedHandler(fn: () => void) {
   _onUnauthorized = fn;
 }
 
+/** HTTP durum kodunu taşıyan hata — çağıranın 409 gibi durumları ayırt etmesi için. */
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
@@ -33,10 +43,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     if (res.status === 429) {
       const retryAfter = res.headers.get("Retry-After");
       const secs = retryAfter ? parseInt(retryAfter, 10) : 60;
-      throw new Error(`429: ${secs}s`);
+      throw new ApiError(`429: ${secs}s`, 429);
     }
 
-    throw new Error(errorMessage);
+    throw new ApiError(errorMessage, res.status);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -164,7 +174,7 @@ export const api = {
 
   // Copy day plans
   copyDayPlans: (date: string, fromDate: string) =>
-    request<{ copied: number }>(`/days/${date}/copy-from/${fromDate}`, { method: "POST" }),
+    request<{ copied: number; skipped: number }>(`/days/${date}/copy-from/${fromDate}`, { method: "POST" }),
 
   // One year ago
   getOneYearAgo: (date: string) =>

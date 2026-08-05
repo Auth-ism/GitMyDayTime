@@ -15,7 +15,7 @@ import PomodoroTimer from "@/components/PomodoroTimer";
 import JournalSection from "@/components/JournalSection";
 import TimelineView from "@/components/TimelineView";
 import TemplatesModal from "@/components/TemplatesModal";
-import { showUndoToast } from "@/components/Toast";
+import { showUndoToast, showSuccessToast } from "@/components/Toast";
 import { AnimatePresence, Reorder, useDragControls, type DragControls } from "framer-motion";
 import { ChevronLeft, ChevronRight, CalendarDays, Target, MessageSquare, Bell, Copy, LayoutTemplate, AlignJustify, Clock, GripVertical } from "lucide-react";
 import { todayStr, type PlanItem as PlanItemData } from "@gmd/shared";
@@ -207,10 +207,19 @@ export default function DayView() {
     const fromDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     setCopyingDay(true);
     try {
-      await api.copyDayPlans(date, fromDate);
+      const { copied, skipped } = await api.copyDayPlans(date, fromDate);
       // Yeniden çekmeyi bekle: aksi halde spinner duruyor ama liste bir sonraki
       // refetch'e kadar eski kalıyordu (GMD-8).
       await qc.refetchQueries({ queryKey: ["daylog", date], type: "active" });
+      if (copied === 0 && skipped === 0) {
+        showSuccessToast(t("copy.nothingToCopy"));
+      } else if (copied === 0) {
+        showSuccessToast(t("copy.allDuplicates", { skipped }));
+      } else if (skipped > 0) {
+        showSuccessToast(t("copy.partial", { copied, skipped }));
+      } else {
+        showSuccessToast(t("copy.done", { copied }));
+      }
     } finally {
       setCopyingDay(false);
     }

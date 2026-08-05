@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { nanoid } from "nanoid";
 import { CreatePlanInput, CreateChecklistInput, PlanItemSchema } from "@gmd/shared";
 import { zodMsg } from "../../../validation.js";
-import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem, copyDayPlans, invalidateDayLog, getOneYearAgoPlan } from "../storage.js";
+import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem, copyDayPlans, invalidateDayLog, getOneYearAgoPlan, DuplicatePlanItemError } from "../storage.js";
 import { pool } from "../../../db.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -36,7 +36,14 @@ router.post("/:date/plan", wrap(async (req, res) => {
     priority: input.data.priority ?? "normal",
   });
 
-  await addPlanItem(req.userId!, date, item);
+  try {
+    await addPlanItem(req.userId!, date, item);
+  } catch (err) {
+    if (err instanceof DuplicatePlanItemError) {
+      res.status(409).json({ error: err.message }); return;
+    }
+    throw err;
+  }
   res.status(201).json(item);
 }));
 
@@ -81,8 +88,8 @@ router.post("/:date/copy-from/:fromDate", wrap(async (req, res) => {
   if (!DATE_RE.test(date) || !DATE_RE.test(fromDate)) {
     res.status(400).json({ error: "Invalid date" }); return;
   }
-  const count = await copyDayPlans(req.userId!, fromDate, date);
-  res.json({ copied: count });
+  const result = await copyDayPlans(req.userId!, fromDate, date);
+  res.json(result);
 }));
 
 // ── Checklist ───────────────────────────────────────────────────

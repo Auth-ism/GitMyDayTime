@@ -314,11 +314,54 @@ export async function deleteTask(userId: string, taskId: string): Promise<boolea
   return (rowCount ?? 0) > 0;
 }
 
+/** Aynı gün içinde birebir aynı plan kaydı ikinci kez oluşturulmak istendiğinde fırlatılır (GMD-7). */
+export class DuplicatePlanItemError extends Error {
+  constructor() {
+    super("Bu görevin birebir aynısı bu günde zaten var");
+    this.name = "DuplicatePlanItemError";
+  }
+}
+
+// "Birebir aynı" = aynı kullanıcı + gün + açıklama + kategori + süre + saat + tür + öncelik.
+// NULL'lar (süre/saat girilmemişse) da eşleşmeli, o yüzden IS NOT DISTINCT FROM.
+const DUPLICATE_MATCH_SQL = `
+  description = $3
+  AND category = $4
+  AND estimated_duration IS NOT DISTINCT FROM $5
+  AND scheduled_time IS NOT DISTINCT FROM $6::time
+  AND item_type = $7
+  AND priority = $8
+`;
+
+export async function findExactDuplicatePlanItem(
+  userId: string,
+  date: string,
+  item: Pick<PlanItem, "description" | "category" | "duration" | "scheduledTime" | "itemType" | "priority">
+): Promise<string | null> {
+  const { rows } = await pool.query(
+    `SELECT id FROM plan_items WHERE user_id = $1 AND date = $2 AND ${DUPLICATE_MATCH_SQL} LIMIT 1`,
+    [
+      userId,
+      date,
+      item.description,
+      item.category,
+      item.duration ?? null,
+      item.scheduledTime ?? null,
+      item.itemType ?? "plan",
+      item.priority ?? "normal",
+    ]
+  );
+  return rows[0]?.id ?? null;
+}
+
 export async function addPlanItem(
   userId: string,
   date: string,
   item: PlanItem
 ): Promise<PlanItem> {
+  if (await findExactDuplicatePlanItem(userId, date, item)) {
+    throw new DuplicatePlanItemError();
+  }
   await pool.query(
     `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type, priority)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
@@ -1303,14 +1346,45 @@ export async function deleteTemplate(userId: string, templateId: string): Promis
 
 // ── Copy Day Plans ───────────────────────────────────────────────
 
-export async function copyDayPlans(userId: string, fromDate: string, toDate: string): Promise<number> {
-  const { rows } = await pool.query(
+export interface CopyDayResult {
+  copied: number;
+  skipped: number;
+}
+
+export async function copyDayPlans(userId: string, fromDate: string, toDate: string): Promise<CopyDayResult> {
+  const { rows: sourceRows } = await pool.query(
     `SELECT description, category, estimated_duration, scheduled_time, item_type, priority
-     FROM plan_items WHERE user_id = $1 AND date = $2 AND item_type = 'plan'
-     ORDER BY sort_order`,
+     FROM plan_items WHERE user_id = $1 AND date = $2 AND item_type = 'plan'`,
     [userId, fromDate]
   );
-  if (rows.length === 0) return 0;
+  if (sourceRows.length === 0) return { copied: 0, skipped: 0 };
+
+  // Kopyalanacakları hedef günde zaten var olanlara göre eliyoruz — kullanıcı
+  // butona ikinci kez bastığında aynı planlar tekrar eklenmesin (GMD-7).
+  // DISTINCT ON, kaynak günün kendi içindeki tekrarları da tekile indiriyor.
+  const { rows } = await pool.query(
+    `SELECT DISTINCT ON (description, category, estimated_duration, scheduled_time, priority)
+            description, category, estimated_duration, scheduled_time, item_type, priority, sort_order
+     FROM plan_items src
+     WHERE src.user_id = $1 AND src.date = $2 AND src.item_type = 'plan'
+       AND NOT EXISTS (
+         SELECT 1 FROM plan_items dst
+         WHERE dst.user_id = $1 AND dst.date = $3
+           AND dst.description = src.description
+           AND dst.category = src.category
+           AND dst.estimated_duration IS NOT DISTINCT FROM src.estimated_duration
+           AND dst.scheduled_time IS NOT DISTINCT FROM src.scheduled_time
+           AND dst.item_type = src.item_type
+           AND dst.priority = src.priority
+       )
+     ORDER BY description, category, estimated_duration, scheduled_time, priority, sort_order`,
+    [userId, fromDate, toDate]
+  );
+  // DISTINCT ON kendi ORDER BY'ını dayattığı için orijinal sırayı burada geri alıyoruz.
+  rows.sort((a: any, b: any) => a.sort_order - b.sort_order);
+
+  const skipped = sourceRows.length - rows.length;
+  if (rows.length === 0) return { copied: 0, skipped };
   const { rows: orderRows } = await pool.query(
     "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM plan_items WHERE user_id = $1 AND date = $2",
     [userId, toDate]
@@ -1329,7 +1403,7 @@ export async function copyDayPlans(userId: string, fromDate: string, toDate: str
   await invalidateDayLog(userId, toDate);
   await invalidateStats(userId);
   await logActivityEvents(userId, createdIds, { eventType: "plan_created", source: "template" });
-  return rows.length;
+  return { copied: rows.length, skipped };
 }
 
 // ── Export User Data ─────────────────────────────────────────────

@@ -9,6 +9,7 @@ import { I18nProvider } from "@/lib/i18n";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import App from "@/App";
 import { showErrorToast } from "@/components/Toast";
+import { ApiError } from "@/lib/api";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -17,6 +18,9 @@ const queryClient = new QueryClient({
       const msg = error instanceof Error ? error.message : "Bir hata oluştu";
       // Skip 401 — api.ts already redirects to /login
       if (msg.startsWith("API error: 401")) return;
+      // Skip 409 — duplicate uyarısını mutasyonun kendi onError'ı i18n'li gösteriyor,
+      // burada da göstersek iki toast çıkardı (GMD-7).
+      if (error instanceof ApiError && error.status === 409) return;
       showErrorToast(msg);
     },
   }),

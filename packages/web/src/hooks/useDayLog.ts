@@ -1,10 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { showErrorToast } from "@/components/Toast";
+import { useI18n } from "@/lib/i18n";
 import type { CreateTaskInput, CreatePlanInput, TaskEntry, PlanItem, ChecklistItem, DayLog } from "@gmd/shared";
 
 export function useDayLog(date: string) {
   const qc = useQueryClient();
+  const { t } = useI18n();
   const key = ["daylog", date];
   const injectedRef = useRef<Set<string>>(new Set());
 
@@ -122,7 +125,11 @@ export function useDayLog(date: string) {
         return { ...old, plan: old.plan.map((p) => p.id === ctx.optimisticId ? serverItem : p) };
       });
     },
-    onError: (_err, _vars, ctx) => { if (ctx?.prev) qc.setQueryData(key, ctx.prev); },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+      // Sunucu sadece 409 döndürüyor; metni burada çeviriyoruz ki TR/EN ayrışmasın (GMD-7).
+      if (err instanceof ApiError && err.status === 409) showErrorToast(t("plan.duplicate"));
+    },
     onSettled: invalidateWithStats,
   });
 

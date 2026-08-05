@@ -110,6 +110,11 @@ const translations = {
     "carry.moving": "Moving...",
     "carry.carryOver": "Carry over",
     "carry.dismiss": "Dismiss",
+    "copy.done": "{copied} plan copied from yesterday",
+    "copy.partial": "{copied} copied, {skipped} already existed",
+    "copy.allDuplicates": "Nothing copied — all {skipped} plans already exist today",
+    "copy.nothingToCopy": "No plans to copy from yesterday",
+    "plan.duplicate": "This plan already exists today — change a field or edit the existing one",
 
     // Standup
     "standup.btn": "Standup",
@@ -746,6 +751,11 @@ const translations = {
     "carry.moving": "Taşınıyor...",
     "carry.carryOver": "Taşı",
     "carry.dismiss": "Kapat",
+    "copy.done": "Dünden {copied} plan kopyalandı",
+    "copy.partial": "{copied} plan kopyalandı, {skipped} tanesi zaten vardı",
+    "copy.allDuplicates": "Hiçbir şey kopyalanmadı — {skipped} planın hepsi bugün zaten var",
+    "copy.nothingToCopy": "Dün kopyalanacak plan yok",
+    "plan.duplicate": "Bu planın birebir aynısı bugün zaten var — bir alanını değiştir ya da mevcut olanı düzenle",
 
     // Standup
     "standup.btn": "Standup",

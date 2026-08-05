@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Plus, Trash2, LayoutTemplate, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { showSuccessToast } from "@/components/Toast";
+import { useI18n } from "@/lib/i18n";
 import type { PlanTemplate, PlanItem, CreateTemplateInput } from "@gmd/shared";
 import { cn } from "@/lib/cn";
 
@@ -15,6 +17,7 @@ interface Props {
 
 export default function TemplatesModal({ date, currentPlans, onClose, onApplied }: Props) {
   const qc = useQueryClient();
+  const { t } = useI18n();
   const [newName, setNewName] = useState("");
   const [applying, setApplying] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -60,16 +63,26 @@ export default function TemplatesModal({ date, currentPlans, onClose, onApplied 
   const handleApply = async (template: PlanTemplate) => {
     setApplying(template.id);
     try {
+      let skipped = 0;
       for (const item of template.items) {
-        await api.addPlan(date, {
-          description: item.description,
-          category: item.category,
-          duration: item.duration,
-          scheduledTime: item.scheduledTime,
-          itemType: "plan",
-          priority: item.priority ?? "normal",
-        });
+        try {
+          await api.addPlan(date, {
+            description: item.description,
+            category: item.category,
+            duration: item.duration,
+            scheduledTime: item.scheduledTime,
+            itemType: "plan",
+            priority: item.priority ?? "normal",
+          });
+        } catch (err) {
+          // Zaten var olan satır şablonun geri kalanını durdurmasın (GMD-7).
+          if (err instanceof ApiError && err.status === 409) { skipped++; continue; }
+          throw err;
+        }
       }
+      const copied = template.items.length - skipped;
+      if (copied === 0) showSuccessToast(t("copy.allDuplicates", { skipped }));
+      else if (skipped > 0) showSuccessToast(t("copy.partial", { copied, skipped }));
       setApplied(template.id);
       setTimeout(() => setApplied(null), 1500);
       onApplied();

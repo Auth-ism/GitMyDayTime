@@ -15,6 +15,17 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.19.3",
+    date: "2026-08-05",
+    bump: "patch",
+    summary: "Aynı görev iki kez oluşturulamıyor artık",
+    changes: [
+      { type: "feat", text: "Birebir aynı plan (aynı açıklama, kategori, süre, saat, tür ve öncelik) aynı güne ikinci kez eklenemiyor — eklemeye çalışınca açıklayıcı bir uyarı çıkıyor" },
+      { type: "fix", text: "Dünden kopyala butonuna arka arkaya basmak artık kopyaları çoğaltmıyor; sadece bugünde olmayan planlar ekleniyor ve kaç tanesinin atlandığı bildiriliyor" },
+      { type: "fix", text: "Aynı şablonu ikinci kez uygulamak yarıda kesilmiyor — zaten var olan satırlar atlanıyor, kalanlar ekleniyor" },
+    ],
+  },
+  {
     version: "4.19.2",
     date: "2026-08-05",
     bump: "patch",
