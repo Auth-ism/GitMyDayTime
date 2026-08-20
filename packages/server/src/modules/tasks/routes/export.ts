@@ -24,6 +24,7 @@ const ImportPlanSchema = z.object({
   duration: z.number().min(0).max(1440).optional(),
   completed: z.boolean().default(false),
   scheduledTime: z.string().optional(),
+  note: z.string().max(500).optional(),
   itemType: z.enum(["plan", "reminder"]).default("plan"),
   priority: PriorityType.default("normal"),
   actualDuration: z.number().min(0).max(1440).optional(),

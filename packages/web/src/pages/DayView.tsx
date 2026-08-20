@@ -451,6 +451,7 @@ export default function DayView() {
                           category: item.category,
                           scheduledTime: item.scheduledTime ?? "",
                           duration: item.duration ?? null,
+                          note: item.note ?? "",
                         } } })}
                         onStartPomodoro={() => setPomodoroTask({ id: item.id, name: item.description })}
                         onAddChecklist={(desc) => addChecklist.mutate({ planId: item.id, description: desc })}

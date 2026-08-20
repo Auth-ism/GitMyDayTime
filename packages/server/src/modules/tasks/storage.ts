@@ -214,6 +214,7 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog> {
               completed, sort_order AS "order",
               scheduled_time AS "scheduledTime",
               actual_duration AS "actualDuration",
+              note,
               item_type AS "itemType",
               notification_sent AS "notificationSent",
               priority
@@ -322,8 +323,9 @@ export class DuplicatePlanItemError extends Error {
   }
 }
 
-// "Birebir aynı" = aynı kullanıcı + gün + açıklama + kategori + süre + saat + tür + öncelik.
-// NULL'lar (süre/saat girilmemişse) da eşleşmeli, o yüzden IS NOT DISTINCT FROM.
+// "Birebir aynı" = aynı kullanıcı + gün + açıklama + kategori + süre + saat + tür + öncelik + not.
+// NULL'lar (süre/saat/not girilmemişse) da eşleşmeli, o yüzden IS NOT DISTINCT FROM.
+// Not da anahtara dahil: aynı başlığı farklı açıklamayla ikinci kez eklemek yinelenen sayılmaz.
 const DUPLICATE_MATCH_SQL = `
   description = $3
   AND category = $4
@@ -331,12 +333,13 @@ const DUPLICATE_MATCH_SQL = `
   AND scheduled_time IS NOT DISTINCT FROM $6::time
   AND item_type = $7
   AND priority = $8
+  AND note IS NOT DISTINCT FROM $9
 `;
 
 export async function findExactDuplicatePlanItem(
   userId: string,
   date: string,
-  item: Pick<PlanItem, "description" | "category" | "duration" | "scheduledTime" | "itemType" | "priority">
+  item: Pick<PlanItem, "description" | "category" | "duration" | "scheduledTime" | "itemType" | "priority" | "note">
 ): Promise<string | null> {
   const { rows } = await pool.query(
     `SELECT id FROM plan_items WHERE user_id = $1 AND date = $2 AND ${DUPLICATE_MATCH_SQL} LIMIT 1`,
@@ -349,6 +352,7 @@ export async function findExactDuplicatePlanItem(
       item.scheduledTime ?? null,
       item.itemType ?? "plan",
       item.priority ?? "normal",
+      item.note ?? null,
     ]
   );
   return rows[0]?.id ?? null;
@@ -363,9 +367,9 @@ export async function addPlanItem(
     throw new DuplicatePlanItemError();
   }
   await pool.query(
-    `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type, priority)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-    [item.id, userId, date, item.description, item.category, item.duration ?? null, item.completed, item.order, item.scheduledTime ?? null, item.itemType ?? "plan", item.priority ?? "normal"]
+    `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type, priority, note)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [item.id, userId, date, item.description, item.category, item.duration ?? null, item.completed, item.order, item.scheduledTime ?? null, item.itemType ?? "plan", item.priority ?? "normal", item.note ?? null]
   );
   await invalidateDayLog(userId, date);
   await invalidateStats(userId);
@@ -401,6 +405,7 @@ export async function updatePlanItem(
     actualDuration: "actual_duration",
     itemType: "item_type",
     priority: "priority",
+    note: "note",
   });
 
   if (fields.length === 0) return null;
@@ -423,7 +428,7 @@ export async function updatePlanItem(
                plan_items.estimated_duration AS "duration", plan_items.completed,
                plan_items.sort_order AS "order", plan_items.scheduled_time AS "scheduledTime",
                plan_items.actual_duration AS "actualDuration", plan_items.item_type AS "itemType",
-               plan_items.priority,
+               plan_items.priority, plan_items.note,
                old.completed AS "oldCompleted", old.category AS "oldCategory",
                old.actual_duration AS "oldActualDuration"`,
     values
@@ -541,7 +546,7 @@ export async function reorderPlanItems(
   const { rows } = await pool.query(
     `SELECT id, description, category, estimated_duration AS "duration",
             completed, sort_order AS "order", scheduled_time AS "scheduledTime",
-            actual_duration AS "actualDuration", item_type AS "itemType",
+            actual_duration AS "actualDuration", note, item_type AS "itemType",
             notification_sent AS "notificationSent", priority
      FROM plan_items WHERE user_id = $1 AND date = $2 ORDER BY sort_order`,
     [userId, date]
@@ -571,7 +576,7 @@ export async function movePlanItem(
      WHERE id = $3 AND user_id = $4
      RETURNING id, description, category, estimated_duration AS "duration", completed, sort_order AS "order",
                scheduled_time AS "scheduledTime", actual_duration AS "actualDuration",
-               item_type AS "itemType", priority`,
+               note, item_type AS "itemType", priority`,
     [newDate, orderRows[0].next_order, itemId, userId]
   );
 
@@ -623,6 +628,7 @@ export async function getOneYearAgoPlan(userId: string, date: string): Promise<{
             completed, sort_order AS "order",
             scheduled_time AS "scheduledTime",
             actual_duration AS "actualDuration",
+            note,
             item_type AS "itemType",
             priority,
             ($1::date - INTERVAL '1 year')::date AS _one_year_ago
@@ -653,6 +659,7 @@ export async function getIncompleteItems(userId: string, date: string): Promise<
             completed, sort_order AS "order",
             scheduled_time AS "scheduledTime",
             actual_duration AS "actualDuration",
+            note,
             item_type AS "itemType"
      FROM plan_items WHERE user_id = $1 AND date = $2 AND completed = false
        AND carried_over = FALSE AND recurring_task_id IS NULL
@@ -718,8 +725,9 @@ export async function searchItems(
     pool.query(
       `SELECT id, description, category, estimated_duration AS "duration",
               completed, sort_order AS "order", scheduled_time AS "scheduledTime",
-              actual_duration AS "actualDuration", item_type AS "itemType", date::text
-       FROM plan_items WHERE user_id = $1 AND (LOWER(description) ILIKE $3 OR similarity(LOWER(description), $2) > 0.15)
+              actual_duration AS "actualDuration", note, item_type AS "itemType", date::text
+       FROM plan_items WHERE user_id = $1 AND (LOWER(description) ILIKE $3 OR similarity(LOWER(description), $2) > 0.15
+                                               OR LOWER(note) ILIKE $3)
        ORDER BY similarity(LOWER(description), $2) DESC, date DESC LIMIT $4`,
       [userId, normalizedQuery, pattern, limit]
     ),
@@ -841,6 +849,7 @@ function toRecurringTask(r: any): RecurringTask {
     category: r.category,
     duration: r.estimated_duration ?? undefined,
     scheduledTime: formatTime(r.scheduled_time),
+    note: r.note ?? undefined,
     recurrence: r.recurrence,
     weekDay: r.week_day ?? undefined,
     customDays: r.custom_days ?? [],
@@ -869,10 +878,10 @@ export async function createRecurringTask(
   input: CreateRecurringTaskInput
 ): Promise<RecurringTask> {
   const { rows } = await pool.query(
-    `INSERT INTO recurring_tasks (id, user_id, description, category, estimated_duration, scheduled_time, recurrence, week_day, custom_days)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO recurring_tasks (id, user_id, description, category, estimated_duration, scheduled_time, recurrence, week_day, custom_days, note)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING *`,
-    [id, userId, input.description, input.category, input.duration ?? null, input.scheduledTime ?? null, input.recurrence, input.weekDay ?? null, input.customDays ?? []]
+    [id, userId, input.description, input.category, input.duration ?? null, input.scheduledTime ?? null, input.recurrence, input.weekDay ?? null, input.customDays ?? [], input.note ?? null]
   );
   await cacheDel(`recurring:${userId}`);
   return toRecurringTask(rows[0]);
@@ -888,6 +897,7 @@ export async function updateRecurringTask(
     category: "category",
     duration: "estimated_duration",
     scheduledTime: "scheduled_time",
+    note: "note",
     recurrence: "recurrence",
     weekDay: "week_day",
     customDays: "custom_days",
@@ -989,11 +999,11 @@ export async function injectRecurringTasks(userId: string, date: string): Promis
 
       const planId = nanoid(8);
       const { rows } = await pool.query(
-        `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, scheduled_time, completed, sort_order, item_type, priority, recurring_task_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, 'plan', 'normal', $9)
+        `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, scheduled_time, completed, sort_order, item_type, priority, recurring_task_id, note)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, 'plan', 'normal', $9, $10)
          RETURNING id, description, category, estimated_duration AS duration, completed, sort_order AS "order",
-                   scheduled_time AS "scheduledTime", item_type AS "itemType", priority`,
-        [planId, userId, date, task.description, task.category, task.estimated_duration, task.scheduled_time, nextOrder++, task.id]
+                   scheduled_time AS "scheduledTime", note, item_type AS "itemType", priority`,
+        [planId, userId, date, task.description, task.category, task.estimated_duration, task.scheduled_time, nextOrder++, task.id, task.note ?? null]
       );
 
       // Mark as injected
@@ -1289,7 +1299,7 @@ export async function getTemplates(userId: string): Promise<PlanTemplate[]> {
   const templateIds = tmpl.map((t: any) => t.id);
   const { rows: items } = await pool.query(
     `SELECT id, template_id AS "templateId", description, category, estimated_duration AS duration,
-            scheduled_time AS "scheduledTime", priority, sort_order AS "order"
+            scheduled_time AS "scheduledTime", note, priority, sort_order AS "order"
      FROM template_items WHERE template_id = ANY($1) ORDER BY sort_order`,
     [templateIds]
   );
@@ -1301,7 +1311,7 @@ export async function getTemplates(userId: string): Promise<PlanTemplate[]> {
   return tmpl.map((t: any) => ({
     id: t.id,
     name: t.name,
-    items: (byTemplate[t.id] || []).map((i: any) => ({ ...i, duration: i.duration ?? undefined })),
+    items: (byTemplate[t.id] || []).map((i: any) => ({ ...i, duration: i.duration ?? undefined, note: i.note ?? undefined })),
     createdAt: serializeTimestamp(t.created_at),
   }));
 }
@@ -1317,9 +1327,9 @@ export async function createTemplate(userId: string, input: CreateTemplateInput)
     const item = input.items[i];
     const itemId = nanoid(8);
     await pool.query(
-      `INSERT INTO template_items (id, template_id, description, category, estimated_duration, scheduled_time, priority, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [itemId, id, item.description, item.category, item.duration ?? null, item.scheduledTime ?? null, item.priority ?? "normal", i]
+      `INSERT INTO template_items (id, template_id, description, category, estimated_duration, scheduled_time, note, priority, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [itemId, id, item.description, item.category, item.duration ?? null, item.scheduledTime ?? null, item.note ?? null, item.priority ?? "normal", i]
     );
     items.push({
       id: itemId,
@@ -1328,6 +1338,7 @@ export async function createTemplate(userId: string, input: CreateTemplateInput)
       category: item.category ?? "other",
       duration: item.duration,
       scheduledTime: item.scheduledTime,
+      note: item.note,
       priority: (item.priority ?? "normal") as "urgent" | "high" | "normal",
       order: i,
     });
@@ -1353,7 +1364,7 @@ export interface CopyDayResult {
 
 export async function copyDayPlans(userId: string, fromDate: string, toDate: string): Promise<CopyDayResult> {
   const { rows: sourceRows } = await pool.query(
-    `SELECT description, category, estimated_duration, scheduled_time, item_type, priority
+    `SELECT description, category, estimated_duration, scheduled_time, item_type, priority, note
      FROM plan_items WHERE user_id = $1 AND date = $2 AND item_type = 'plan'`,
     [userId, fromDate]
   );
@@ -1363,8 +1374,8 @@ export async function copyDayPlans(userId: string, fromDate: string, toDate: str
   // butona ikinci kez bastığında aynı planlar tekrar eklenmesin (GMD-7).
   // DISTINCT ON, kaynak günün kendi içindeki tekrarları da tekile indiriyor.
   const { rows } = await pool.query(
-    `SELECT DISTINCT ON (description, category, estimated_duration, scheduled_time, priority)
-            description, category, estimated_duration, scheduled_time, item_type, priority, sort_order
+    `SELECT DISTINCT ON (description, category, estimated_duration, scheduled_time, priority, note)
+            description, category, estimated_duration, scheduled_time, item_type, priority, note, sort_order
      FROM plan_items src
      WHERE src.user_id = $1 AND src.date = $2 AND src.item_type = 'plan'
        AND NOT EXISTS (
@@ -1376,8 +1387,9 @@ export async function copyDayPlans(userId: string, fromDate: string, toDate: str
            AND dst.scheduled_time IS NOT DISTINCT FROM src.scheduled_time
            AND dst.item_type = src.item_type
            AND dst.priority = src.priority
+           AND dst.note IS NOT DISTINCT FROM src.note
        )
-     ORDER BY description, category, estimated_duration, scheduled_time, priority, sort_order`,
+     ORDER BY description, category, estimated_duration, scheduled_time, priority, note, sort_order`,
     [userId, fromDate, toDate]
   );
   // DISTINCT ON kendi ORDER BY'ını dayattığı için orijinal sırayı burada geri alıyoruz.
@@ -1394,9 +1406,9 @@ export async function copyDayPlans(userId: string, fromDate: string, toDate: str
   for (const row of rows) {
     const id = nanoid(8);
     await pool.query(
-      `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type, priority)
-       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $9, $10)`,
-      [id, userId, toDate, row.description, row.category, row.estimated_duration, nextOrder++, row.scheduled_time, row.item_type, row.priority ?? "normal"]
+      `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type, priority, note)
+       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $9, $10, $11)`,
+      [id, userId, toDate, row.description, row.category, row.estimated_duration, nextOrder++, row.scheduled_time, row.item_type, row.priority ?? "normal", row.note ?? null]
     );
     createdIds.push(id);
   }
@@ -1412,7 +1424,7 @@ export async function exportUserData(userId: string): Promise<object> {
   const [planItems, tasks, recurring, journals] = await Promise.all([
     pool.query(
       `SELECT date::text, description, category, estimated_duration AS duration, actual_duration AS "actualDuration",
-              completed, scheduled_time AS "scheduledTime", item_type AS "itemType", priority
+              completed, scheduled_time AS "scheduledTime", note, item_type AS "itemType", priority
        FROM plan_items WHERE user_id = $1 ORDER BY date, sort_order`,
       [userId]
     ),
@@ -1422,7 +1434,7 @@ export async function exportUserData(userId: string): Promise<object> {
       [userId]
     ),
     pool.query(
-      "SELECT description, category, recurrence, scheduled_time AS \"scheduledTime\", active FROM recurring_tasks WHERE user_id = $1",
+      "SELECT description, category, recurrence, scheduled_time AS \"scheduledTime\", note, active FROM recurring_tasks WHERE user_id = $1",
       [userId]
     ),
     pool.query(
@@ -1459,14 +1471,15 @@ export async function importUserData(
       );
       const sortOrder = orderRows[0].next_order;
       await client.query(
-        `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type, priority, actual_duration)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        `INSERT INTO plan_items (id, user_id, date, description, category, estimated_duration, completed, sort_order, scheduled_time, item_type, priority, actual_duration, note)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [
           id, userId, plan.date, plan.description,
           plan.category || "other", plan.duration || null,
           plan.completed || false, sortOrder,
           plan.scheduledTime || null, plan.itemType || "plan",
           plan.priority || "normal", plan.actualDuration || null,
+          plan.note || null,
         ]
       );
       counts.plans++;
@@ -1497,12 +1510,13 @@ export async function importUserData(
         if (existing.length > 0) continue;
         const id = nanoid(8);
         await client.query(
-          `INSERT INTO recurring_tasks (id, user_id, description, category, recurrence, scheduled_time, active)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          `INSERT INTO recurring_tasks (id, user_id, description, category, recurrence, scheduled_time, active, note)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             id, userId, rt.description,
             rt.category || "other", rt.recurrence || "daily",
             rt.scheduledTime || null, rt.active !== false,
+            rt.note || null,
           ]
         );
         counts.recurringTasks++;

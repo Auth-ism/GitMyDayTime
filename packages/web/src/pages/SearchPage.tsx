@@ -94,6 +94,9 @@ export default function SearchPage() {
                   <p className={cn("text-sm", item.data.completed && "line-through text-text-tertiary")}>
                     {item.data.description}
                   </p>
+                  {item.data.note && (
+                    <p className="text-xs text-text-secondary truncate mt-0.5">{item.data.note}</p>
+                  )}
                   <div className="flex items-center gap-2 mt-0.5">
                     <span
                       className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"

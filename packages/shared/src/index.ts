@@ -60,6 +60,7 @@ export const PlanItemSchema = z.object({
   order: z.number(),
   scheduledTime: z.string().optional(),
   actualDuration: z.number().optional(),
+  note: z.string().max(500).optional(),
   checklist: z.array(ChecklistItemSchema).default([]),
   itemType: ItemType.default("plan"),
   notificationSent: z.boolean().optional(),
@@ -87,6 +88,7 @@ export const CreatePlanInput = z.object({
   category: Category.default("other"),
   duration: z.number().optional(),
   scheduledTime: z.string().optional(),
+  note: z.string().max(500).optional(),
   itemType: ItemType.default("plan"),
   priority: PriorityType.default("normal"),
 });
@@ -99,6 +101,7 @@ export const PlanTemplateItemSchema = z.object({
   category: Category,
   duration: z.number().optional(),
   scheduledTime: z.string().optional(),
+  note: z.string().max(500).optional(),
   priority: PriorityType.default("normal"),
   order: z.number(),
 });
@@ -119,6 +122,7 @@ export const CreateTemplateInput = z.object({
     category: Category.default("other"),
     duration: z.number().optional(),
     scheduledTime: z.string().optional(),
+    note: z.string().max(500).optional(),
     priority: PriorityType.default("normal"),
   })),
 });
@@ -190,6 +194,7 @@ export const RecurringTaskSchema = z.object({
   category: Category,
   duration: z.number().optional(),
   scheduledTime: z.string().optional(),
+  note: z.string().max(500).optional(),
   recurrence: RecurrencePattern,
   weekDay: z.number().min(0).max(6).optional(),
   customDays: z.array(z.number().min(0).max(6)).optional(),
@@ -203,6 +208,7 @@ export const CreateRecurringTaskInput = z.object({
   category: Category.default("other"),
   duration: z.number().optional(),
   scheduledTime: z.string().optional(),
+  note: z.string().max(500).optional(),
   recurrence: RecurrencePattern,
   weekDay: z.number().min(0).max(6).optional(),
   customDays: z.array(z.number().min(0).max(6)).optional(),

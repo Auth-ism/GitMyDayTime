@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Clock, MessageSquare, ListTodo, Bell, ChevronDown, AlertTriangle, ArrowUp, Minus } from "lucide-react";
+import { Plus, Clock, MessageSquare, ListTodo, Bell, ChevronDown, AlertTriangle, ArrowUp, Minus, AlignLeft } from "lucide-react";
 import { parseDuration, type Category, type ItemType, type PriorityType } from "@gmd/shared";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
-  onSubmit: (data: { description: string; category: Category; duration?: number; tags: string[]; scheduledTime?: string; itemType?: ItemType; priority?: PriorityType }) => void;
+  onSubmit: (data: { description: string; category: Category; duration?: number; tags: string[]; scheduledTime?: string; note?: string; itemType?: ItemType; priority?: PriorityType }) => void;
   loading?: boolean;
   type: "task" | "plan" | "reminder";
   initialDescription?: string;
@@ -28,6 +28,7 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
   const [category, setCategory] = useState<Category>(profile?.defaultCategory || "dev");
   const [time, setTime] = useState("");
   const [duration, setDuration] = useState("");
+  const [note, setNote] = useState("");
   const [priority, setPriority] = useState<PriorityType>("normal");
   const [expanded, setExpanded] = useState(false);
   // Tracks whether the options panel opened by itself (first keystroke) rather than
@@ -63,7 +64,7 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
     if (!hasOptions) return;
     if (value.trim()) {
       if (!expanded) { setExpanded(true); setAutoExpanded(true); }
-    } else if (autoExpanded) {
+    } else if (autoExpanded && !note.trim()) {
       setExpanded(false);
       setAutoExpanded(false);
     }
@@ -73,12 +74,12 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
     if (!expanded) return;
     const handler = (e: MouseEvent) => {
       if (formRef.current && !formRef.current.contains(e.target as Node)) {
-        if (!desc.trim()) { setExpanded(false); setAutoExpanded(false); }
+        if (!desc.trim() && !note.trim()) { setExpanded(false); setAutoExpanded(false); }
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [expanded, desc]);
+  }, [expanded, desc, note]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +90,7 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
       category: isPlan ? category : "other",
       tags: [],
       ...(time ? { scheduledTime: time } : {}),
+      ...(isPlan && note.trim() ? { note: note.trim() } : {}),
       ...(isReminder ? { itemType: "reminder" as ItemType } : {}),
       ...(isPlan ? { priority } : {}),
       ...(isPlan && durationMinutes > 0 ? { duration: durationMinutes } : {}),
@@ -96,6 +98,7 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
     setDesc("");
     setTime("");
     setDuration("");
+    setNote("");
     setPriority("normal");
     setExpanded(false);
     setAutoExpanded(false);
@@ -221,6 +224,19 @@ export default function TaskForm({ onSubmit, loading, type, initialDescription, 
                   </div>
                 )}
               </div>
+              {isPlan && (
+                <div className="flex items-start gap-2">
+                  <AlignLeft size={13} className="text-text-tertiary flex-shrink-0 mt-2" />
+                  <textarea
+                    className="input !text-xs !py-1.5 flex-1 min-w-0 resize-none"
+                    rows={2}
+                    maxLength={500}
+                    placeholder={t("form.notesPlaceholder")}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
         )}

@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n, useCategoryLabel, useDayLabels, useRecurrenceLabel } from "@/lib/i18n";
 import { type RecurrencePattern, type CreateRecurringTaskInput } from "@gmd/shared";
 import { cn } from "@/lib/cn";
-import { Plus, Trash2, Repeat, Power, Clock, Timer } from "lucide-react";
+import { Plus, Trash2, Repeat, Power, Clock, Timer, AlignLeft } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { showUndoToast } from "@/components/Toast";
 const recurrenceKeys: RecurrencePattern[] = ["daily", "weekdays", "weekly", "custom"];
@@ -27,7 +27,7 @@ export default function RecurringPage() {
   const getRecLabel = useRecurrenceLabel();
   const { query, create, update, remove } = useRecurringTasks();
 
-  const handleDelete = (task: { id: string; description: string; category: string; recurrence: RecurrencePattern; weekDay?: number | null; customDays?: number[] | null; duration?: number | null; scheduledTime?: string | null; active: boolean }) => {
+  const handleDelete = (task: { id: string; description: string; category: string; recurrence: RecurrencePattern; weekDay?: number | null; customDays?: number[] | null; duration?: number | null; scheduledTime?: string | null; note?: string | null; active: boolean }) => {
     remove.mutate(task.id);
     showUndoToast(`"${task.description}" kaldırıldı`, () => {
       create.mutate({
@@ -38,6 +38,7 @@ export default function RecurringPage() {
         customDays: task.customDays ?? undefined,
         duration: task.duration ?? undefined,
         scheduledTime: task.scheduledTime ?? undefined,
+        note: task.note ?? undefined,
       });
     });
   };
@@ -56,17 +57,19 @@ export default function RecurringPage() {
   const [customDays, setCustomDays] = useState<number[]>([]);
   const [time, setTime] = useState("");
   const [durMinutes, setDurMinutes] = useState<number | null>(null);
+  const [note, setNote] = useState("");
 
   // When arriving from a day plan's "make recurring" action, prefill + open the form.
   const location = useLocation();
   const navigate = useNavigate();
   useEffect(() => {
-    const pf = (location.state as { prefillRecurring?: { description: string; category: string; scheduledTime: string; duration: number | null } } | null)?.prefillRecurring;
+    const pf = (location.state as { prefillRecurring?: { description: string; category: string; scheduledTime: string; duration: number | null; note?: string } } | null)?.prefillRecurring;
     if (!pf) return;
     setDesc(pf.description);
     setCat(pf.category);
     setTime(pf.scheduledTime ?? "");
     setDurMinutes(pf.duration ?? null);
+    setNote(pf.note ?? "");
     setShowForm(true);
     navigate(location.pathname, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,6 +83,7 @@ export default function RecurringPage() {
     setCustomDays([]);
     setTime("");
     setDurMinutes(null);
+    setNote("");
   };
 
   const submitWith = (category: string) => {
@@ -89,6 +93,7 @@ export default function RecurringPage() {
       recurrence,
       ...(durMinutes ? { duration: durMinutes } : {}),
       ...(time ? { scheduledTime: time } : {}),
+      ...(note.trim() ? { note: note.trim() } : {}),
       ...(recurrence === "weekly" ? { weekDay } : {}),
       ...(recurrence === "custom" ? { customDays } : {}),
     };
@@ -323,6 +328,18 @@ export default function RecurringPage() {
               </div>
             </div>
 
+            <div className="flex items-start gap-2">
+              <AlignLeft size={14} className="text-text-tertiary flex-shrink-0 mt-2.5" />
+              <textarea
+                className="input !text-sm !py-1.5 flex-1 min-w-0 resize-none"
+                rows={2}
+                maxLength={500}
+                placeholder={t("form.notesPlaceholder")}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
+
             <div className="flex gap-2 pt-1">
               <button
                 type="submit"
@@ -448,6 +465,9 @@ function RecurringTaskCard({
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{task.description}</p>
+        {task.note && (
+          <p className="text-xs text-text-secondary truncate mt-0.5">{task.note}</p>
+        )}
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-xs px-1.5 py-0.5 rounded bg-bg-secondary text-text-secondary">
             {(() => {

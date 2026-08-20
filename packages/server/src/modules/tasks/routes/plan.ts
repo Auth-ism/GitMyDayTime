@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { nanoid } from "nanoid";
+import { z } from "zod";
 import { CreatePlanInput, CreateChecklistInput, PlanItemSchema } from "@gmd/shared";
 import { zodMsg } from "../../../validation.js";
 import { addPlanItem, updatePlanItem, deletePlanItem, reorderPlanItems, movePlanItem, addChecklistItem, updateChecklistItem, deleteChecklistItem, copyDayPlans, invalidateDayLog, getOneYearAgoPlan, DuplicatePlanItemError } from "../storage.js";
@@ -30,6 +31,7 @@ router.post("/:date/plan", wrap(async (req, res) => {
     category: input.data.category,
     duration: input.data.duration,
     scheduledTime: input.data.scheduledTime,
+    note: input.data.note,
     completed: false,
     order: nextOrder,
     itemType: input.data.itemType ?? "plan",
@@ -55,8 +57,18 @@ router.put("/:date/plan/reorder", wrap(async (req, res) => {
   res.json(plan);
 }));
 
+const NoteUpdateSchema = z.string().max(500).nullable();
+
 router.put("/:date/plan/:id", wrap(async (req, res) => {
-  const updated = await updatePlanItem(req.userId!, req.params.id as string, req.body);
+  const body = { ...req.body };
+  // Gövdenin geri kalanı storage'daki allowlist ile korunuyor; not serbest metin
+  // olduğu için uzunluğunu burada sınırlıyoruz. Boş string = notu temizle.
+  if (body.note !== undefined) {
+    const parsed = NoteUpdateSchema.safeParse(body.note ?? null);
+    if (!parsed.success) { res.status(400).json({ error: zodMsg(parsed.error) }); return; }
+    body.note = parsed.data?.trim() ? parsed.data.trim() : null;
+  }
+  const updated = await updatePlanItem(req.userId!, req.params.id as string, body);
   if (!updated) { res.status(404).json({ error: "Plan item not found" }); return; }
 
   res.json(updated);

@@ -42,12 +42,15 @@ export default function PlanItem({
   const { getCategoryColor, allCategories } = useCategories();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  // Notun kendi akordeonu — checklist'in `expanded`'ından bağımsız, ikisi çakışmasın.
+  const [noteOpen, setNoteOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.description);
   const [editCategory, setEditCategory] = useState<PlanItemType["category"]>(item.category);
   const [editPriority, setEditPriority] = useState<PriorityType>(item.priority ?? "normal");
   const [editTime, setEditTime] = useState(item.scheduledTime ?? "");
   const [editDuration, setEditDuration] = useState(item.duration != null && item.duration > 0 ? formatDuration(item.duration) : "");
+  const [editNote, setEditNote] = useState(item.note ?? "");
   const [completing, setCompleting] = useState(false);
   const [completeDuration, setCompleteDuration] = useState("");
   const editRef = useRef<HTMLInputElement>(null);
@@ -67,6 +70,7 @@ export default function PlanItem({
     setEditPriority(item.priority ?? "normal");
     setEditTime(item.scheduledTime ?? "");
     setEditDuration(item.duration != null && item.duration > 0 ? formatDuration(item.duration) : "");
+    setEditNote(item.note ?? "");
     setEditing(true);
   };
 
@@ -82,6 +86,9 @@ export default function PlanItem({
       if (newTime !== (item.scheduledTime ?? null)) updates.scheduledTime = newTime ?? undefined;
       const newDur = editDuration.trim() ? parseDuration(editDuration) || null : null;
       if (newDur !== (item.duration ?? null)) updates.duration = newDur ?? undefined;
+      // Boş string notu temizler — sunucu "" gördüğünde NULL yazıyor.
+      const newNote = editNote.trim();
+      if (newNote !== (item.note ?? "")) updates.note = newNote;
       if (Object.keys(updates).length > 0) onUpdate(updates);
     }
     setEditing(false);
@@ -159,6 +166,8 @@ export default function PlanItem({
   const priority = item.priority ?? "normal";
   // While an inline form is open the row's action icons would crowd it out.
   const busy = editing || completing;
+  // Tek satıra sığan kısa notta işe yaramaz bir chevron çıkmasın.
+  const isLongNote = (item.note?.length ?? 0) > 60 || (item.note?.includes("\n") ?? false);
 
   return (
     <div
@@ -227,6 +236,15 @@ export default function PlanItem({
                   if (e.key === "Enter") handleEditSave();
                   if (e.key === "Escape") handleEditCancel();
                 }}
+              />
+              <textarea
+                className="input !py-1 !px-2 !text-xs w-full resize-none"
+                rows={2}
+                maxLength={500}
+                placeholder={t("form.notesPlaceholder")}
+                value={editNote}
+                onChange={(e) => setEditNote(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape") handleEditCancel(); }}
               />
               <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("form.category" as any)}>
                 {allCategories.map((cat) => (
@@ -304,6 +322,24 @@ export default function PlanItem({
                 {item.description}
               </p>
             </div>
+          )}
+
+          {!editing && !completing && item.note && (
+            <button
+              type="button"
+              onClick={() => setNoteOpen((v) => !v)}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-expanded={noteOpen}
+              aria-label={t((noteOpen ? "plan.hideNote" : "plan.showNote") as any)}
+              className="flex items-start gap-1 w-full text-left mt-0.5 text-xs text-text-secondary hover:text-text transition-colors"
+            >
+              <span className={cn("flex-1 min-w-0", noteOpen ? "whitespace-pre-wrap break-words" : "truncate")}>
+                {item.note}
+              </span>
+              {isLongNote && (
+                <ChevronDown size={10} className={cn("mt-0.5 flex-shrink-0 transition-transform", noteOpen && "rotate-180")} />
+              )}
+            </button>
           )}
 
           <div className="flex items-center gap-2.5 mt-0.5">

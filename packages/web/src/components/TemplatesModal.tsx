@@ -55,6 +55,7 @@ export default function TemplatesModal({ date, currentPlans, onClose, onApplied 
         category: p.category,
         duration: p.duration ?? undefined,
         scheduledTime: p.scheduledTime ?? undefined,
+        note: p.note ?? undefined,
         priority: p.priority ?? "normal",
       })),
     });
@@ -71,6 +72,7 @@ export default function TemplatesModal({ date, currentPlans, onClose, onApplied 
             category: item.category,
             duration: item.duration,
             scheduledTime: item.scheduledTime,
+            note: item.note,
             itemType: "plan",
             priority: item.priority ?? "normal",
           });

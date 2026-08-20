@@ -111,6 +111,7 @@ export function useDayLog(date: string) {
         completed: false,
         order: current.plan.length,
         scheduledTime: data.scheduledTime,
+        note: data.note,
         checklist: [],
         itemType: (data as any).itemType ?? "plan",
         priority: (data as any).priority ?? "normal",

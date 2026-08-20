@@ -15,6 +15,19 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.20.0",
+    date: "2026-08-20",
+    bump: "minor",
+    summary: "Planlara açıklama (not) alanı geldi",
+    changes: [
+      { type: "feat", text: "Günlük plan öğelerine opsiyonel açıklama/not eklenebiliyor — başlık kısa kalıyor, detay ayrı alana yazılıyor" },
+      { type: "feat", text: "Notu olan kartta not tek satır olarak görünüyor; uzun notlar tıklayınca açılıp tamamı okunuyor, notsuz kartların görünümü hiç değişmiyor" },
+      { type: "feat", text: "Not; dünden kopyala, devretme, şablonlar ve tekrarlayan görevler üzerinden de taşınıyor, dışa/içe aktarmaya dahil" },
+      { type: "feat", text: "Arama artık notların içinde de eşleşme buluyor" },
+      { type: "fix", text: "Aynı başlıklı ama farklı açıklamalı bir plan artık yinelenen sayılmıyor — ikisi de aynı güne eklenebiliyor" },
+    ],
+  },
+  {
     version: "4.19.3",
     date: "2026-08-05",
     bump: "patch",
