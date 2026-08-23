@@ -1,9 +1,10 @@
-import dotenv from "dotenv";
+// .env'i her şeyden önce yükler — diğer importlar top-level'da process.env okuyor.
+import "./env.js";
+
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 import express from "express";
 import cors from "cors";
