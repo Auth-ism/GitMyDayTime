@@ -72,7 +72,10 @@ app.use(cors({
     ? process.env.CORS_ORIGIN.split(",").map(s => s.trim())
     : IS_PROD
       ? (origin: string | undefined, cb: (e: Error | null, allow?: boolean) => void) => {
-          if (!origin || origin === "null" || origin.endsWith(".byfeb.com")) cb(null, true);
+          // Origin: "null" (sandbox'lı iframe, data:/file:) kasıtlı olarak
+          // reddediliyor — credentials: true ile birlikte izin verilirse
+          // saldırgan sayfası kimlik doğrulamalı istek atabilir.
+          if (!origin || origin.endsWith(".byfeb.com")) cb(null, true);
           else cb(new Error("CORS: origin not allowed"));
         }
       : true,
