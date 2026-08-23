@@ -11,14 +11,41 @@ import { redis, isRedisConnected, cacheSession, getCachedSession, invalidateSess
 import { logAuditEvent, getClientIp } from "./audit.js";
 import { sendAdminApprovalEmail, sendUserApprovedEmail, sendVerificationEmail, sendPasswordResetEmail } from "./email.js";
 
+export const IS_PROD = process.env.NODE_ENV === "production";
+
+const MIN_SECRET_LENGTH = 32;
+
+/**
+ * Reads a signing secret from the environment.
+ *
+ * In production a missing or weak secret is fatal: falling back to a known
+ * default would let anyone forge a token for any user, and it would do so
+ * silently. Development keeps a fallback so a fresh clone runs without setup.
+ */
+function requiredSecret(name: string, devFallback: string): string {
+  const value = process.env[name];
+
+  if (value && value.length >= MIN_SECRET_LENGTH) return value;
+
+  const reason = value ? `shorter than ${MIN_SECRET_LENGTH} characters` : "not set";
+
+  if (IS_PROD) {
+    console.error(`FATAL: ${name} is ${reason}. Refusing to start in production.`);
+    console.error(`Generate one with: openssl rand -base64 32`);
+    process.exit(1);
+  }
+
+  // Keep a weak-but-present value in dev so existing local sessions stay valid.
+  console.warn(`[dev] ${name} is ${reason} — insecure, fix before deploying.`);
+  return value || devFallback;
+}
+
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+const JWT_SECRET = requiredSecret("JWT_SECRET", "dev-secret-change-me");
 const JWT_EXPIRES = "15m";
 const SESSION_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const MAX_SESSIONS_PER_USER = 20;
-
-export const IS_PROD = process.env.NODE_ENV === "production";
 
 // Extend Express Request
 declare global {

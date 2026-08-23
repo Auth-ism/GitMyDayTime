@@ -18,9 +18,12 @@
 
 ```
 <önek> + 48 hex karakter
-gmd_pat_ad52f3bda6281c3dcf5a26af27170d52921f983e4e21a5c2
-pm_pat_f17e66b2121768625fafb82aa733b36f0c53888822492b0f
+gmd_pat_<48-hex-karakter>
+pm_pat_<48-hex-karakter>
 ```
+
+> **Buraya gerçek token yazma.** Bu dosya git'e giriyor ve depo public.
+> Kendi anahtarların git-ignored `.secrets.local.md` dosyasında durur.
 
 Sunucu tarafında (`packages/server/src/modules/apiTokens/storage.ts`):
 

@@ -3,9 +3,12 @@ services:
     image: postgres:16-alpine
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      # Host'a açık: `npm run dev` sunucuyu konteyner dışında çalıştırıyor.
+      - "5432:5432"
     environment:
       - POSTGRES_USER=gmd
-      - POSTGRES_PASSWORD=gmd_dev
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD gerekli — .env dosyasına ekleyin}
       - POSTGRES_DB=gitmydaytime
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gmd -d gitmydaytime"]
@@ -35,8 +38,10 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=postgresql://gmd:gmd_dev@postgres:5432/gitmydaytime
-      - JWT_SECRET=BUtEhuCsbfp+redZ1sZ/lEUEFtGf1z0BxXV/llrkkg=
+      - DATABASE_URL=postgresql://gmd:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD gerekli}@postgres:5432/gitmydaytime
+      # NODE_ENV=production yukarıda set olduğu için sunucu zayıf/eksik secret ile açılmaz.
+      # En az 32 karakter: openssl rand -base64 32
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET gerekli — .env dosyasına ekleyin}
       - REDIS_URL=redis://redis:6379
 volumes:
   pgdata:
