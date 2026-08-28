@@ -15,6 +15,18 @@ export interface VersionEntry {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "4.20.1",
+    date: "2026-08-28",
+    bump: "patch",
+    summary: "Uygulama artık ana ekrana eklenebiliyor, mobilde daha akıcı",
+    changes: [
+      { type: "feat", text: "GMD artık yüklenebilir bir uygulama — telefonda ana ekrana eklenip tam ekran açılabiliyor" },
+      { type: "fix", text: "iOS Safari'de geri kaydırma hareketi artık yanlışlıkla sayfadan çıkarmıyor" },
+      { type: "fix", text: "Mobilde gün, hafta ve takvim görünümleri; üst bar, komut paleti ve klavye odağı daha akıcı ve tutarlı çalışıyor" },
+      { type: "fix", text: "Sessiz saatler ayarındaki mobil giriş alanları düzeltildi" },
+    ],
+  },
+  {
     version: "4.20.0",
     date: "2026-08-20",
     bump: "minor",
