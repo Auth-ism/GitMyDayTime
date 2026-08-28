@@ -12,6 +12,10 @@ import { showErrorToast } from "@/components/Toast";
 import { ApiError } from "@/lib/api";
 import "./index.css";
 
+const standaloneMode = window.matchMedia("(display-mode: standalone)").matches ||
+  ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
+document.documentElement.dataset.appMode = standaloneMode ? "standalone" : "browser";
+
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (error) => {

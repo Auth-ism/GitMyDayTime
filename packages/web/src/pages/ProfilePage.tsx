@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   User, Settings, Shield, Clock, Save, Check, Eye, EyeOff, ChevronDown,
   Download, Upload, Bell, Camera, Mail, AlertCircle, Plus, Pencil, Trash2,
-  X, Tag, Smartphone, Palette,
+  X, Tag, Smartphone, Palette, LogOut, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
@@ -17,6 +17,7 @@ import { PRESET_COLORS } from "@/components/TaskForm";
 import CalendarSubscribeSection from "@/components/CalendarSubscribeSection";
 import ApiTokensSection from "@/components/ApiTokensSection";
 import ApiKeyRequestSection from "@/components/ApiKeyRequestSection";
+import LogoutConfirmModal from "@/components/LogoutConfirmModal";
 
 const TIMEZONES = [
   "Europe/Istanbul", "Europe/London", "Europe/Berlin", "Europe/Paris",
@@ -50,12 +51,13 @@ function rawPhone(formatted: string): string {
 }
 
 export default function ProfilePage() {
-  const { profile, refreshProfile, user } = useAuth();
+  const { profile, refreshProfile, user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { fontSize, setFontSize } = useFontSize();
   const { t, locale, setLocale } = useI18n();
 
   const [activeTab, setActiveTab] = useState<Tab>("account");
+  const [mobileTab, setMobileTab] = useState<Tab | null>(null);
   const [form, setForm] = useState<Partial<UpdateProfileInput>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -102,6 +104,7 @@ export default function ProfilePage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -317,31 +320,52 @@ export default function ProfilePage() {
   return (
     <div className="max-w-lg mx-auto space-y-4" onKeyDown={handleKeyDown}>
       {/* Compact header */}
-      <div className="flex items-center gap-3">
-        <div className="relative group shrink-0">
-          {avatarPreview ? (
-            <img src={avatarPreview} alt="Avatar" className="w-10 h-10 rounded-xl object-cover" />
-          ) : (
-            <div className="w-10 h-10 rounded-xl bg-accent-soft text-text-secondary flex items-center justify-center text-xs font-semibold">
-              {initials}
-            </div>
-          )}
-          <button
-            onClick={() => avatarInputRef.current?.click()}
-            className="absolute inset-0 rounded-xl bg-black/30 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center"
-          >
-            <Camera size={14} className="text-white" />
-          </button>
-          <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarChange} className="hidden" />
+      <div className={cn(
+        "relative flex items-center justify-center gap-4 sm:justify-between",
+        mobileTab !== null && "hidden sm:flex"
+      )}>
+        <div className="flex flex-col items-center gap-2 min-w-0 sm:flex-row sm:items-center sm:gap-3">
+          <div className="relative group shrink-0">
+            {avatarPreview ? (
+              <img src={avatarPreview} alt="Avatar" className="w-20 h-20 rounded-2xl object-cover sm:w-10 sm:h-10 sm:rounded-xl" />
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-accent-soft text-text-secondary flex items-center justify-center text-lg font-semibold sm:w-10 sm:h-10 sm:rounded-xl sm:text-xs">
+                {initials}
+              </div>
+            )}
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              className="absolute inset-0 rounded-2xl bg-black/30 sm:rounded-xl sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center"
+            >
+              <Camera size={18} className="text-white sm:size-[14px]" />
+            </button>
+            <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarChange} className="hidden" />
+          </div>
+          <div className="min-w-0 text-center sm:text-left">
+            <h1 className="text-sm font-semibold text-text truncate">{profile.displayName || profile.username}</h1>
+            <p className="text-[11px] text-text-tertiary">@{profile.username}</p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <h1 className="text-sm font-semibold text-text truncate">{profile.displayName || profile.username}</h1>
-          <p className="text-[11px] text-text-tertiary">@{profile.username}</p>
-        </div>
+        <button
+          onClick={() => setShowLogoutConfirm(true)}
+          aria-label={t("nav.signOut" as any)}
+          className="hidden sm:inline-flex btn-icon p-2 rounded-lg shrink-0 sm:static"
+        >
+          <LogOut size={16} />
+        </button>
       </div>
+      {showLogoutConfirm && (
+        <LogoutConfirmModal
+          onConfirm={() => {
+            setShowLogoutConfirm(false);
+            logout();
+          }}
+          onCancel={() => setShowLogoutConfirm(false)}
+        />
+      )}
 
-      {/* Tab bar */}
-      <div className="flex gap-0.5 p-0.5 bg-bg-tertiary/50 rounded-lg">
+      {/* Desktop tab bar */}
+      <div className="hidden sm:flex gap-0.5 p-0.5 bg-bg-tertiary/50 rounded-lg">
         {tabs.map(({ key, icon: Icon, labelKey }) => (
           <button
             key={key}
@@ -359,6 +383,59 @@ export default function ProfilePage() {
         ))}
       </div>
 
+      {/* Mobile section list and subpage header */}
+      {mobileTab === null ? (
+        <div className="sm:hidden rounded-xl border border-border/50 bg-bg-elevated overflow-hidden divide-y divide-border/50">
+          {tabs.map(({ key, icon: Icon, labelKey }) => (
+            <button
+              key={key}
+              onClick={() => { setActiveTab(key); setMobileTab(key); }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-text transition-colors hover:bg-bg-secondary"
+            >
+              <Icon size={18} className="text-text-secondary" />
+              <span className="flex-1">{t(labelKey as any)}</span>
+              <ChevronRight size={17} className="text-text-tertiary" />
+            </button>
+          ))}
+          <button
+            onClick={() => setShowLogoutConfirm(true)}
+            className="w-full flex items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-danger transition-colors hover:bg-danger/10"
+          >
+            <LogOut size={18} />
+            <span>{t("nav.signOut" as any)}</span>
+          </button>
+        </div>
+      ) : (
+        <>
+        <div className="sm:hidden flex items-center gap-2">
+          <button
+            onClick={() => setMobileTab(null)}
+            aria-label={t("common.back" as any)}
+            className="btn-icon p-1.5 rounded-lg -ml-1"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h2 className="text-base font-semibold text-text flex-1">
+            {t((tabs.find((tab) => tab.key === mobileTab)?.labelKey || "profile.account") as any)}
+          </h2>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors",
+              saved ? "bg-success text-bg" : "bg-accent text-bg",
+              saving && "opacity-60"
+            )}
+          >
+            {saved ? <Check size={13} /> : <Save size={13} />}
+            {saved ? t("profile.saved" as any) : t("profile.save" as any)}
+          </button>
+        </div>
+        {error && <p className="sm:hidden text-[11px] text-danger">{error}</p>}
+        </>
+      )}
+
+      <div className={cn("space-y-3", mobileTab === null ? "hidden sm:block" : "block")}>
       {/* === ACCOUNT TAB === */}
       {activeTab === "account" && (
         <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
@@ -562,11 +639,11 @@ export default function ProfilePage() {
           {/* Silent hours */}
           <Section icon={<Bell size={14} className="text-text-secondary" />} title={t("profile.silentHours" as any)}>
             <p className="text-[10px] text-text-tertiary -mt-1 mb-2">{t("profile.silentHoursDesc" as any)}</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 min-w-0">
               <Field label={t("profile.silentFrom" as any)}>
                 <input
                   type="time"
-                  className="input-sm"
+                  className="input-sm w-full max-w-[8rem] min-w-0"
                   value={form.silentHoursStart ?? ""}
                   onChange={(e) => setForm({ ...form, silentHoursStart: e.target.value || null })}
                 />
@@ -574,7 +651,7 @@ export default function ProfilePage() {
               <Field label={t("profile.silentTo" as any)}>
                 <input
                   type="time"
-                  className="input-sm"
+                  className="input-sm w-full max-w-[8rem] min-w-0"
                   value={form.silentHoursEnd ?? ""}
                   onChange={(e) => setForm({ ...form, silentHoursEnd: e.target.value || null })}
                 />
@@ -726,6 +803,7 @@ export default function ProfilePage() {
           </Section>
         </motion.div>
       )}
+      </div>
 
       <AnimatePresence>
         {deleteOpen && (
@@ -1009,7 +1087,7 @@ function CategoryManager() {
 
 function SaveBar({ onClick, saving, saved, error, t }: { onClick: () => void; saving: boolean; saved: boolean; error: string; t: (key: any) => string }) {
   return (
-    <div>
+    <div className="hidden sm:block">
       {error && <p className="text-[11px] text-danger mb-1.5">{error}</p>}
       <button onClick={onClick} disabled={saving} className={cn("btn w-full !py-2 !text-xs transition-all", saved ? "bg-success text-bg" : "btn-primary")}>
         {saved ? (<><Check size={14} />{t("profile.saved")}</>) : saving ? t("profile.saving") : (<><Save size={14} />{t("profile.save")}</>)}

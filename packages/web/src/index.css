@@ -102,6 +102,52 @@
 }
 
 @media (max-width: 639px) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: auto;
+  }
+
+  html[data-app-mode="browser"],
+  html[data-app-mode="browser"] body,
+  html[data-app-mode="browser"] #root {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .mobile-page-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: auto;
+    touch-action: auto;
+  }
+
+  .mobile-bounded-scroll {
+    overscroll-behavior-y: auto;
+  }
+
+  html[data-app-mode="standalone"],
+  html[data-app-mode="standalone"] body,
+  html[data-app-mode="standalone"] #root {
+    overscroll-behavior: none;
+  }
+
+  html[data-app-mode="standalone"] .mobile-page-scroll {
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
+  }
+
+  html[data-app-mode="standalone"] .mobile-bounded-scroll {
+    overscroll-behavior-y: none;
+  }
+
+  html[data-app-mode="standalone"] .mobile-shell-chrome {
+    overscroll-behavior: none;
+    touch-action: pan-y;
+  }
+
   @supports (padding-bottom: env(safe-area-inset-bottom)) {
     .safe-main-bottom {
       padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
@@ -170,7 +216,14 @@
     border: 1px solid transparent;
     border-radius: 0.5rem;
   }
-  .btn-icon:hover:not(:disabled) {
+  @media (hover: hover) and (pointer: fine) {
+    .btn-icon:hover:not(:disabled) {
+      background: var(--color-accent-soft);
+      color: var(--color-text);
+    }
+  }
+
+  .btn-icon-active {
     background: var(--color-accent-soft);
     color: var(--color-text);
   }

@@ -87,7 +87,7 @@ export default function TaskItem({ task, onDelete, onUpdate }: Props) {
         <button
           onClick={() => setEditing(true)}
           aria-label={t("task.edit" as any)}
-          className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          className="p-1.5 rounded-lg transition-all flex-shrink-0 text-text-tertiary hover:text-accent hover:bg-accent-soft sm:opacity-0 sm:group-hover:opacity-100"
         >
           <Pencil size={14} />
         </button>
@@ -97,7 +97,7 @@ export default function TaskItem({ task, onDelete, onUpdate }: Props) {
         onClick={handleDelete}
         aria-label={confirmDelete ? t("task.confirmDelete") : t("task.deleteNote")}
         className={cn(
-          "p-1.5 rounded-lg transition-all flex-shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+          "p-1.5 rounded-lg transition-all flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100",
           confirmDelete
             ? "bg-danger-soft text-danger opacity-100"
             : "text-text-tertiary hover:text-danger hover:bg-danger-soft"
