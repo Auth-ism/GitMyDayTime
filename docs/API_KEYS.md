@@ -133,6 +133,14 @@ Claude'un bug/feature takibi için kullandığı sarmalayıcı.
 
 ### Kurulum
 
+Önce CLI'yi `PATH` üzerine ekle:
+
+```bash
+mkdir -p ~/.local/bin
+ln -s "$(pwd)/scripts/pm-cli.sh" ~/.local/bin/pm
+export PATH="$HOME/.local/bin:$PATH"  # bunu shell profilinize de ekleyin
+```
+
 `.env.local` (git-ignored):
 
 ```bash
@@ -149,7 +157,8 @@ GMD_API_BASE=https://pm.byfeb.com
 
 ```bash
 pm projects                                             # available projects
-pm auth pm_pat_...                                       # save/update API token
+pm auth                                                  # token'ı gizli prompt'tan kaydet/güncelle
+# Alternatif (CI veya pipe için): printf '%s\n' "$PM_TOKEN" | pm auth
 pm config use-board PM                                   # change default board
 pm --project PM list                                    # select by project key
 pm completion zsh                                        # print zsh completions

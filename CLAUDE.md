@@ -181,22 +181,23 @@ Injected at Vite build time via `define: { __APP_VERSION__ }` from root `package
 
 Private registry: `hub.umceko.com/byfeb/gitmydaytime`. K8s namespace: `feb`. Use `./deploy.sh`.
 
-## Claude ↔ PM Integration (`scripts/pm-cli.sh`)
+## Claude ↔ PM Integration (`pm`)
 
 This repo ships a bash wrapper that lets Claude auto-create/close issues in the user's GMD project. The user reports bugs/feature requests in chat → Claude opens a PM issue via the CLI → works on it → closes it on deploy.
 
 **Setup (one-time, user-side):**
 1. Profile → API Tokens → "Claude PM" token oluştur, raw token'ı kopyala
-2. `cp .env.local.example .env.local` → `GMD_API_TOKEN` ve `GMD_PROJECT_ID` doldur (git-ignored)
+2. `ln -s "$(pwd)/scripts/pm-cli.sh" ~/.local/bin/pm` ile CLI'yi `PATH` üzerine ekle
+3. `cp .env.local.example .env.local` → `GMD_API_TOKEN` ve `GMD_PROJECT` doldur (git-ignored). Token'ı shell history'ye koymadan kaydetmek için `pm auth` çalıştır.
 
 **Claude workflow:**
-- **User reports a bug/feature:** immediately `./scripts/pm-cli.sh create "<title>" "<description>" <type> <priority>` and tell the user the issue key (e.g. "GMD-42 açıldı")
+- **User reports a bug/feature:** immediately `pm create "<title>" "<description>" <type> <priority>` and tell the user the issue key (e.g. "GMD-42 açıldı")
   - Types: `bug`, `task`, `story`, `epic`, `sub_task`
   - Priorities: `critical`, `high`, `medium`, `low`, `none`
   - CLI auto-labels every Claude-created issue with `claude`
-- **Before starting work:** `./scripts/pm-cli.sh status <KEY> "in progress"` (optional)
-- **After successful deploy:** `./scripts/pm-cli.sh done <KEY>`
-- **To check open issues:** `./scripts/pm-cli.sh list`
+- **Before starting work:** `pm status <KEY> "in progress"` (optional)
+- **After successful deploy:** `pm done <KEY>`
+- **To check open issues:** `pm list`
 
 **Do NOT** create PM issues for trivial one-liner fixes the user asks for in the same message. Reserve PM issues for:
 - Bugs the user reports (they want to track the fix)

@@ -45,8 +45,9 @@ env_file_path() {
 write_env_value() {
   local key="$1" value="$2" env_file
   env_file="$(env_file_path)"
-  umask 077
-  ENV_FILE="$env_file" ENV_KEY="$key" ENV_VALUE="$value" python3 -c '
+  (
+    umask 077
+    ENV_FILE="$env_file" ENV_KEY="$key" ENV_VALUE="$value" python3 -c '
 import os, re
 from pathlib import Path
 
@@ -62,6 +63,7 @@ else:
     text = text.rstrip("\n") + "\n" + line + "\n"
 path.write_text(text)
 '
+  )
   chmod 600 "$env_file"
 }
 
@@ -159,11 +161,24 @@ else:
 }
 
 cmd_auth() {
-  if [ "$#" -ne 1 ] || [ -z "${1:-}" ]; then
-    echo "Usage: pm auth <api_key>" >&2
+  if [ "$#" -ne 0 ]; then
+    echo "Usage: pm auth" >&2
+    echo "Provide the token interactively or through standard input; do not pass it as an argument." >&2
     exit 1
   fi
-  write_env_value "GMD_API_TOKEN" "$1"
+  local token
+  if [ -t 0 ]; then
+    printf 'API token: ' >&2
+    IFS= read -rs token
+    printf '\n' >&2
+  else
+    IFS= read -r token
+  fi
+  if [ -z "$token" ]; then
+    echo "ERROR: API token cannot be empty." >&2
+    exit 1
+  fi
+  write_env_value "GMD_API_TOKEN" "$token"
   echo "API token saved to .env.local"
 }
 
@@ -519,8 +534,9 @@ Project and board selection:
       List all workflow statuses for this project.
 
 Authentication:
-  auth <api-key>
-      Save the PM API token to the git-ignored .env.local.
+  auth
+      Read the PM API token securely from a prompt or standard input and save it
+      to the git-ignored .env.local.
 
 Shell integration:
   completion [zsh|bash]
